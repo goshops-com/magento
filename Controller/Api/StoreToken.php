@@ -16,11 +16,25 @@ class StoreToken extends \Magento\Framework\App\Action\Action
     public function execute()
     {
         $token = $this->getRequest()->getParam('token');
-        if ($token) {
+        if ($token !== null) {
             $this->customerSession->setData('api_token', $token);
             $result = __('Token stored successfully.');
         } else {
             $result = __('No token provided.');
+        }
+
+        $response = $this->resultFactory->create(\Magento\Framework\Controller\ResultFactory::TYPE_RAW);
+        $response->setContents($result);
+        return $response;
+    }
+
+    public function getToken()
+    {
+        $token = $this->customerSession->getData('api_token');
+        if ($token) {
+            $result = __('Stored Token: %1', $token);
+        } else {
+            $result = __('No token is stored.');
         }
 
         $response = $this->resultFactory->create(\Magento\Framework\Controller\ResultFactory::TYPE_RAW);
