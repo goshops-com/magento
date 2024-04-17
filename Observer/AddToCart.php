@@ -3,7 +3,8 @@ namespace GoPersonal\Magento\Observer;
 
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
-use Magento\Framework\Exception\LocalizedException;
+use Magento\Customer\Model\Session;
+use Magento\Framework\HTTP\Client\Curl;
 use Psr\Log\LoggerInterface;
 
 class AddToCart implements ObserverInterface
@@ -13,10 +14,13 @@ class AddToCart implements ObserverInterface
     protected $logger;
 
     public function __construct(
-        \Magento\Customer\Model\Session $customerSession,
-        \Magento\Framework\HTTP\Client\Curl $curl,
+        Session $customerSession,
+        Curl $curl,
         LoggerInterface $logger
     ) {
+
+        $logger->debug("AddToCart Observer Instantiated");
+
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->logger = $logger;
