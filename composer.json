@@ -1,0 +1,22 @@
+{
+    "name": "mycompany/magento2-console-log",
+    "description": "A simple Magento 2 plugin that adds a JavaScript console.log statement to all pages",
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": [
+        "OSL-3.0",
+        "AFL-3.0"
+    ],
+    "require": {
+        "php": "~7.3.0||~7.4.0||~8.1.0",
+        "magento/framework": "*"
+    },
+    "autoload": {
+        "files": [
+            "app/code/Mycompany/ConsoleLog/registration.php"
+        ],
+        "psr-4": {
+            "Mycompany\\ConsoleLog\\": "app/code/Mycompany/ConsoleLog"
+        }
+    }
+}
