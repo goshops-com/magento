@@ -1,5 +1,5 @@
 <?php
-namespace Gopersonal\Magento\Controller;
+namespace Gopersonal\Magento\Controller\Index;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
