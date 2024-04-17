@@ -16,7 +16,7 @@
             "app/code/Mycompany/ConsoleLog/registration.php"
         ],
         "psr-4": {
-            "Mycompany\\ConsoleLog\\": "app/code/Mycompany/ConsoleLog"
+            "GoPersonal\\Magento\\": ""
         }
     }
 }
