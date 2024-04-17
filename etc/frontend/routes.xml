@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/routes.xsd">
     <router id="standard">
-        <route id="gopersonal_magento" frontName="gopersonal_magento">
-            <module name="Gopersonal_Magento" />
+        <route id="gopersonal" frontName="gopersonal">
+            <module name="GoPersonal_Magento" />
         </route>
     </router>
 </config>
