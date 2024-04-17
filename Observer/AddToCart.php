@@ -46,7 +46,8 @@ class AddToCart implements ObserverInterface
             
             $postData = json_encode([
                 'productId' => $productId,
-                'productSku' => $productSku
+                'productSku' => $productSku,
+                'token' => $token
             ]);
 
             $this->curl->post('https://worker-small-frog-11cb.go-shops.workers.dev/', $postData);
