@@ -1,10 +1,10 @@
 <?php
+
 namespace Gopersonal\Magento\Model;
 
-use Gopersonal\Magento\Api\SessionDataRepositoryInterface;
 use Magento\Framework\Session\SessionManagerInterface;
 
-class SessionDataRepository implements SessionDataRepositoryInterface
+class SessionDataRepository
 {
     const SESSION_KEY = 'gopersonal_magento_session_data';
 

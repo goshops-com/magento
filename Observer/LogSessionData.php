@@ -2,7 +2,7 @@
 namespace Gopersonal\Magento\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
-use Gopersonal\Magento\Api\SessionDataRepositoryInterface;
+use Gopersonal\Magento\Model\SessionDataRepository;
 use Psr\Log\LoggerInterface;
 
 class LogSessionData implements ObserverInterface
@@ -11,7 +11,7 @@ class LogSessionData implements ObserverInterface
     protected $logger;
 
     public function __construct(
-        SessionDataRepositoryInterface $sessionDataRepository,
+        SessionDataRepository $sessionDataRepository,
         LoggerInterface $logger
     ) {
         $this->sessionDataRepository = $sessionDataRepository;

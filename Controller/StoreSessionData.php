@@ -3,7 +3,8 @@ namespace Gopersonal\Magento\Controller;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
-use Gopersonal\Magento\Api\SessionDataRepositoryInterface;
+use Gopersonal\Magento\Model\SessionDataRepository;
+
 
 class StoreSessionData extends Action
 {
@@ -11,12 +12,12 @@ class StoreSessionData extends Action
 
     public function __construct(
         Context $context,
-        SessionDataRepositoryInterface $sessionDataRepository
+        SessionDataRepository $sessionDataRepository
     ) {
         parent::__construct($context);
         $this->sessionDataRepository = $sessionDataRepository;
     }
-
+    
     public function execute()
     {
         $data = $this->getRequest()->getParam('data');
