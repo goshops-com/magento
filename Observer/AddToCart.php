@@ -6,6 +6,7 @@ use Magento\Framework\Event\ObserverInterface;
 use Magento\Customer\Model\Session;
 use Magento\Framework\HTTP\Client\Curl;
 use Psr\Log\LoggerInterface;
+use Magento\Framework\Exception\LocalizedException;
 
 class AddToCart implements ObserverInterface
 {
@@ -18,9 +19,6 @@ class AddToCart implements ObserverInterface
         Curl $curl,
         LoggerInterface $logger
     ) {
-
-        $logger->debug("AddToCart Observer Instantiated");
-
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->logger = $logger;
@@ -33,6 +31,7 @@ class AddToCart implements ObserverInterface
             $product = $item ? $item->getProduct() : null;
             $productId = $product ? $product->getId() : 'Product ID not found';
             $productSku = $product ? $product->getSku() : 'SKU not found';
+            $quantity = $item ? $item->getQty() : 'Quantity not found';  // Get the quantity added to cart
 
             $token = $this->customerSession->getData('api_token');
             
@@ -47,6 +46,7 @@ class AddToCart implements ObserverInterface
             $postData = json_encode([
                 'productId' => $productId,
                 'productSku' => $productSku,
+                'quantity' => $quantity,  // Include quantity in the POST data
                 'token' => $token
             ]);
 
@@ -60,5 +60,4 @@ class AddToCart implements ObserverInterface
             throw new LocalizedException(__('Error adding product to cart.'));
         }
     }
-
 }
