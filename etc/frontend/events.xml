@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!-- Observer for Add to Cart event -->
+    <event name="checkout_cart_product_add_after">
+        <observer name="gopersonal_add_to_cart" instance="GoPersonal\Magento\Observer\AddToCart" />
+    </event>
+    
+    <!-- Observer for Remove from Cart event -->
+    <event name="checkout_cart_product_remove_after">
+        <observer name="gopersonal_remove_from_cart" instance="GoPersonal\Magento\Observer\RemoveFromCart" />
+    </event>
+    
+    <!-- Observer for Purchase event -->
+    <event name="checkout_onepage_controller_success_action">
+        <observer name="gopersonal_purchase_complete" instance="GoPersonal\Magento\Observer\PurchaseComplete" />
+    </event>
+</config>
