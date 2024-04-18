@@ -1,4 +1,10 @@
+<!-- console_log.phtml -->
 <script>
-    console.log("This is a console log from the Mycompany_ConsoleLog module.");
+    require(['jquery'], function($) {
+        $(document).ready(function() {
+            var clientId = "<?= $block->escapeJs($block->getClientId()) ?>"; // Use escapeJs for security
+            console.log("Client ID:", clientId); // Logs the Client ID to the console
+            console.log("This is a console log from the Gopersonal_Magento module.");
+        });
+    });
 </script>
-
