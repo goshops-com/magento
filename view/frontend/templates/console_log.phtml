@@ -27,12 +27,30 @@ require(['jquery'], function($) {
                 provider: 'Magento_V2',
                 context: contextData
             });
+
+            await fetchTokenAndCompare();
         }
 
         var gsSDKScript = document.createElement('script');
         gsSDKScript.src = 'https://sdk.gopersonal.ai/gs-sdk.js';
         gsSDKScript.onload = initializeGSSDK;
         document.head.appendChild(gsSDKScript);
+
+        async function fetchTokenAndCompare() {
+            try {
+                const currentToken = await window.gsSDK.getCurrentSession().token;
+                const response = await fetch(window.location.origin + '/api/gettoken');
+                const { token: fetchedToken } = await response.json();
+
+                if (currentToken !== fetchedToken) {
+                    await fetch(`${window.location.origin}/api/storetoken?token=${encodeURIComponent(currentToken)}`, {
+                        method: 'GET'
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching or updating token:', error);
+            }
+        }
     });
 });
 </script>
