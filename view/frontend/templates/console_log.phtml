@@ -39,11 +39,11 @@ require(['jquery'], function($) {
         async function fetchTokenAndCompare() {
             try {
                 const currentToken = await window.gsSDK.getCurrentSession().token;
-                const response = await fetch(window.location.origin + '/api/gettoken');
+                const response = await fetch(window.location.origin + '/gopersonal/api/gettoken');
                 const { token: fetchedToken } = await response.json();
 
                 if (currentToken !== fetchedToken) {
-                    await fetch(`${window.location.origin}/api/storetoken?token=${encodeURIComponent(currentToken)}`, {
+                    await fetch(`${window.location.origin}/gopersonal/api/storetoken?token=${encodeURIComponent(currentToken)}`, {
                         method: 'GET'
                     });
                 }
