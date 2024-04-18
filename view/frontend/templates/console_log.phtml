@@ -1,10 +1,23 @@
-<!-- console_log.phtml -->
 <script>
     require(['jquery'], function($) {
         $(document).ready(function() {
-            var clientId = "<?= $block->escapeJs($block->getClientId()) ?>"; // Use escapeJs for security
-            console.log("Client ID:", clientId); // Logs the Client ID to the console
+            var clientId = "<?= $block->escapeJs($block->getClientId()) ?>";
+            console.log("Client ID:", clientId);
             console.log("This is a console log from the Gopersonal_Magento module.");
+
+            if ("<?= $block->isHomePage() ?>") {
+                console.log("This is the Home Page.");
+            } else if ("<?= $block->isProductPage() ?>") {
+                console.log("This is a Product Detail Page.");
+                var productId = "<?= $block->getCurrentProductId() ?>";
+                if (productId) {
+                    console.log("Product ID:", productId);
+                }
+            } else if ("<?= $block->isCartPage() ?>") {
+                console.log("This is the Cart Page.");
+            } else if ("<?= $block->isCheckoutPage() ?>") {
+                console.log("This is the Checkout Page.");
+            }
         });
     });
 </script>
