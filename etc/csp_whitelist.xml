@@ -3,36 +3,33 @@
     <policies>
         <policy id="script-src">
             <values>
-                <value id="gs-sdk" type="host">https://sdk.gopersonal.ai</value>
-                <value id="gs-sdk-cdn" type="host">https://cdn.gopersonal.ai</value>
+                <value id="gs-sdk" type="host">https://*.gopersonal.ai</value>
             </values>
         </policy>
         <policy id="style-src">
             <values>
-                <value id="gs-sdk" type="host">https://sdk.gopersonal.ai</value>
+                <value id="gs-sdk" type="host">https://*.gopersonal.ai</value>
             </values>
         </policy>
         <policy id="img-src">
             <values>
-                <value id="gs-sdk" type="host">https://sdk.gopersonal.ai</value>
+                <value id="gs-sdk" type="host">https://*.gopersonal.ai</value>
             </values>
         </policy>
         <policy id="font-src">
             <values>
-                <value id="gs-sdk" type="host">https://sdk.gopersonal.ai</value>
+                <value id="gs-sdk" type="host">https://*.gopersonal.ai</value>
             </values>
         </policy>
         <policy id="connect-src">
             <values>
-                <value id="gs-api" type="host">https://api.gopersonal.ai</value>
-            </values>
-            <values>
-                <value id="gs-api-dev" type="host">https://go-discover-dev.goshops.ai</value>
+                <value id="gs-api" type="host">https://*.gopersonal.ai</value>
+                <value id="gs-api-dev" type="host">https://*.goshops.ai</value>
             </values>
         </policy>
         <policy id="frame-src">
             <values>
-                <value id="gs-sdk" type="host">https://sdk.gopersonal.ai</value>
+                <value id="gs-sdk" type="host">https://*.gopersonal.ai</value>
             </values>
         </policy>
     </policies>

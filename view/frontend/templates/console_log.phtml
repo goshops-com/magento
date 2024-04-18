@@ -6,7 +6,7 @@ require(['jquery'], function($) {
         function initializeGSSDK() {
             var contextData = {};
             var pageType = "";
-            var cartItems = <?= json_encode($block->getCartItems()) ?>;  // Get cart items as JSON
+            var cart_items = <?= json_encode($block->getCartItems()) ?>;  // Get cart items as JSON
 
             if ("<?= $block->isHomePage() ?>") {
                 pageType = 'home';
