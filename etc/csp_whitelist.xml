@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/csp_whitelist.xsd">
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Gopersonal_Magento:etc/csp_whitelist.xsd">
     <policy id="script-src">
         <values>
             <value id="gopersonal-sdk" type="host">https://sdk.gopersonal.ai</value>
