@@ -62,7 +62,7 @@ class UpdateCart implements ObserverInterface
 
     private function postUpdate($event, $productId, $quantity)
     {
-        $token = $this->customerSession->getData('api_token');
+        $token = $this->customerSession->getData('gopersonal_jwt');
         if (!$token) {
             $this->logger->info('No API token found in session for product ID ' . $productId);
             return;

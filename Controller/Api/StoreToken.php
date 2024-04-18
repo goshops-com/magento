@@ -17,7 +17,7 @@ class StoreToken extends \Magento\Framework\App\Action\Action
     {
         $token = $this->getRequest()->getParam('token');
         if ($token !== null) {
-            $this->customerSession->setData('api_token', $token);
+            $this->customerSession->setData('gopersonal_jwt', $token);
             $result = __('Token stored successfully.');
         } else {
             $result = __('No token provided.');

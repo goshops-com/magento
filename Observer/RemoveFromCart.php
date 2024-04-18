@@ -37,7 +37,7 @@ class RemoveFromCart implements ObserverInterface
             $productId = $product ? $product->getId() : 'Product ID not found';
             $quantity = $item ? $item->getQty() : 'Quantity not found';
 
-            $token = $this->customerSession->getData('api_token');
+            $token = $this->customerSession->getData('gopersonal_jwt');
             if (!$token) {
                 $this->logger->info('No API token found in session.');
                 return;

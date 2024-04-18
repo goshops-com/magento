@@ -15,7 +15,7 @@ class GetToken extends \Magento\Framework\App\Action\Action
 
     public function execute()
     {
-        $token = $this->customerSession->getData('api_token');
+        $token = $this->customerSession->getData('gopersonal_jwt');
         if ($token) {
             $result = __('Stored Token: %1', $token);
         } else {

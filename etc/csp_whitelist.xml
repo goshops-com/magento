@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/csp_whitelist.xsd">
+    <policies>
+        <policy id="script-src">
+            <values>
+                <value id="gopersonal-sdk" type="host">https://sdk.gopersonal.ai</value>
+                <value id="gopersonal-sdk-cdn" type="host">https://cdn.gopersonal.ai</value>
+            </values>
+        </policy>
+        <policy id="style-src">
+            <values>
+                <value id="gopersonal-sdk-style" type="host">https://sdk.gopersonal.ai</value>
+            </values>
+        </policy>
+        <policy id="connect-src">
+            <values>
+                <value id="gopersonal-api" type="host">https://api.gopersonal.ai</value>
+                <value id="gopersonal-api-dev" type="host">https://dev-api.gopersonal.ai</value>
+            </values>
+        </policy>
+        <policy id="frame-src">
+            <values>
+                <value id="gopersonal-sdk-frame" type="host">https://sdk.gopersonal.ai</value>
+            </values>
+        </policy>
+        <policy id="img-src">
+            <values>
+                <value id="gopersonal-sdk-img" type="host">https://sdk.gopersonal.ai</value>
+            </values>
+        </policy>
+        <policy id="font-src">
+            <values>
+                <value id="gopersonal-sdk-font" type="host">https://sdk.gopersonal.ai</value>
+            </values>
+        </policy>
+    </policies>
+</config>
