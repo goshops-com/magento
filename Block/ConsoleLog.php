@@ -5,11 +5,13 @@ use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\Registry;
+use Magento\Store\Model\ScopeInterface;
 
 class ConsoleLog extends Template
 {
     protected $_request;
     protected $_registry;
+    protected $_scopeConfig;  // ScopeConfig to access configuration values
 
     public function __construct(
         Context $context,
@@ -20,6 +22,7 @@ class ConsoleLog extends Template
         parent::__construct($context, $data);
         $this->_request = $request;
         $this->_registry = $registry;
+        $this->_scopeConfig = $context->getScopeConfig();  // Initialize scopeConfig
     }
 
     public function isHomePage()
@@ -48,5 +51,13 @@ class ConsoleLog extends Template
             return $this->_registry->registry('current_product') ? $this->_registry->registry('current_product')->getId() : null;
         }
         return null;
+    }
+
+    public function getClientId()
+    {
+        return $this->_scopeConfig->getValue(
+            'gopersonal/general/client_id',
+            ScopeInterface::SCOPE_STORE
+        );
     }
 }
