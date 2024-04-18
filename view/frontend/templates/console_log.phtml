@@ -3,7 +3,7 @@ require(['jquery'], function($) {
     $(document).ready(function() {
         var clientId = "<?= $block->escapeJs($block->getClientId()) ?>"; // Fetch the client ID safely
 
-        function initializeGSSDK() {
+        async function initializeGSSDK() {
             var contextData = {};
             var pageType = "";
             var cart_items = <?= json_encode($block->getCartItems()) ?>;  // Get cart items as JSON
@@ -23,7 +23,7 @@ require(['jquery'], function($) {
                 contextData = { pageType: pageType, cart_items};
             }
 
-            window.gsSDK = new window.GSSDK.default(clientId, {
+            window.gsSDK = await new window.GSSDK.default(clientId, {
                 provider: 'Magento_V2',
                 context: contextData
             });
