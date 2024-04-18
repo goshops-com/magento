@@ -70,7 +70,7 @@ class ConsoleLog extends Template
         $items = [];
         foreach ($this->_checkoutSession->getQuote()->getAllVisibleItems() as $item) {
             $items[] = [
-                'product_id' => $item->getProduct()->getSku(),
+                'product_id' => $item->getProduct()->getId(),  // Fetching the product ID instead of the SKU
                 'quantity' => $item->getQty()
             ];
         }
