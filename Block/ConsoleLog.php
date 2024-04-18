@@ -5,7 +5,7 @@ use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\Registry;
-use Magento\Checkout\Model\Session as CheckoutSession;  // Use CheckoutSession to access cart items
+use Magento\Checkout\Model\Session as CheckoutSession;  // Correctly use CheckoutSession to access cart items
 use Magento\Store\Model\ScopeInterface;
 
 class ConsoleLog extends Template
@@ -13,17 +13,20 @@ class ConsoleLog extends Template
     protected $_request;
     protected $_registry;
     protected $_scopeConfig;  // ScopeConfig to access configuration values
+    protected $_checkoutSession;  // Add property for checkout session
 
     public function __construct(
         Context $context,
         Http $request,
         Registry $registry,
+        CheckoutSession $checkoutSession,  // Inject CheckoutSession
         array $data = []
     ) {
         parent::__construct($context, $data);
         $this->_request = $request;
         $this->_registry = $registry;
-        $this->_scopeConfig = $context->getScopeConfig();  // Initialize scopeConfig
+        $this->_scopeConfig = $context->getScopeConfig();
+        $this->_checkoutSession = $checkoutSession;  // Initialize CheckoutSession
     }
 
     public function isHomePage()
