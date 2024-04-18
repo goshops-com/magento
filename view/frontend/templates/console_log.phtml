@@ -1,23 +1,38 @@
 <script>
-    require(['jquery'], function($) {
-        $(document).ready(function() {
-            var clientId = "<?= $block->escapeJs($block->getClientId()) ?>";
-            console.log("Client ID:", clientId);
-            console.log("This is a console log from the Gopersonal_Magento module.");
+require(['jquery'], function($) {
+    $(document).ready(function() {
+        var clientId = "<?= $block->escapeJs($block->getClientId()) ?>"; // Fetch the client ID safely
+
+        function initializeGSSDK() {
+            var contextData = {};
+            var pageType = "";
+            var cartItems = <?= json_encode($block->getCartItems()) ?>;  // Get cart items as JSON
 
             if ("<?= $block->isHomePage() ?>") {
-                console.log("This is the Home Page.");
+                pageType = 'home';
+                contextData = { pageType: pageType };
             } else if ("<?= $block->isProductPage() ?>") {
-                console.log("This is a Product Detail Page.");
+                pageType = 'product_detail';
                 var productId = "<?= $block->getCurrentProductId() ?>";
-                if (productId) {
-                    console.log("Product ID:", productId);
-                }
+                contextData = { pageType: pageType, product_id: productId };
             } else if ("<?= $block->isCartPage() ?>") {
-                console.log("This is the Cart Page.");
+                pageType = 'cart';
+                contextData = { pageType: pageType, cart_items};
             } else if ("<?= $block->isCheckoutPage() ?>") {
-                console.log("This is the Checkout Page.");
+                pageType = 'checkout';
+                contextData = { pageType: pageType, cart_items};
             }
-        });
+
+            window.gsSDK = new window.GSSDK.default(clientId, {
+                provider: 'Magento_V2',
+                context: contextData
+            });
+        }
+
+        var gsSDKScript = document.createElement('script');
+        gsSDKScript.src = 'https://sdk.gopersonal.ai/gs-sdk.js';
+        gsSDKScript.onload = initializeGSSDK;
+        document.head.appendChild(gsSDKScript);
     });
+});
 </script>

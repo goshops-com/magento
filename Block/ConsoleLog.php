@@ -5,6 +5,7 @@ use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\Registry;
+use Magento\Checkout\Model\Session as CheckoutSession;  // Use CheckoutSession to access cart items
 use Magento\Store\Model\ScopeInterface;
 
 class ConsoleLog extends Template
@@ -59,5 +60,17 @@ class ConsoleLog extends Template
             'gopersonal/general/client_id',
             ScopeInterface::SCOPE_STORE
         );
+    }
+
+    public function getCartItems()
+    {
+        $items = [];
+        foreach ($this->_checkoutSession->getQuote()->getAllVisibleItems() as $item) {
+            $items[] = [
+                'product_id' => $item->getProduct()->getSku(),
+                'quantity' => $item->getQty()
+            ];
+        }
+        return $items;
     }
 }
