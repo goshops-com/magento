@@ -14,7 +14,8 @@ require(['jquery'], function($) {
             } else if ("<?= $block->isProductPage() ?>") {
                 pageType = 'product_detail';
                 var productId = "<?= $block->getCurrentProductId() ?>";
-                contextData = { pageType: pageType, product_id: productId };
+                var productType = "<?= $block->getCurrentProductType() ?>";
+                contextData = { pageType: pageType, product_id: productId, provider: 'Magento_V2' };
             } else if ("<?= $block->isCartPage() ?>") {
                 pageType = 'cart';
                 contextData = { pageType: pageType, cart_items};

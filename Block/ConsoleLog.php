@@ -57,6 +57,12 @@ class ConsoleLog extends Template
         return null;
     }
 
+    public function getCurrentProductType()
+    {
+        $product = $this->getCurrentProduct();
+        return $product ? $product->getTypeId() : null;
+    }
+    
     public function getClientId()
     {
         return $this->_scopeConfig->getValue(
