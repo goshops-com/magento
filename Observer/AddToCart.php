@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable as ConfigurableProductResource;
 
 class AddToCart implements ObserverInterface
 {
@@ -16,17 +17,20 @@ class AddToCart implements ObserverInterface
     protected $curl;
     protected $logger;
     protected $scopeConfig;
+    protected $configurableProductResource;
 
     public function __construct(
         Session $customerSession,
         Curl $curl,
         LoggerInterface $logger,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        ConfigurableProductResource $configurableProductResource
     ) {
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->logger = $logger;
         $this->scopeConfig = $scopeConfig;
+        $this->configurableProductResource = $configurableProductResource;
     }
 
     public function execute(Observer $observer)
@@ -35,7 +39,11 @@ class AddToCart implements ObserverInterface
             $item = $observer->getEvent()->getData('quote_item');
             $product = $item ? $item->getProduct() : null;
             $productId = $product ? $product->getId() : 'Product ID not found';
-            $quantity = $item ? $item->getQty() : 'Quantity not found';  
+            $quantity = $item ? $item->getQty() : 'Quantity not found';
+
+            // Attempt to find the parent ID if this is a simple product of a configurable product
+            $parentIds = $this->configurableProductResource->getParentIdsByChild($productId);
+            $parentId = !empty($parentIds) ? $parentIds[0] : null;
 
             $token = $this->customerSession->getData('gopersonal_jwt');
             if (!$token) {
@@ -55,7 +63,7 @@ class AddToCart implements ObserverInterface
 
             $postData = json_encode([
                 'event' => 'cart',
-                'item' => $productId,
+                'item' => $parentId ? $parentId : $productId, // Use the parent ID if available, otherwise use the product ID
                 'quantity' => $quantity
             ]);
 

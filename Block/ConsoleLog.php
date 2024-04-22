@@ -5,78 +5,82 @@ use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\Registry;
-use Magento\Checkout\Model\Session as CheckoutSession;  // Correctly use CheckoutSession to access cart items
+use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Store\Model\ScopeInterface;
+use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable as ConfigurableTypeResource;
 
 class ConsoleLog extends Template
 {
     protected $_request;
     protected $_registry;
-    protected $_scopeConfig;  // ScopeConfig to access configuration values
-    protected $_checkoutSession;  // Add property for checkout session
+    protected $_scopeConfig;
+    protected $_checkoutSession;
+    protected $_configurableTypeResource;
 
     public function __construct(
         Context $context,
         Http $request,
         Registry $registry,
-        CheckoutSession $checkoutSession,  // Inject CheckoutSession
+        CheckoutSession $checkoutSession,
+        ConfigurableTypeResource $configurableTypeResource,
         array $data = []
     ) {
         parent::__construct($context, $data);
         $this->_request = $request;
         $this->_registry = $registry;
         $this->_scopeConfig = $context->getScopeConfig();
-        $this->_checkoutSession = $checkoutSession;  // Initialize CheckoutSession
+        $this->_checkoutSession = $checkoutSession;
+        $this->_configurableTypeResource = $configurableTypeResource;
     }
 
-    public function isHomePage()
-    {
+    public function isHomePage() {
         return $this->_request->getFullActionName() == 'cms_index_index';
     }
 
-    public function isProductPage()
-    {
+    public function isProductPage() {
         return $this->_request->getFullActionName() == 'catalog_product_view';
     }
 
-    public function isCartPage()
-    {
+    public function isCartPage() {
         return $this->_request->getFullActionName() == 'checkout_cart_index';
     }
 
-    public function isCheckoutPage()
-    {
+    public function isCheckoutPage() {
         return $this->_request->getFullActionName() == 'checkout_index_index';
     }
 
-    public function getCurrentProductId()
-    {
-        if ($this->isProductPage()) {
-            return $this->_registry->registry('current_product') ? $this->_registry->registry('current_product')->getId() : null;
+    public function getCurrentProduct() {
+        return $this->isProductPage() ? $this->_registry->registry('current_product') : null;
+    }
+
+    public function getCurrentProductId() {
+        $product = $this->getCurrentProduct();
+        if ($product) {
+            if ($product->getTypeId() == 'simple') {
+                $parentIds = $this->_configurableTypeResource->getParentIdsByChild($product->getId());
+                if (!empty($parentIds)) {
+                    return $parentIds[0];  // Return the first parent ID (configurable product)
+                }
+            }
+            return $product->getId();  // Return the ID of the product if not simple or no parents found
         }
         return null;
     }
 
-    public function getCurrentProductType()
-    {
+    public function getCurrentProductType() {
         $product = $this->getCurrentProduct();
         return $product ? $product->getTypeId() : null;
     }
-    
-    public function getClientId()
-    {
-        return $this->_scopeConfig->getValue(
-            'gopersonal/general/client_id',
-            ScopeInterface::SCOPE_STORE
-        );
+
+    public function getClientId() {
+        return $this->_scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
     }
 
-    public function getCartItems()
-    {
+    public function getCartItems() {
         $items = [];
         foreach ($this->_checkoutSession->getQuote()->getAllVisibleItems() as $item) {
             $items[] = [
-                'product_id' => $item->getProduct()->getId(),  // Fetching the product ID instead of the SKU
+                'product_id' => $item->getProduct()->getId(),
                 'quantity' => $item->getQty()
             ];
         }
