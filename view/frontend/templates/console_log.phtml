@@ -23,6 +23,10 @@ require(['jquery'], function($) {
                     product_type: productType,
                     provider: 'Magento_V2'
                 };
+
+                setTimeout(() => {
+                    
+                }, 2 * 1000);
             } else if ("<?= $block->isCartPage() ?>") {
                 pageType = 'cart';
                 contextData = { pageType: pageType, cart_items};
@@ -37,6 +41,20 @@ require(['jquery'], function($) {
             });
 
             await fetchTokenAndCompare();
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                if (window.gsConfig?.options.context.pageType === 'product_detail') {
+                    const productId = window.gsConfig.options.context.product_id;
+                    if (productId) {
+                        await window.gsSDK.addInteraction({ event: "view", item: productId });
+                    }
+                }
+            } catch (error) {
+                console.error('Error in tracking script:', error);
+            }
+            
         }
 
         var gsSDKScript = document.createElement('script');
