@@ -36,7 +36,8 @@ class CustomSearch implements SearchInterface {
             ScopeInterface::SCOPE_STORE
         );
 
-        $this->logger->info('CustomSearch: isEnabled value', ['isEnabled' => $isEnabled]); // Log configuration value
+        // $this->logger->critical('Testing if logging works');
+        $this->logger->critical('CustomSearch: isEnabled value', ['isEnabled' => $isEnabled]); // Log configuration value
 
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled'); // Log that external search is enabled
