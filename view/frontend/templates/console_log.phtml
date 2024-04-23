@@ -42,12 +42,6 @@ require(['jquery'], function($) {
 
             await fetchTokenAndCompare();
 
-            if ("<?= $block->isLoggedIn() ?>") {
-                var customerId = "<?= $block->getCustomerId() ?>";
-                var customerEmail = "<?= $block->escapeJs($block->getCustomerEmail()) ?>";
-                window.gsSDK.login(customerId, {email: customerEmail, param_updateCartFromCustomer: true});
-            }
-            
             try {
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -71,12 +65,27 @@ require(['jquery'], function($) {
         async function fetchTokenAndCompare() {
             try {
                 const currentToken = await window.gsSDK.getCurrentSession().token;
+                // Fetch the token, customer ID, and email from the Magento API
                 const response = await fetch(window.location.origin + '/gopersonal/api/gettoken');
-                const fetchedToken = await response.text();
+                const data = await response.json();
 
-                if (currentToken !== fetchedToken) {
+                // Compare the current token with the one from the server
+                if (currentToken !== data.token) {
+                    // If the token is different, update it on the server
                     await fetch(`${window.location.origin}/gopersonal/api/storetoken?token=${encodeURIComponent(currentToken)}`, {
                         method: 'GET'
+                    });
+                }
+
+                // Check if user is logged in and has valid data, then perform login on gsSDK
+                if (data.customer_id && data.customer_email) {
+                    window.gsSDK.login(data.customer_id, {
+                        email: data.customer_email,
+                        param_updateCartFromCustomer: true
+                    }).then(() => {
+                        console.log('Logged in successfully:', data.customer_email);
+                    }).catch(error => {
+                        console.error('Error during SDK login:', error);
                     });
                 }
             } catch (error) {
