@@ -3,9 +3,6 @@
     <event name="checkout_cart_product_add_after">
         <observer name="gopersonal_add_to_cart" instance="Gopersonal\Magento\Observer\AddToCart" />
     </event>
-    <event name="checkout_cart_update_items_after">
-        <observer name="gopersonal_update_cart" instance="Gopersonal\Magento\Observer\UpdateCart" />
-    </event>
     <event name="sales_quote_remove_item">
         <observer name="gopersonal_remove_from_cart" instance="Gopersonal\Magento\Observer\RemoveFromCart" />
     </event>
