@@ -9,7 +9,7 @@
     <event name="sales_quote_item_qty_set_after">
         <observer name="gopersonal_update_cart_items" instance="Gopersonal\Magento\Observer\UpdateCartItems" />
     </event>
-    <event name="sales_order_place_after">
+    <event name="checkout_onepage_controller_success_action">
         <observer name="gopersonal_order_place_after" instance="Gopersonal\Magento\Observer\AfterOrderPlace" />
     </event>
 </config>
