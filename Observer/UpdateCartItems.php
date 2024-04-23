@@ -38,6 +38,8 @@ class UpdateCartItems implements ObserverInterface
         $info = $observer->getEvent()->getData('info');
         $cart = $observer->getEvent()->getCart();
 
+        $this->logger->info('UpdateCartItems observer executed');
+        
         $token = $this->customerSession->getData('gopersonal_jwt');
         if (!$token) {
             $this->logger->info('No API token found in session.');
