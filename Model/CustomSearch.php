@@ -47,8 +47,18 @@ class CustomSearch implements SearchInterface {
             // Simulate a search result for demonstration
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
-            $searchResult->setItems([]); // Your actual search results here
-            $searchResult->setTotalCount(0); // Your actual count here
+            
+            $item = [
+                'id' => 1556,
+                'name' => 'Sample Product',
+                'price' => 99.99,
+                'description' => 'This is a sample product from a hardcoded search result.'
+            ];
+    
+            // Set the items and total count
+            $searchResult->setItems([$item]);
+            $searchResult->setTotalCount(1);
+            
             return $searchResult;
         } else {
             $this->logger->info('CustomSearch: Fallback to default search engine');
