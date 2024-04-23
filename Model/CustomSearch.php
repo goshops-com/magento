@@ -1,5 +1,5 @@
 <?php
-namespace Gopersonal\Magento\Block;
+namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
