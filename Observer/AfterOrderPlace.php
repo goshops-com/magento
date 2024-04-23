@@ -3,8 +3,13 @@ namespace Gopersonal\Magento\Observer;
 
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
+use Psr\Log\LoggerInterface;
+use Magento\Customer\Model\Session as CustomerSession;
+use Magento\Framework\HTTP\Client\Curl;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Model\ScopeInterface;
 
-class ThankYouPageObserver implements ObserverInterface
+class AfterOrderPlace implements ObserverInterface
 {
     protected $logger;
     protected $customerSession;
@@ -12,10 +17,10 @@ class ThankYouPageObserver implements ObserverInterface
     protected $scopeConfig;
 
     public function __construct(
-        \Psr\Log\LoggerInterface $logger,
-        \Magento\Customer\Model\Session $customerSession,
-        \Magento\Framework\HTTP\Client\Curl $curl,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+        LoggerInterface $logger,
+        CustomerSession $customerSession,
+        Curl $curl,
+        ScopeConfigInterface $scopeConfig
     ) {
         $this->logger = $logger;
         $this->customerSession = $customerSession;
@@ -25,29 +30,25 @@ class ThankYouPageObserver implements ObserverInterface
 
     public function execute(Observer $observer)
     {
-        $orderIds = $observer->getEvent()->getOrderIds();  // array of order IDs
+        $orderIds = $observer->getEvent()->getOrderIds();
         if (empty($orderIds) || !is_array($orderIds)) {
+            $this->logger->error('AfterOrderPlace: No order IDs found on thank you page.');
             return;
         }
 
-        $orderId = reset($orderIds);  // Get the first item from the array
-
-        $this->logger->info('Order ID on Thank You Page: ' . $orderId);
+        $orderId = reset($orderIds);
+        $this->logger->info('AfterOrderPlace: Order ID on Thank You Page - ' . $orderId);
 
         $token = $this->customerSession->getData('gopersonal_jwt');
         if (!$token) {
-            $this->logger->info('No API token found in session.');
+            $this->logger->error('AfterOrderPlace: No API token found in session.');
             return;
         }
 
-        $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        $url = 'https://discover.gopersonal.ai/interaction/state/cart';  // Default URL
+        $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
+        $baseUrl = 'https://discover.gopersonal.ai/interaction/state/cart';
+        $url = (strpos($clientId, 'D-') === 0) ? 'https://go-discover-dev.goshops.ai/interaction/state/cart' : $baseUrl;
 
-        if (strpos($clientId, 'D-') === 0) {
-            $url = 'https://go-discover-dev.goshops.ai/interaction/state/cart';  // Development URL if client ID starts with 'D-'
-        }
-
-        // Setup headers and payload for the API request
         $this->curl->addHeader("Authorization", "Bearer " . $token);
         $this->curl->addHeader("Content-Type", "application/json");
 
@@ -57,7 +58,19 @@ class ThankYouPageObserver implements ObserverInterface
 
         $this->curl->post($url, $postData);
         if ($this->curl->getStatus() != 200) {
-            $this->logger->error('Purchase event API call failed.', ['status' => $this->curl->getStatus(), 'response' => $this->curl->getBody()]);
+            $this->logger->error('AfterOrderPlace: Purchase event API call failed.', [
+                'url' => $url,
+                'status' => $this->curl->getStatus(),
+                'response' => $this->curl->getBody(),
+                'postData' => $postData
+            ]);
+        } else {
+            $this->logger->info('AfterOrderPlace: Purchase event API call succeeded.', [
+                'url' => $url,
+                'status' => $this->curl->getStatus(),
+                'response' => $this->curl->getBody(),
+                'postData' => $postData
+            ]);
         }
     }
 }
