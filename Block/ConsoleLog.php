@@ -7,6 +7,7 @@ use Magento\Framework\App\Request\Http;
 use Magento\Framework\Registry;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Customer\Model\Session as CustomerSession;
 use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable as ConfigurableTypeResource;
 
 class ConsoleLog extends Template
