@@ -5,9 +5,9 @@
 
     <!-- Configuration of dependencies for CustomSearch -->
     <type name="Gopersonal\Magento\Model\CustomSearch">
+        <!-- Inject the default Magento search engine if needed -->
         <arguments>
-            <argument name="searchHandler" xsi:type="object">Gopersonal\Magento\Model\SearchHandler</argument>
+            <argument name="defaultSearchEngine" xsi:type="object">Magento\Search\Model\SearchEngine</argument>
         </arguments>
     </type>
 </config>
-
