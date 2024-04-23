@@ -50,7 +50,6 @@ class UpdateCartItems implements ObserverInterface
         $product = $item->getProduct();
         
         $currentWindow = floor(time() / 5) * 5;
-        $actionId = uniqid($quoteId . '-' . $productId . '-' . $currentWindow . '-', true);
 
         // Obtain the parent product ID if this is a simple product part of a configurable product
         if ($product->getTypeId() == 'simple') {
@@ -60,6 +59,8 @@ class UpdateCartItems implements ObserverInterface
             $productId = $product->getId();
         }
 
+        $actionId = uniqid($quoteId . '-' . $productId . '-' . $currentWindow . '-', true);
+        
         $token = $this->customerSession->getData('gopersonal_jwt');
         if (!$token) {
             $this->logger->info('No API token found in session.');
