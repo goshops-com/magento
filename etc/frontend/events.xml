@@ -7,6 +7,6 @@
         <observer name="gopersonal_remove_from_cart" instance="Gopersonal\Magento\Observer\RemoveFromCart" />
     </event>
     <event name="checkout_cart_update_items_after">
-        <observer name="vendor_module_update_cart_items" instance="Gopersonal\Magento\Observer\UpdateCartItems" />
+        <observer name="gopersonal_update_cart_items" instance="Gopersonal\Magento\Observer\UpdateCartItems" />
     </event>
 </config>
