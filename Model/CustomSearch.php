@@ -40,25 +40,27 @@ class CustomSearch implements SearchInterface {
             'gopersonal/general/gopersonal_has_search',
             ScopeInterface::SCOPE_STORE
         );
-
+    
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled');
-
-            // Simulate a search result for demonstration
+    
+            // Create a search result object
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
-            
-            $item = [
+    
+            // Create an instance of DataObject with product data
+            $itemData = [
                 'id' => 1556,
                 'name' => 'Sample Product',
                 'price' => 99.99,
                 'description' => 'This is a sample product from a hardcoded search result.'
             ];
+            $item = new \Magento\Framework\DataObject($itemData);
     
             // Set the items and total count
             $searchResult->setItems([$item]);
-            $searchResult->setTotalCount(1);
-            
+            $searchResult->setTotalCount(1); // Set total count to 1 as we're returning 1 product
+    
             return $searchResult;
         } else {
             $this->logger->info('CustomSearch: Fallback to default search engine');
