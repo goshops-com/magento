@@ -1,3 +1,6 @@
+<?php
+namespace Gopersonal\Magento\Block;
+
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -44,3 +47,4 @@ class CustomSearch implements SearchInterface {
         }
     }
 }
+
