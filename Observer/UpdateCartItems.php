@@ -35,11 +35,26 @@ class UpdateCartItems implements ObserverInterface
 
     public function execute(Observer $observer)
     {
-        $info = $observer->getEvent()->getData('info');
-        $cart = $observer->getEvent()->getCart();
+        $item = $observer->getEvent()->getItem();
+        $oldQty = $item->getOrigData('qty');
+        $newQty = $item->getQty();
+        $qtyDiff = $newQty - $oldQty;
 
-        $this->logger->info('UpdateCartItems observer executed');
+        if ($qtyDiff == 0) {
+            return; // No change in quantity
+        }
+
+        $changeType = ($qtyDiff > 0) ? 'increase' : 'decrease';
+        $product = $item->getProduct();
         
+        // Obtain the parent product ID if this is a simple product part of a configurable product
+        if ($product->getTypeId() == 'simple') {
+            $parentIds = $this->configurableProductResource->getParentIdsByChild($product->getId());
+            $productId = (!empty($parentIds)) ? $parentIds[0] : $product->getId();
+        } else {
+            $productId = $product->getId();
+        }
+
         $token = $this->customerSession->getData('gopersonal_jwt');
         if (!$token) {
             $this->logger->info('No API token found in session.');
@@ -53,42 +68,19 @@ class UpdateCartItems implements ObserverInterface
             $url = 'https://go-discover-dev.goshops.ai/interaction';  // Development URL if client ID starts with 'D-'
         }
 
-        foreach ($info as $itemId => $itemInfo) {
-            $qty = isset($itemInfo['qty']) ? (int) $itemInfo['qty'] : 0;
-            if ($qty > 0) {
-                $cartItem = $cart->getQuote()->getItemById($itemId);
-                if ($cartItem) {
-                    $product = $cartItem->getProduct();
-                    $oldQty = $cartItem->getQty();
-                    $qtyDiff = $qty - $oldQty; // Calculate the difference in quantity
-                    $changeType = ($qtyDiff > 0) ? 'increase' : 'decrease'; // Determine if the change was an increase or decrease
+        // Setup headers and payload for the API request
+        $this->curl->addHeader("Authorization", "Bearer " . $token);
+        $this->curl->addHeader("Content-Type", "application/json");
 
-                    // Obtain the parent product ID if this is a simple product part of a configurable product
-                    if ($product->getTypeId() == 'simple') {
-                        $parentIds = $this->configurableProductResource->getParentIdsByChild($product->getId());
-                        $productId = (!empty($parentIds)) ? $parentIds[0] : $product->getId();
-                    } else {
-                        $productId = $product->getId();
-                    }
+        $postData = json_encode([
+            'event' => ($changeType == 'increase') ? 'cart' : 'remove-cart',
+            'item' => $productId,
+            'quantity' => abs($qtyDiff)
+        ]);
 
-                    // Setup headers and payload for the API request
-                    $this->curl->addHeader("Authorization", "Bearer " . $token);
-                    $this->curl->addHeader("Content-Type", "application/json");
-
-                    $postData = json_encode([
-                        'event' => ($changeType == 'increase') ? 'cart' : 'remove-cart',
-                        'item' => $productId,
-                        'quantity' => abs($qtyDiff)
-                    ]);
-
-                    $this->curl->post($url, $postData);
-                    if ($this->curl->getStatus() != 200) {
-                        $this->logger->error('API call failed.', ['status' => $this->curl->getStatus(), 'response' => $this->curl->getBody()]);
-                    }
-                }
-            }
+        $this->curl->post($url, $postData);
+        if ($this->curl->getStatus() != 200) {
+            $this->logger->error('API call failed.', ['status' => $this->curl->getStatus(), 'response' => $this->curl->getBody()]);
         }
-
-        return $this;
     }
 }
