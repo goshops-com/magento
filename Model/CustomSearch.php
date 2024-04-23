@@ -8,27 +8,31 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Psr\Log\LoggerInterface;
-use Magento\Search\Model\SearchEngine; // Assuming this is the default search class
+use Magento\Search\Model\SearchEngine;
+use Magento\Framework\Api\Search\SearchResultFactory;
 
 class CustomSearch implements SearchInterface {
     protected $httpClient;
     protected $scopeConfig;
     protected $resultJsonFactory;
     protected $logger;
-    protected $defaultSearchEngine; // Default search engine service
+    protected $defaultSearchEngine;
+    protected $searchResultFactory;
 
     public function __construct(
         \Magento\Framework\HTTP\ClientInterface $httpClient,
         ScopeConfigInterface $scopeConfig,
         JsonFactory $resultJsonFactory,
         LoggerInterface $logger,
-        SearchEngine $defaultSearchEngine // Inject the default search engine
+        SearchEngine $defaultSearchEngine,
+        SearchResultFactory $searchResultFactory // Inject SearchResultFactory
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->logger = $logger;
-        $this->defaultSearchEngine = $defaultSearchEngine; // Initialize the default search engine
+        $this->defaultSearchEngine = $defaultSearchEngine;
+        $this->searchResultFactory = $searchResultFactory;
     }
 
     public function search(SearchCriteriaInterface $searchCriteria) {
@@ -37,20 +41,16 @@ class CustomSearch implements SearchInterface {
             ScopeInterface::SCOPE_STORE
         );
 
-        $this->logger->info('CustomSearch: Start search process');
-
         if ($isEnabled == 'YES') {
-            $result = $this->resultJsonFactory->create();
-            $productData = [
-                'product_id' => 45,
-                'name' => 'Sample Product',
-                'price' => 99.99,
-                'description' => 'This is a sample product from hardcoded search result.'
-            ];
-            $this->logger->info('CustomSearch: Returning hardcoded product data');
-            return $result->setData($productData);
+            $this->logger->info('CustomSearch: External search is enabled');
+
+            // Simulate a search result for demonstration
+            $searchResult = $this->searchResultFactory->create();
+            $searchResult->setSearchCriteria($searchCriteria);
+            $searchResult->setItems([]); // Your actual search results here
+            $searchResult->setTotalCount(0); // Your actual count here
+            return $searchResult;
         } else {
-            // Fallback to default search engine functionality
             $this->logger->info('CustomSearch: Fallback to default search engine');
             return $this->defaultSearchEngine->search($searchCriteria);
         }
