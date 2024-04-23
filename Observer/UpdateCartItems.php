@@ -47,6 +47,8 @@ class UpdateCartItems implements ObserverInterface
         $changeType = ($qtyDiff > 0) ? 'increase' : 'decrease';
         $product = $item->getProduct();
         
+        $actionId = uniqid($quoteId . '-' . $productId . '-', true) . '-' . time();
+
         // Obtain the parent product ID if this is a simple product part of a configurable product
         if ($product->getTypeId() == 'simple') {
             $parentIds = $this->configurableProductResource->getParentIdsByChild($product->getId());
@@ -75,7 +77,8 @@ class UpdateCartItems implements ObserverInterface
         $postData = json_encode([
             'event' => ($changeType == 'increase') ? 'cart' : 'remove-cart',
             'item' => $productId,
-            'quantity' => abs($qtyDiff)
+            'quantity' => abs($qtyDiff),
+            'transactionId' => $actionId 
         ]);
 
         $this->curl->post($url, $postData);
