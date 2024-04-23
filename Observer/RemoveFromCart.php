@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable as ConfigurableProductResource;
 
 class RemoveFromCart implements ObserverInterface
 {
@@ -16,17 +17,20 @@ class RemoveFromCart implements ObserverInterface
     protected $curl;
     protected $logger;
     protected $scopeConfig;
+    protected $configurableProductResource;
 
     public function __construct(
         Session $customerSession,
         Curl $curl,
         LoggerInterface $logger,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        ConfigurableProductResource $configurableProductResource
     ) {
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->logger = $logger;
         $this->scopeConfig = $scopeConfig;
+        $this->configurableProductResource = $configurableProductResource;
     }
 
     public function execute(Observer $observer)
@@ -37,6 +41,14 @@ class RemoveFromCart implements ObserverInterface
             $productId = $product ? $product->getId() : 'Product ID not found';
             $quantity = $item ? $item->getQty() : 'Quantity not found';
 
+            // Check if product is a simple product and part of a configurable product
+            if ($product && $product->getTypeId() == 'simple') {
+                $parentIds = $this->configurableProductResource->getParentIdsByChild($productId);
+                if (!empty($parentIds)) {
+                    $productId = $parentIds[0];  // Use the parent configurable product ID
+                }
+            }
+
             $token = $this->customerSession->getData('gopersonal_jwt');
             if (!$token) {
                 $this->logger->info('No API token found in session.');
@@ -44,10 +56,10 @@ class RemoveFromCart implements ObserverInterface
             }
 
             $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-            $url = 'https://discover.gopersonal.ai/interaction';
+            $url = 'https://discover.gopersonal.ai/interaction';  // Default URL
 
             if (strpos($clientId, 'D-') === 0) {
-                $url = 'https://go-discover-dev.goshops.ai/interaction';
+                $url = 'https://go-discover-dev.goshops.ai/interaction';  // Development URL if client ID starts with 'D-'
             }
 
             $this->curl->addHeader("Authorization", "Bearer " . $token);
@@ -55,7 +67,7 @@ class RemoveFromCart implements ObserverInterface
 
             $postData = json_encode([
                 'event' => 'remove-cart',
-                'item' => $productId,
+                'item' => $productId,  // Configurable product ID if applicable
                 'quantity' => $quantity
             ]);
 
