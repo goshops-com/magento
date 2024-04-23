@@ -15,6 +15,7 @@ class ConsoleLog extends Template
     protected $_registry;
     protected $_scopeConfig;
     protected $_checkoutSession;
+    protected $_customerSession;
     protected $_configurableTypeResource;
 
     public function __construct(
@@ -22,6 +23,7 @@ class ConsoleLog extends Template
         Http $request,
         Registry $registry,
         CheckoutSession $checkoutSession,
+        CustomerSession $customerSession,
         ConfigurableTypeResource $configurableTypeResource,
         array $data = []
     ) {
@@ -30,6 +32,7 @@ class ConsoleLog extends Template
         $this->_registry = $registry;
         $this->_scopeConfig = $context->getScopeConfig();
         $this->_checkoutSession = $checkoutSession;
+        $this->_customerSession = $customerSession;
         $this->_configurableTypeResource = $configurableTypeResource;
     }
 
@@ -86,4 +89,18 @@ class ConsoleLog extends Template
         }
         return $items;
     }
+
+    public function isLoggedIn() {
+        return $this->_customerSession->isLoggedIn();
+    }
+
+    public function getCustomerId() {
+        return $this->_customerSession->getCustomer()->getId();
+    }
+
+    public function getCustomerEmail() {
+        return $this->_customerSession->getCustomer()->getEmail();
+    }
+
+
 }
