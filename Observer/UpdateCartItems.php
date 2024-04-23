@@ -36,6 +36,8 @@ class UpdateCartItems implements ObserverInterface
     public function execute(Observer $observer)
     {
         $item = $observer->getEvent()->getItem();
+        $quoteId = $item->getQuote()->getId();
+
         $oldQty = $item->getOrigData('qty');
         $newQty = $item->getQty();
         $qtyDiff = $newQty - $oldQty;
@@ -47,7 +49,8 @@ class UpdateCartItems implements ObserverInterface
         $changeType = ($qtyDiff > 0) ? 'increase' : 'decrease';
         $product = $item->getProduct();
         
-        $actionId = uniqid($quoteId . '-' . $productId . '-', true) . '-' . time();
+        $currentWindow = floor(time() / 5) * 5;
+        $actionId = uniqid($quoteId . '-' . $productId . '-' . $currentWindow . '-', true);
 
         // Obtain the parent product ID if this is a simple product part of a configurable product
         if ($product->getTypeId() == 'simple') {
