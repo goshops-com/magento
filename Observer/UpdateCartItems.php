@@ -1,5 +1,5 @@
 <?php
-namespace Vendor\Module\Observer;
+namespace Gopersonal\Magento\Observer;
 
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
