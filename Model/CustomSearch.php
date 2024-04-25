@@ -55,7 +55,20 @@ class CustomSearch implements SearchInterface {
 
             if (!$token) {
                 $this->logger->info('No API token found in session.');
-                return $this->defaultSearchEngine->search($searchCriteria);
+                $searchResult = $this->searchResultFactory->create();
+                $searchResult->setSearchCriteria($searchCriteria);
+        
+                // Create an instance of DataObject with product data
+                $itemData = [
+                    'id' => 1556
+                ];
+                $item = new \Magento\Framework\DataObject($itemData);
+        
+                // Set the items and total count
+                $searchResult->setItems([$item]);
+                $searchResult->setTotalCount(1); // Set total count to 1 as we're returning 1 product
+        
+                return $searchResult;
             }
 
             $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
@@ -105,7 +118,10 @@ class CustomSearch implements SearchInterface {
             return $searchResult;
         } else {
             $this->logger->info('CustomSearch: Fallback to default search engine');
-            return $this->defaultSearchEngine->search($searchCriteria);
+            
+            // Convert SearchCriteria to RequestInterface
+            $searchRequest = $this->searchRequestBuilder->setSearchCriteria($searchCriteria)->create();
+            return $this->defaultSearchEngine->search($searchRequest);
         }
     }
 }
