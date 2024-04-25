@@ -33,7 +33,8 @@ class GetToken extends Action
         $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
 
         // Retrieve the JWT token based on the presence of the query parameter
-        $token = $readFromCookie ? $this->cookieManager->getCookie('gopersonal_jwt') : $this->customerSession->getData('gopersonal_jwt');
+        // $token = $readFromCookie ? $this->cookieManager->getCookie('gopersonal_jwt') : $this->customerSession->getData('gopersonal_jwt');
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
         // Prepare data to return
         $data = [
