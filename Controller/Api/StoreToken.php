@@ -35,7 +35,7 @@ class StoreToken extends Action
 
             // Store token in a cookie
             $cookieMetadata = $this->cookieMetadataFactory->createPublicCookieMetadata()
-                ->setDuration(3600) // Cookie duration in seconds
+                ->setDuration(60*60*24) // Cookie duration in seconds
                 ->setPath('/')      // Specify the path where the cookie is available
                 ->setDomain(null)   // Use current domain
                 ->setSecure(false)  // Set true if using HTTPS
