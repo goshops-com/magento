@@ -22,7 +22,8 @@ class CustomSearch implements SearchInterface {
     protected $logger;
     protected $defaultSearchEngine;
     protected $searchResultFactory;
-    protected $customerSession;
+    protected $cookieManager; // Cookie Manager for retrieving the cookie
+
 
     public function __construct(
         ClientInterface $httpClient,
@@ -39,8 +40,7 @@ class CustomSearch implements SearchInterface {
         $this->logger = $logger;
         $this->defaultSearchEngine = $defaultSearchEngine;
         $this->searchResultFactory = $searchResultFactory;
-        $this->customerSession = $customerSession;
-        $this->customerSession->start();  // Ensure session is started
+        $this->cookieManager = $cookieManager;
     }
 
     public function search(SearchCriteriaInterface $searchCriteria) {
@@ -52,7 +52,7 @@ class CustomSearch implements SearchInterface {
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled');
 
-            $token = $this->customerSession->getData('gopersonal_jwt');
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
             if (!$token) {
                 $this->logger->info('No API token found in session.');
