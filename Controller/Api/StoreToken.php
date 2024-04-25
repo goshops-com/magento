@@ -39,7 +39,7 @@ class StoreToken extends Action
                 ->setPath('/')      // Specify the path where the cookie is available
                 ->setDomain(null)   // Use current domain
                 ->setSecure(false)  // Set true if using HTTPS
-                ->setHttpOnly(true); // Set true for HTTP only if you need to prevent JavaScript access
+                ->setHttpOnly(false); // Set true for HTTP only if you need to prevent JavaScript access
 
             $this->cookieManager->setPublicCookie(
                 'gopersonal_jwt', // Cookie name
