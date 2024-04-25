@@ -13,6 +13,7 @@ use Magento\Search\Model\SearchEngine;
 use Magento\Framework\Api\Search\SearchResultFactory;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface; // Correct namespace
 
 class CustomSearch implements SearchInterface {
 
@@ -32,7 +33,7 @@ class CustomSearch implements SearchInterface {
         LoggerInterface $logger,
         SearchEngine $defaultSearchEngine,
         SearchResultFactory $searchResultFactory,
-        CookieManagerInterface $cookieManager,
+        CookieManagerInterface $cookieManager // Corrected parameter
         CustomerSession $customerSession
     ) {
         $this->httpClient = $httpClient;
