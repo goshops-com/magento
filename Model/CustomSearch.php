@@ -82,16 +82,16 @@ class CustomSearch implements SearchInterface {
             }
 
             // Get the search query and filters from the search criteria
-            $query = $searchCriteria->getQuery();
-            $filters = $searchCriteria->getFilterGroups();
+            $query = $this->getQueryFromSearchCriteria($searchCriteria);
+            // $filters = $searchCriteria->getFilterGroups();
 
             // Add the query and filters to the URL
             $url .= '&query=' . urlencode($query);
-            foreach ($filters as $filterGroup) {
-                foreach ($filterGroup->getFilters() as $filter) {
-                    $url .= '&' . $filter->getField() . '=' . urlencode($filter->getValue());
-                }
-            }
+            // foreach ($filters as $filterGroup) {
+            //     foreach ($filterGroup->getFilters() as $filter) {
+            //         $url .= '&' . $filter->getField() . '=' . urlencode($filter->getValue());
+            //     }
+            // }
 
             // Set the authorization header with the token
             $this->httpClient->addHeader("Authorization", "Bearer " . $token);
@@ -127,4 +127,15 @@ class CustomSearch implements SearchInterface {
             return $this->defaultSearchEngine->search($searchRequest);
         }
     }
+}
+
+private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
+    foreach ($searchCriteria->getFilterGroups() as $group) {
+        foreach ($group->getFilters() as $filter) {
+            if ($filter->getField() === 'search_term') {
+                return $filter->getValue();
+            }
+        }
+    }
+    return null;
 }
