@@ -1,4 +1,5 @@
 <?php
+
 namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
@@ -10,22 +11,27 @@ use Magento\Framework\Controller\Result\JsonFactory;
 use Psr\Log\LoggerInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\Api\Search\SearchResultFactory;
+use Magento\Customer\Model\Session as CustomerSession;
+use Magento\Framework\HTTP\ClientInterface;
 
 class CustomSearch implements SearchInterface {
+
     protected $httpClient;
     protected $scopeConfig;
     protected $resultJsonFactory;
     protected $logger;
     protected $defaultSearchEngine;
     protected $searchResultFactory;
+    protected $customerSession;
 
     public function __construct(
-        \Magento\Framework\HTTP\ClientInterface $httpClient,
+        ClientInterface $httpClient,
         ScopeConfigInterface $scopeConfig,
         JsonFactory $resultJsonFactory,
         LoggerInterface $logger,
         SearchEngine $defaultSearchEngine,
-        SearchResultFactory $searchResultFactory // Inject SearchResultFactory
+        SearchResultFactory $searchResultFactory,
+        CustomerSession $customerSession
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -33,6 +39,7 @@ class CustomSearch implements SearchInterface {
         $this->logger = $logger;
         $this->defaultSearchEngine = $defaultSearchEngine;
         $this->searchResultFactory = $searchResultFactory;
+        $this->customerSession = $customerSession;
     }
 
     public function search(SearchCriteriaInterface $searchCriteria) {
@@ -40,31 +47,61 @@ class CustomSearch implements SearchInterface {
             'gopersonal/general/gopersonal_has_search',
             ScopeInterface::SCOPE_STORE
         );
-    
+
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled');
-    
+
+            $token = $this->customerSession->getData('gopersonal_jwt');
+
+            if (!$token) {
+                $this->logger->info('No API token found in session.');
+                return $this->defaultSearchEngine->search($searchCriteria);
+            }
+
+            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
+            $url = 'https://discover.gopersonal.ai/item/search?adapter=magento';
+
+            if (strpos($clientId, 'D-') === 0) {
+                $url = 'https://go-discover-dev.goshops.ai/search?adapter=magento';
+            }
+
+            // Get the search query and filters from the search criteria
+            $query = $searchCriteria->getQuery();
+            $filters = $searchCriteria->getFilterGroups();
+
+            // Add the query and filters to the URL
+            $url .= '&query=' . urlencode($query);
+            foreach ($filters as $filterGroup) {
+                foreach ($filterGroup->getFilters() as $filter) {
+                    $url .= '&' . $filter->getField() . '=' . urlencode($filter->getValue());
+                }
+            }
+
+            // Set the authorization header with the token
+            $this->httpClient->addHeader("Authorization", "Bearer " . $token);
+
+            // Execute the API request
+            $this->httpClient->get($url);
+            $response = $this->httpClient->getBody();
+
+            // Parse the response and extract the product IDs
+            $productIds = json_decode($response);
+
             // Create a search result object
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
-    
-            // Create an instance of DataObject with product data
-            $itemData = [
-                'id' => 1556,
-                'name' => 'Sample Product',
-                'price' => 99.99,
-                'description' => 'This is a sample product from a hardcoded search result.'
-            ];
-            $item = new \Magento\Framework\DataObject($itemData);
-    
-            // Set the items and total count
-            $searchResult->setItems([$item]);
-            $searchResult->setTotalCount(1); // Set total count to 1 as we're returning 1 product
-    
+
+            // Set the items and total count based on the retrieved product IDs
+            $items = [];
+            foreach ($productIds as $productId) {
+                $itemData = [
+                    'id' => $productId
+                ];
+                $items[] = new \Magento\Framework\DataObject($itemData);
+            }
+            $searchResult->setItems($items);
+            $searchResult->setTotalCount(count($items));
+
             return $searchResult;
         } else {
-            $this->logger->info('CustomSearch: Fallback to default search engine');
-            return $this->defaultSearchEngine->search($searchCriteria);
-        }
-    }
-}
+            $this->logger->inf
