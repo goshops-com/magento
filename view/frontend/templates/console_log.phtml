@@ -64,13 +64,13 @@ require(['jquery'], function($) {
 
         async function fetchTokenAndCompare() {
             try {
-                const currentToken = await window.gsSDK.getCurrentSession().token;
+                const currentToken = window.gsSDK.getCurrentSession().token;
                 // Fetch the token, customer ID, and email from the Magento API
                 const response = await fetch(window.location.origin + '/gopersonal/api/gettoken');
                 const data = await response.json();
 
                 // Compare the current token with the one from the server
-                if (currentToken !== data.token) {
+                if (currentToken != data.token) {
                     // If the token is different, update it on the server
                     await fetch(`${window.location.origin}/gopersonal/api/storetoken?token=${encodeURIComponent(currentToken)}`, {
                         method: 'GET'
