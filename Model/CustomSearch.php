@@ -90,7 +90,7 @@ class CustomSearch implements SearchInterface {
             $url = 'https://discover.gopersonal.ai/item/search?adapter=magento';
 
             if (strpos($clientId, 'D-') === 0) {
-                $url = 'https://go-discover-dev.goshops.ai/search?adapter=magento';
+                $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
             }
 
             // Get the search query and filters from the search criteria
