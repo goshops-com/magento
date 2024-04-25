@@ -33,7 +33,7 @@ class CustomSearch implements SearchInterface {
         LoggerInterface $logger,
         SearchEngine $defaultSearchEngine,
         SearchResultFactory $searchResultFactory,
-        CookieManagerInterface $cookieManager // Corrected parameter
+        CookieManagerInterface $cookieManager,
         CustomerSession $customerSession
     ) {
         $this->httpClient = $httpClient;
