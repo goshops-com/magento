@@ -104,4 +104,8 @@ class CustomSearch implements SearchInterface {
 
             return $searchResult;
         } else {
-            $this->logger->inf
+            $this->logger->info('CustomSearch: Fallback to default search engine');
+            return $this->defaultSearchEngine->search($searchCriteria);
+        }
+    }
+}
