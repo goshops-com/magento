@@ -5,6 +5,7 @@ use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\Stdlib\CookieManagerInterface; // Correct namespace
 
 class GetToken extends Action
 {
@@ -14,23 +15,31 @@ class GetToken extends Action
     public function __construct(
         Context $context,
         CustomerSession $customerSession,
-        JsonFactory $resultJsonFactory
+        JsonFactory $resultJsonFactory,
+        CookieManagerInterface $cookieManager,
     ) {
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->resultJsonFactory = $resultJsonFactory;
+        $this->cookieManager = $cookieManager;
     }
 
     public function execute()
     {
         $result = $this->resultJsonFactory->create();
 
-        // Retrieve the JWT token from the session
-        $token = $this->customerSession->getData('gopersonal_jwt');
+        // Check if 'readFromCookie' parameter is set to true
+        $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
+
+        // Retrieve the JWT token based on the presence of the query parameter
+        $token = $readFromCookie 
+                ? $this->cookieManager->getCookie('gopersonal_jwt')
+                : $this->customerSession->getData('gopersonal_jwt');
 
         // Prepare data to return
         $data = [
-            'token' => $token ? $token : 'No token is stored.'
+            'token' => $token ? $token : 'No token is stored.',
+            'readFrom' => $readFromCookie ? 'cookie' : 'session'
         ];
 
         // Check if the customer is logged in
@@ -44,4 +53,5 @@ class GetToken extends Action
 
         return $result->setData($data);
     }
+
 }
