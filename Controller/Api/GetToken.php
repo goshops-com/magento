@@ -16,7 +16,7 @@ class GetToken extends Action
         Context $context,
         CustomerSession $customerSession,
         JsonFactory $resultJsonFactory,
-        CookieManagerInterface $cookieManager,
+        CookieManagerInterface $cookieManager
     ) {
         parent::__construct($context);
         $this->customerSession = $customerSession;
