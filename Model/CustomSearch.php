@@ -45,6 +45,18 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
     }
 
+
+    private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
+        foreach ($searchCriteria->getFilterGroups() as $group) {
+            foreach ($group->getFilters() as $filter) {
+                if ($filter->getField() === 'search_term') {
+                    return $filter->getValue();
+                }
+            }
+        }
+        return null;
+    }
+
     public function search(SearchCriteriaInterface $searchCriteria) {
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -127,15 +139,4 @@ class CustomSearch implements SearchInterface {
             return $this->defaultSearchEngine->search($searchRequest);
         }
     }
-}
-
-private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
-    foreach ($searchCriteria->getFilterGroups() as $group) {
-        foreach ($group->getFilters() as $filter) {
-            if ($filter->getField() === 'search_term') {
-                return $filter->getValue();
-            }
-        }
-    }
-    return null;
 }
