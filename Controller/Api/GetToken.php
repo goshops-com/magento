@@ -1,16 +1,18 @@
 <?php
+
 namespace GoPersonal\Magento\Controller\Api;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\Stdlib\CookieManagerInterface; // Correct namespace
+use Magento\Framework\Stdlib\CookieManagerInterface;
 
 class GetToken extends Action
 {
     protected $customerSession;
     protected $resultJsonFactory;
+    protected $cookieManager;
 
     public function __construct(
         Context $context,
@@ -27,14 +29,11 @@ class GetToken extends Action
     public function execute()
     {
         $result = $this->resultJsonFactory->create();
-
         // Check if 'readFromCookie' parameter is set to true
         $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
 
         // Retrieve the JWT token based on the presence of the query parameter
-        $token = $readFromCookie 
-                ? $this->cookieManager->getCookie('gopersonal_jwt')
-                : $this->customerSession->getData('gopersonal_jwt');
+        $token = $readFromCookie ? $this->cookieManager->getCookie('gopersonal_jwt') : $this->customerSession->getData('gopersonal_jwt');
 
         // Prepare data to return
         $data = [
@@ -53,5 +52,4 @@ class GetToken extends Action
 
         return $result->setData($data);
     }
-
 }
