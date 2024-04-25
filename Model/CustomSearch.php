@@ -40,6 +40,7 @@ class CustomSearch implements SearchInterface {
         $this->defaultSearchEngine = $defaultSearchEngine;
         $this->searchResultFactory = $searchResultFactory;
         $this->customerSession = $customerSession;
+        $this->customerSession->start();  // Ensure session is started
     }
 
     public function search(SearchCriteriaInterface $searchCriteria) {
