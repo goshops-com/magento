@@ -66,6 +66,21 @@ class CustomSearch implements SearchInterface {
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled');
 
+            $filtersJson = [];
+
+            foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
+                foreach ($filterGroup->getFilters() as $filter) {
+                    $field = $filter->getField();
+                    $value = $filter->getValue();
+                    
+                    if (!isset($filtersJson[$field])) {
+                        $filtersJson[$field] = [];
+                    }
+                    
+                    $filtersJson[$field][] = $value;
+                }
+            }
+
             $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
             if (!$token) {
@@ -95,10 +110,12 @@ class CustomSearch implements SearchInterface {
 
             // Get the search query and filters from the search criteria
             $query = $this->getQueryFromSearchCriteria($searchCriteria);
-            // $filters = $searchCriteria->getFilterGroups();
+            
+            $queryParam = $query ? '&query=' . urlencode($query) : '';
+            $filtersParam = !empty($filtersJson) ? '&filters=' . urlencode(json_encode($filtersJson)) : '';
 
-            // Add the query and filters to the URL
-            $url .= '&query=' . urlencode($query);
+            $url .= $queryParam . $filtersParam;
+
             // foreach ($filters as $filterGroup) {
             //     foreach ($filterGroup->getFilters() as $filter) {
             //         $url .= '&' . $filter->getField() . '=' . urlencode($filter->getValue());
