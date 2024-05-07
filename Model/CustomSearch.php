@@ -4,7 +4,7 @@ namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
-use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\Api\SearchCriteriaBuilder; // This is for building criteria, if needed
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -14,9 +14,7 @@ use Magento\Framework\Api\Search\SearchResultFactory;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface; // Correct namespace
-
-use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Search\Request\BuilderInterface;
+use Magento\Framework\Search\Request\Builder as SearchRequestBuilder; // Assuming you find the correct builder
 
 
 class CustomSearch implements SearchInterface {
@@ -39,7 +37,7 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchCriteriaBuilder $searchCriteriaBuilder // Assuming actual use in class methods
+        SearchRequestBuilder $searchRequestBuilder // Correct type for search request building
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -48,7 +46,7 @@ class CustomSearch implements SearchInterface {
         $this->defaultSearchEngine = $defaultSearchEngine;
         $this->searchResultFactory = $searchResultFactory;
         $this->cookieManager = $cookieManager;
-        $this->searchCriteriaBuilder = $searchCriteriaBuilder; // Ensure it's being used or remove it
+        $this->searchRequestBuilder = $searchRequestBuilder; // Initialized correctly
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
