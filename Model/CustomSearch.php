@@ -4,7 +4,7 @@ namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
-use Magento\Framework\Api\Search\SearchResultInterface;
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -28,7 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $defaultSearchEngine;
     protected $searchResultFactory;
     protected $cookieManager; // Cookie Manager for retrieving the cookie
-
+    protected $searchCriteriaBuilder; 
 
     public function __construct(
         ClientInterface $httpClient,
@@ -39,8 +39,7 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        RequestInterface $searchRequest,
-        BuilderInterface $searchRequestBuilder
+        SearchCriteriaBuilder $searchCriteriaBuilder // Assuming actual use in class methods
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -49,9 +48,8 @@ class CustomSearch implements SearchInterface {
         $this->defaultSearchEngine = $defaultSearchEngine;
         $this->searchResultFactory = $searchResultFactory;
         $this->cookieManager = $cookieManager;
-        $this->searchRequestBuilder = $searchRequestBuilder;
+        $this->searchCriteriaBuilder = $searchCriteriaBuilder; // Ensure it's being used or remove it
     }
-
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
         foreach ($searchCriteria->getFilterGroups() as $group) {
