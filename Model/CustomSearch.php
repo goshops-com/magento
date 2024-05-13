@@ -66,6 +66,10 @@ class CustomSearch implements SearchInterface {
             ScopeInterface::SCOPE_STORE
         );
 
+        if ($isEnabled != 'YES') {
+            $this->logger->info('CustomSearch: Fallback to default search engine');
+            return $this->defaultSearchEngine->search($searchCriteria); // Use SearchCriteria directly
+        }
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled');
 
@@ -151,12 +155,6 @@ class CustomSearch implements SearchInterface {
             $searchResult->setTotalCount(count($items));
 
             return $searchResult;
-        } else {
-            $this->logger->info('CustomSearch: Fallback to default search engine');
-            
-            // Convert SearchCriteria to RequestInterface
-            $searchRequest = $this->searchRequestBuilder->setSearchCriteria($searchCriteria)->create();
-            return $this->defaultSearchEngine->search($searchRequest);
         }
     }
 }
