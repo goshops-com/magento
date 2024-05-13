@@ -66,10 +66,13 @@ class CustomSearch implements SearchInterface {
             ScopeInterface::SCOPE_STORE
         );
 
-        if ($isEnabled != 'YES') {
-            $this->logger->info('CustomSearch: Fallback to default search engine');
+        $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
+
+        if ($isEnabled != 'YES' || empty($searchTerm)) {
+            $this->logger->info('CustomSearch: Fallback to default search engine (no search term or disabled)');
             return $this->defaultSearchEngine->search($searchCriteria); // Use SearchCriteria directly
         }
+
         if ($isEnabled == 'YES') {
             $this->logger->info('CustomSearch: External search is enabled');
 
@@ -116,18 +119,12 @@ class CustomSearch implements SearchInterface {
             }
 
             // Get the search query and filters from the search criteria
-            $query = $this->getQueryFromSearchCriteria($searchCriteria);
+            $query = $searchTerm;
             
             $queryParam = $query ? '&query=' . urlencode($query) : '';
             $filtersParam = !empty($filtersJson) ? '&filters=' . urlencode(json_encode($filtersJson)) : '';
 
             $url .= $queryParam . $filtersParam;
-
-            // foreach ($filters as $filterGroup) {
-            //     foreach ($filterGroup->getFilters() as $filter) {
-            //         $url .= '&' . $filter->getField() . '=' . urlencode($filter->getValue());
-            //     }
-            // }
 
             // Set the authorization header with the token
             $this->httpClient->addHeader("Authorization", "Bearer " . $token);
