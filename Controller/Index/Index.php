@@ -25,7 +25,9 @@ class Index extends Action
     {
         $resultRaw = $this->resultRawFactory->create();
 
-        $filePath = __DIR__ . '/../../../web/gp-firebase.js'; // Assuming controller is in "Controller/Index/"
+        $moduleDir = $this->directoryList->getPath('app');
+        $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
+
         $jsContent = file_get_contents($filePath);
 
         $resultRaw->setContents($jsContent);
