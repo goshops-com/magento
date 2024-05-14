@@ -10,15 +10,18 @@ class Index extends Action
 {
     protected $resultRawFactory;
     protected $assetRepository;
+    protected $directoryList; // Add this line
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
-        Repository $assetRepository
+        Repository $assetRepository,
+        \Magento\Framework\App\Filesystem\DirectoryList $directoryList // Add this line
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
         $this->assetRepository = $assetRepository;
+        $this->directoryList = $directoryList; // Add this line
     }
 
     public function execute()
