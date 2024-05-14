@@ -4,5 +4,8 @@
         <route id="gopersonal" frontName="gopersonal">
             <module name="GoPersonal_Magento" />
         </route>
+
+        <route id="gp_firebase" frontName="gp-firebase">
+            <module name="GoPersonal_Magento" />  </route>
     </router>
 </config>
