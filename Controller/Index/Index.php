@@ -25,7 +25,7 @@ class Index extends Action
     {
         $resultRaw = $this->resultRawFactory->create();
 
-        $filePath = $this->assetRepository->createAsset('GoPersonal_Magento::js/gp-firebase.js')->getPath(); // Adjusted asset path
+        $filePath = __DIR__ . '/../../../web/gp-firebase.js'; // Assuming controller is in "Controller/Index/"
         $jsContent = file_get_contents($filePath);
 
         $resultRaw->setContents($jsContent);
