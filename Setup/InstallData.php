@@ -1,5 +1,5 @@
 <?php
-namespace GoPersonal\Magento\Setup;
+namespace Gopersonal\Magento\Setup;
 
 use Magento\Framework\Setup\InstallDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;

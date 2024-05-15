@@ -7,16 +7,4 @@
             <argument name="searchResultFactory" xsi:type="object">Magento\Framework\Api\Search\SearchResultFactory</argument>
         </arguments>
     </type>
-
-    <type name="Magento\Framework\App\RouterList">
-        <arguments>
-            <argument name="routerList" xsi:type="array">
-                <item name="gopersonal_firebase" xsi:type="array">
-                    <item name="class" xsi:type="string">GoPersonal\Magento\Router\GpFirebase</item>
-                    <item name="sortOrder" xsi:type="string">30</item> 
-                    <item name="disabled" xsi:type="boolean">false</item>
-                </item>
-            </argument>
-        </arguments>
-    </type>
 </config>
