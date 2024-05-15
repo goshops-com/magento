@@ -4,6 +4,7 @@
         <policy id="script-src">
             <values>
                 <value id="gs-sdk" type="host">https://*.gopersonal.ai</value>
+                <value id="gstatic" type="host">https://*.gstatic.com</value>
             </values>
         </policy>
         <policy id="style-src">
