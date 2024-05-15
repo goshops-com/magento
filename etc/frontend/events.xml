@@ -14,6 +14,6 @@
     </event>
 
     <event name="controller_action_predispatch">
-        <observer name="gopersonal_controller_action_predispatch" instance="GoPersonal\Magento\Observer\UrlRewrite" />
+        <observer name="gopersonal_controller_action_predispatch" instance="Gopersonal\Magento\Observer\UrlRewrite" />
     </event>
 </config>

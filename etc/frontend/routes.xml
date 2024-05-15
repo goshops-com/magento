@@ -2,13 +2,10 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/routes.xsd">
     <router id="standard">
         <route id="gopersonal" frontName="gopersonal">
-            <module name="GoPersonal_Magento" />
+            <module name="Gopersonal_Magento" />
         </route>
-
         <route id="gp_firebase" frontName="gp-firebase-js">
-            <module name="GoPersonal_Magento" before="Magento_Backend" />
+            <module name="Gopersonal_Magento" before="Magento_Backend" />
         </route>
-
-        </router>
-
+    </router>
 </config>
