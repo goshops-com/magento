@@ -25,6 +25,7 @@
             <values>
                 <value id="gs-api" type="host">https://*.gopersonal.ai</value>
                 <value id="gs-api-dev" type="host">https://*.goshops.ai</value>
+                <value id="firebase-installations" type="host">https://firebaseinstallations.googleapis.com</value>
             </values>
         </policy>
         <policy id="frame-src">
