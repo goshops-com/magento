@@ -12,4 +12,8 @@
     <event name="checkout_onepage_controller_success_action">
         <observer name="gopersonal_order_place_after" instance="Gopersonal\Magento\Observer\AfterOrderPlace" />
     </event>
+
+    <event name="controller_action_predispatch">
+        <observer name="gopersonal_controller_action_predispatch" instance="GoPersonal\Magento\Observer\UrlRewrite" />
+    </event>
 </config>

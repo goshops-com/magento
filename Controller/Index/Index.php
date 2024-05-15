@@ -5,7 +5,7 @@ use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\View\Asset\Repository;
-use Magento\Framework\App\RequestInterface;
+use Magento\Framework\App\Filesystem\DirectoryList;
 
 class Index extends Action
 {
@@ -17,7 +17,7 @@ class Index extends Action
         Context $context,
         RawFactory $resultRawFactory,
         Repository $assetRepository,
-        \Magento\Framework\App\Filesystem\DirectoryList $directoryList
+        DirectoryList $directoryList
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
@@ -27,21 +27,12 @@ class Index extends Action
 
     public function execute()
     {
-        $request = $this->getRequest();
-        $requestedPath = $request->getPathInfo();
-
-        if ($requestedPath === '/gp-firebase' || $requestedPath === '/gp-firebase.js') {
-            $resultRaw = $this->resultRawFactory->create();
-            $moduleDir = $this->directoryList->getPath('app');
-            $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
-            $jsContent = file_get_contents($filePath);
-            $resultRaw->setContents($jsContent);
-            $resultRaw->setHeader('Content-Type', 'text/javascript');
-            return $resultRaw;
-        }
-
-        // Handle other paths or return a 404 error
-        $this->getResponse()->setHttpResponseCode(404);
-        return $this->resultFactory->create(\Magento\Framework\Controller\ResultFactory::TYPE_RAW)->setContents('File not found');
+        $resultRaw = $this->resultRawFactory->create();
+        $moduleDir = $this->directoryList->getPath('app');
+        $filePath = $moduleDir . '/code/GoPersonal/Magento/web/gp-firebase.js';
+        $jsContent = file_get_contents($filePath);
+        $resultRaw->setContents($jsContent);
+        $resultRaw->setHeader('Content-Type', 'application/javascript', true);
+        return $resultRaw;
     }
 }
