@@ -37,4 +37,4 @@ class Index extends Action
         $resultRaw->setHeader('Content-Type', 'text/javascript'); 
         return $resultRaw;
     }
-}?
+}
