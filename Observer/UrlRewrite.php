@@ -18,7 +18,7 @@ class UrlRewrite implements ObserverInterface
     {
         $originalPath = $this->request->getOriginalPathInfo();
         if ($originalPath === '/gp-firebase.js') {
-            $this->request->setPathInfo('/gp-firebase-js/index/index');
+            $this->request->setPathInfo('/gp-firebase/index/index');
         }
     }
 }
