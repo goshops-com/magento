@@ -1,38 +1,40 @@
 <?php
-namespace Gopersonal\Magento\Controller\Index;
+namespace Gopersonal\Magento\Controller\Index; // Adjusted namespace
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\View\Asset\Repository;
-use Magento\Framework\App\Filesystem\DirectoryList;
 
 class Index extends Action
 {
     protected $resultRawFactory;
     protected $assetRepository;
-    protected $directoryList;
+    protected $directoryList; // Add this line
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
         Repository $assetRepository,
-        DirectoryList $directoryList
+        \Magento\Framework\App\Filesystem\DirectoryList $directoryList // Add this line
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
         $this->assetRepository = $assetRepository;
-        $this->directoryList = $directoryList;
+        $this->directoryList = $directoryList; // Add this line
     }
 
     public function execute()
     {
         $resultRaw = $this->resultRawFactory->create();
+
         $moduleDir = $this->directoryList->getPath('app');
-        $filePath = $moduleDir . '/code/GoPersonal/Magento/web/gp-firebase.js';
+        $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
+
         $jsContent = file_get_contents($filePath);
+
         $resultRaw->setContents($jsContent);
-        $resultRaw->setHeader('Content-Type', 'application/javascript', true);
+        $resultRaw->setHeader('Content-Type', 'text/javascript'); 
         return $resultRaw;
     }
-}
+}?
