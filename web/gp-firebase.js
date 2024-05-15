@@ -17,7 +17,7 @@ async function onNotificationReceived(e) {
     console.log('notification received data');
 
     try {
-        await self.registration.showNotification(s.getTitle(), r);
+        await self.registration.showNotification(data.notification.title, data.notification);
     } catch (ex) {
         console.log('error notification received', ex);
     }
