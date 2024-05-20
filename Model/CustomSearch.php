@@ -152,7 +152,7 @@ class CustomSearch implements SearchInterface {
     }
 
     private function defaultSearch(SearchCriteriaInterface $searchCriteria) {
-        $this->logger->info('Executing default Magento search (simplified)');
+        $this->logger->info('Executing default Magento search (refined)');
     
         // Log relevant search criteria details
         $filterGroupDetails = [];
@@ -176,7 +176,20 @@ class CustomSearch implements SearchInterface {
     
         // Build the search request
         $requestBuilder = $this->searchRequestBuilder->create();
-        $request = $requestBuilder->build(); // Create a bare-bones request
+    
+        // Try both request names (fallback if the first fails)
+        try {
+            $requestBuilder->setRequestName('catalog_view_container');
+        } catch (\InvalidArgumentException $e) {
+            $requestBuilder->setRequestName('quick_search_container'); 
+        }
+    
+        $requestBuilder->setPageSize($searchCriteria->getPageSize());
+        $requestBuilder->setCurrentPage($searchCriteria->getCurrentPage());
+        $requestBuilder->setQueryText($this->getQueryFromSearchCriteria($searchCriteria) ?: '*');
+    
+        // Build the request
+        $request = $requestBuilder->build();
     
         // Log the request object for debugging
         $this->logger->info('Search Request: ' . print_r($request->toArray(), true));
