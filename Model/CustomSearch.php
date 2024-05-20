@@ -4,7 +4,7 @@ namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
-use Magento\Framework\Api\SearchCriteriaBuilder; // This is for building criteria, if needed
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -13,9 +13,8 @@ use Magento\Search\Model\SearchEngine;
 use Magento\Framework\Api\Search\SearchResultFactory;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
-use Magento\Framework\Stdlib\CookieManagerInterface; // Correct namespace
-use Magento\Framework\Search\Request\Builder as SearchRequestBuilder; // Assuming you find the correct builder
-
+use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 
 class CustomSearch implements SearchInterface {
 
@@ -25,8 +24,9 @@ class CustomSearch implements SearchInterface {
     protected $logger;
     protected $defaultSearchEngine;
     protected $searchResultFactory;
-    protected $cookieManager; // Cookie Manager for retrieving the cookie
-    protected $searchCriteriaBuilder; 
+    protected $cookieManager;
+    protected $searchRequestBuilder;
+    protected $customerSession;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -37,7 +37,7 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder // Correct type for search request building
+        SearchRequestBuilder $searchRequestBuilder
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -46,7 +46,8 @@ class CustomSearch implements SearchInterface {
         $this->defaultSearchEngine = $defaultSearchEngine;
         $this->searchResultFactory = $searchResultFactory;
         $this->cookieManager = $cookieManager;
-        $this->searchRequestBuilder = $searchRequestBuilder; // Initialized correctly
+        $this->customerSession = $customerSession;
+        $this->searchRequestBuilder = $searchRequestBuilder;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -70,7 +71,7 @@ class CustomSearch implements SearchInterface {
 
         if ($isEnabled != 'YES' || empty($searchTerm)) {
             $this->logger->info('CustomSearch: Fallback to default search engine (no search term or disabled)');
-            return $this->defaultSearchEngine->search($searchCriteria); // Use SearchCriteria directly
+            return $this->defaultSearchEngine->search($searchCriteria);
         }
 
         if ($isEnabled == 'YES') {
@@ -82,11 +83,11 @@ class CustomSearch implements SearchInterface {
                 foreach ($filterGroup->getFilters() as $filter) {
                     $field = $filter->getField();
                     $value = $filter->getValue();
-                    
+
                     if (!isset($filtersJson[$field])) {
                         $filtersJson[$field] = [];
                     }
-                    
+
                     $filtersJson[$field][] = $value;
                 }
             }
@@ -97,17 +98,15 @@ class CustomSearch implements SearchInterface {
                 $this->logger->info('No API token found in session.');
                 $searchResult = $this->searchResultFactory->create();
                 $searchResult->setSearchCriteria($searchCriteria);
-        
-                // Create an instance of DataObject with product data
+
                 $itemData = [
                     'id' => 1556
                 ];
                 $item = new \Magento\Framework\DataObject($itemData);
-        
-                // Set the items and total count
+
                 $searchResult->setItems([$item]);
-                $searchResult->setTotalCount(1); // Set total count to 1 as we're returning 1 product
-        
+                $searchResult->setTotalCount(1);
+
                 return $searchResult;
             }
 
@@ -118,29 +117,23 @@ class CustomSearch implements SearchInterface {
                 $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
             }
 
-            // Get the search query and filters from the search criteria
             $query = $searchTerm;
-            
+
             $queryParam = $query ? '&query=' . urlencode($query) : '';
             $filtersParam = !empty($filtersJson) ? '&filters=' . urlencode(json_encode($filtersJson)) : '';
 
             $url .= $queryParam . $filtersParam;
 
-            // Set the authorization header with the token
             $this->httpClient->addHeader("Authorization", "Bearer " . $token);
 
-            // Execute the API request
             $this->httpClient->get($url);
             $response = $this->httpClient->getBody();
 
-            // Parse the response and extract the product IDs
             $productIds = json_decode($response);
 
-            // Create a search result object
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
 
-            // Set the items and total count based on the retrieved product IDs
             $items = [];
             foreach ($productIds as $productId) {
                 $itemData = [
