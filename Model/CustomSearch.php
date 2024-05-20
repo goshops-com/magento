@@ -69,17 +69,9 @@ class CustomSearch implements SearchInterface {
 
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
-        if ($isEnabled != 'YES') {
-            $this->logger->info('CustomSearch: Fallback to default search engine (disabled)');
-            return $this->defaultSearch($searchCriteria);
-        }
-
-        if ($isEnabled == 'YES' && empty($searchTerm)) {
-            $this->logger->info('CustomSearch: Redirecting to default Magento search');
-            $searchUrl = $this->urlBuilder->getUrl('catalogsearch/result', ['_query' => ['q' => $searchTerm]]);
-            $this->redirect->redirect($this->request, $searchUrl);
-
-            return null; // Or throw an exception if needed
+        if ($isEnabled != 'YES' || empty($searchTerm)) {
+            $this->logger->info('CustomSearch: Falling back to default Magento search');
+            return; // Exit the method, allowing default search to take over
         }
 
         $this->logger->info('CustomSearch: External search is enabled');
