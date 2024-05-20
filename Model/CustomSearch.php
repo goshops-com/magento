@@ -15,6 +15,7 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
+use Magento\Framework\Search\RequestInterface;
 
 class CustomSearch implements SearchInterface {
 
@@ -71,7 +72,8 @@ class CustomSearch implements SearchInterface {
 
         if ($isEnabled != 'YES' || empty($searchTerm)) {
             $this->logger->info('CustomSearch: Fallback to default search engine (no search term or disabled)');
-            return $this->defaultSearchEngine->search($searchCriteria);
+            $request = $this->searchRequestBuilder->build($searchCriteria);
+            return $this->defaultSearchEngine->search($request);
         }
 
         if ($isEnabled == 'YES') {
