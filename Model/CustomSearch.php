@@ -4,7 +4,6 @@ namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
-use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -15,6 +14,7 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
+use Magento\Framework\Search\RequestInterface;
 
 class CustomSearch implements SearchInterface {
 
@@ -61,6 +61,17 @@ class CustomSearch implements SearchInterface {
         return null;
     }
 
+    private function isCategoryPage(SearchCriteriaInterface $searchCriteria) {
+        foreach ($searchCriteria->getFilterGroups() as $group) {
+            foreach ($group->getFilters() as $filter) {
+                if ($filter->getField() === 'category_ids') {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public function search(SearchCriteriaInterface $searchCriteria) {
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -69,9 +80,11 @@ class CustomSearch implements SearchInterface {
 
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
-        if ($isEnabled != 'YES' || empty($searchTerm)) {
-            $this->logger->info('CustomSearch: Fallback to default search engine (no search term or disabled)');
-            return $this->defaultSearchEngine->search($searchCriteria);
+        // Check if custom search should be disabled
+        if ($isEnabled != 'YES' || empty($searchTerm) || $this->isCategoryPage($searchCriteria)) {
+            $this->logger->info('CustomSearch: Fallback to default search engine (no search term, disabled or category page)');
+            $request = $this->searchRequestBuilder->build($searchCriteria);
+            return $this->defaultSearchEngine->search($request);
         }
 
         if ($isEnabled == 'YES') {
