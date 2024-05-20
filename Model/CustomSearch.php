@@ -158,19 +158,40 @@ class CustomSearch implements SearchInterface {
         // Create a new search request builder instance
         $requestBuilder = $this->searchRequestBuilder->create();
     
-        // Set filter groups and other necessary properties (with conditions)
+        // Dynamic Request Name
+        $requestName = $this->getRequest()->getFullActionName() === 'catalog_category_view'
+            ? 'catalog_view_container'
+            : 'quick_search_container';
+    
+        $requestBuilder->setRequestName($requestName);
+    
+        // Conditional Filter Handling
         if ($searchCriteria->getFilterGroups() !== null) {
-            $requestBuilder->setFilterGroups($searchCriteria->getFilterGroups());
+            $filterGroups = $searchCriteria->getFilterGroups();
+            // Check if it's a category page and filter 'category_ids' if present
+            if ($requestName === 'catalog_view_container') {
+                $filterGroups = array_filter($filterGroups, function($group) {
+                    return !in_array('category_ids', array_column($group->getFilters(), 'field'));
+                });
+            }
+            $requestBuilder->setFilterGroups($filterGroups);
         }
+    
+        // Additional Parameters
+        $requestBuilder->setPageSize($searchCriteria->getPageSize());
+        $requestBuilder->setCurrentPage($searchCriteria->getCurrentPage());
     
         // Set dimensions (if needed)
         $requestBuilder->setDimensions([
-            'scope' => $this->customerSession->getCustomerGroupId() // Example dimension
+            'scope' => $this->customerSession->getCustomerGroupId()
         ]);
         $requestBuilder->setQueryText($searchTerm);
     
         // Build the request
         $request = $requestBuilder->build();
+     
+        // Log the request object for debugging
+        $this->logger->info('Search Request: ' . print_r($request->toArray(), true));
     
         return $this->defaultSearchEngine->search($request);
     }
