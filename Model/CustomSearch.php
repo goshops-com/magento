@@ -15,7 +15,6 @@ use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 use Magento\Framework\Search\RequestInterface;
-use Magento\CatalogSearch\Model\Search\Search; // Import the real search class
 
 class CustomSearch implements SearchInterface {
 
@@ -28,7 +27,6 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
-    protected $search;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -39,8 +37,7 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder,
-        Search $search
+        SearchRequestBuilder $searchRequestBuilder
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -51,7 +48,6 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
-        $this->search = $search;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -76,16 +72,6 @@ class CustomSearch implements SearchInterface {
         return false;
     }
 
-    private function buildRequest(SearchCriteriaInterface $searchCriteria)
-    {
-        $requestName = 'quick_search_container'; // You may need to adjust this based on your configuration
-
-        $this->searchRequestBuilder->setRequestName($requestName);
-        $this->searchRequestBuilder->bindRequestValue('search_term', $searchCriteria->getRequestValue('search_term'));
-
-        return $this->searchRequestBuilder->create();
-    }
-
     public function search(SearchCriteriaInterface $searchCriteria) {
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -96,11 +82,10 @@ class CustomSearch implements SearchInterface {
 
         // Check if custom search should be disabled
         if ($isEnabled != 'YES' || empty($searchTerm)) {
-            $this->logger->info('CustomSearch: Fallback to default Elasticsearch search engine.');
-            
-            // Use the real Elasticsearch search implementation
-            $request = $this->buildRequest($searchCriteria);
-            return $this->search->search($request); // 
+            $this->logger->info('CustomSearch: Fallback to default search engine.');
+
+            // Directly pass the searchCriteria to the default engine
+            return $this->defaultSearchEngine->search($searchCriteria);
         }
 
         if ($isEnabled == 'YES') {
@@ -159,6 +144,12 @@ class CustomSearch implements SearchInterface {
             $response = $this->httpClient->getBody();
 
             $productIds = json_decode($response);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                // Fallback to default search engine if response is not valid JSON
+                $this->logger->error('CustomSearch: Invalid JSON response from external search, falling back to default search engine.');
+                return $this->defaultSearchEngine->search($searchCriteria);
+            }
 
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
