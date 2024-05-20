@@ -15,7 +15,7 @@ use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Api\Search\Document;
+use Magento\Framework\Api\Search\DocumentFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -28,6 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
+    protected $documentFactory;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -38,7 +39,8 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder
+        SearchRequestBuilder $searchRequestBuilder,
+        DocumentFactory $documentFactory
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -49,6 +51,7 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
+        $this->documentFactory = $documentFactory;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -193,15 +196,15 @@ class CustomSearch implements SearchInterface {
         $searchResult->setSearchCriteria($searchCriteria);
 
         $items = [];
-        foreach ($defaultResponse->getItems() as $item) {
+        foreach ($defaultResponse->getDocuments() as $document) {
             $itemData = [
-                'id' => $item->getId(),
+                'id' => $document->getId(),
                 // Add other fields if needed
             ];
             $items[] = new \Magento\Framework\DataObject($itemData);
         }
         $searchResult->setItems($items);
-        $searchResult->setTotalCount($defaultResponse->getTotalCount());
+        $searchResult->setTotalCount($defaultResponse->getTotal());
 
         return $searchResult;
     }
