@@ -15,6 +15,7 @@ use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 use Magento\Framework\Search\RequestInterface;
+use Magento\Framework\Api\Search\Document;
 
 class CustomSearch implements SearchInterface {
 
@@ -99,7 +100,10 @@ class CustomSearch implements SearchInterface {
             $request = $this->buildRequest($searchCriteria);
 
             // Pass the request to the default search engine
-            return $this->defaultSearchEngine->search($request);
+            $defaultResponse = $this->defaultSearchEngine->search($request);
+
+            // Convert default response to SearchResultInterface
+            return $this->convertToSearchResult($defaultResponse, $searchCriteria);
         }
 
         if ($isEnabled == 'YES') {
@@ -163,7 +167,8 @@ class CustomSearch implements SearchInterface {
                 // Fallback to default search engine if response is not valid JSON
                 $this->logger->error('CustomSearch: Invalid JSON response from external search, falling back to default search engine.');
                 $request = $this->buildRequest($searchCriteria);
-                return $this->defaultSearchEngine->search($request);
+                $defaultResponse = $this->defaultSearchEngine->search($request);
+                return $this->convertToSearchResult($defaultResponse, $searchCriteria);
             }
 
             $searchResult = $this->searchResultFactory->create();
@@ -181,5 +186,23 @@ class CustomSearch implements SearchInterface {
 
             return $searchResult;
         }
+    }
+
+    private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
+        $searchResult = $this->searchResultFactory->create();
+        $searchResult->setSearchCriteria($searchCriteria);
+
+        $items = [];
+        foreach ($defaultResponse->getItems() as $item) {
+            $itemData = [
+                'id' => $item->getId(),
+                // Add other fields if needed
+            ];
+            $items[] = new \Magento\Framework\DataObject($itemData);
+        }
+        $searchResult->setItems($items);
+        $searchResult->setTotalCount($defaultResponse->getTotalCount());
+
+        return $searchResult;
     }
 }
