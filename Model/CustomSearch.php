@@ -152,44 +152,15 @@ class CustomSearch implements SearchInterface {
     }
 
     private function defaultSearch(SearchCriteriaInterface $searchCriteria) {
-        $this->logger->info('Executing default Magento search');
-        $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria) ?: '*';
+        $this->logger->info('Executing default Magento search (simplified)');
+        
+        // Log the search criteria
+        $this->logger->info('Search Criteria: ' . print_r($searchCriteria->toArray(), true));
     
-        // Create a new search request builder instance
+        // Build the search request
         $requestBuilder = $this->searchRequestBuilder->create();
+        $request = $requestBuilder->build(); // Create a bare-bones request
     
-        // Dynamic Request Name
-        $requestName = $this->getRequest()->getFullActionName() === 'catalog_category_view'
-            ? 'catalog_view_container'
-            : 'quick_search_container';
-    
-        $requestBuilder->setRequestName($requestName);
-    
-        // Conditional Filter Handling
-        if ($searchCriteria->getFilterGroups() !== null) {
-            $filterGroups = $searchCriteria->getFilterGroups();
-            // Check if it's a category page and filter 'category_ids' if present
-            if ($requestName === 'catalog_view_container') {
-                $filterGroups = array_filter($filterGroups, function($group) {
-                    return !in_array('category_ids', array_column($group->getFilters(), 'field'));
-                });
-            }
-            $requestBuilder->setFilterGroups($filterGroups);
-        }
-    
-        // Additional Parameters
-        $requestBuilder->setPageSize($searchCriteria->getPageSize());
-        $requestBuilder->setCurrentPage($searchCriteria->getCurrentPage());
-    
-        // Set dimensions (if needed)
-        $requestBuilder->setDimensions([
-            'scope' => $this->customerSession->getCustomerGroupId()
-        ]);
-        $requestBuilder->setQueryText($searchTerm);
-    
-        // Build the request
-        $request = $requestBuilder->build();
-     
         // Log the request object for debugging
         $this->logger->info('Search Request: ' . print_r($request->toArray(), true));
     
