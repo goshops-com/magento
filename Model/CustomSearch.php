@@ -153,9 +153,13 @@ class CustomSearch implements SearchInterface {
 
     private function defaultSearch(SearchCriteriaInterface $searchCriteria) {
         $this->logger->info('Executing default Magento search (simplified)');
-        
-        // Log the search criteria
-        $this->logger->info('Search Criteria: ' . print_r($searchCriteria->toArray(), true));
+    
+        // Log relevant search criteria details
+        $this->logger->info('Search Criteria: ' . json_encode([
+            'filterGroups' => array_map(function($group) { return $group->toArray(); }, $searchCriteria->getFilterGroups() ?: []),
+            'pageSize' => $searchCriteria->getPageSize(),
+            'currentPage' => $searchCriteria->getCurrentPage()
+        ]));
     
         // Build the search request
         $requestBuilder = $this->searchRequestBuilder->create();
