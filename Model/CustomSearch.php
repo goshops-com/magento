@@ -14,6 +14,7 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
+use Magento\Framework\Search\Adapter\Mysql\Search\FilterMapper;
 use Magento\Framework\Search\RequestInterface;
 
 class CustomSearch implements SearchInterface {
@@ -27,6 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
+    protected $filterMapper;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -37,7 +39,8 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder
+        SearchRequestBuilder $searchRequestBuilder,
+        FilterMapper $filterMapper
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -48,6 +51,7 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
+        $this->filterMapper = $filterMapper;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -72,6 +76,14 @@ class CustomSearch implements SearchInterface {
         return false;
     }
 
+    private function buildRequest(SearchCriteriaInterface $searchCriteria) {
+        $requestName = 'quick_search_container'; // You may need to adjust this based on your configuration
+        $filterGroups = $this->filterMapper->map($searchCriteria);
+        return $this->searchRequestBuilder->setRequestName($requestName)
+            ->setFilterGroups($filterGroups)
+            ->create();
+    }
+
     public function search(SearchCriteriaInterface $searchCriteria) {
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -83,7 +95,7 @@ class CustomSearch implements SearchInterface {
         // Check if custom search should be disabled
         if ($isEnabled != 'YES' || empty($searchTerm) || $this->isCategoryPage($searchCriteria)) {
             $this->logger->info('CustomSearch: Fallback to default search engine (no search term, disabled or category page)');
-            $request = $this->searchRequestBuilder->build($searchCriteria);
+            $request = $this->buildRequest($searchCriteria);
             return $this->defaultSearchEngine->search($request);
         }
 
