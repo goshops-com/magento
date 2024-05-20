@@ -16,6 +16,7 @@ use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Api\Search\DocumentFactory;
+use Magento\Framework\Api\Search\Document;
 
 class CustomSearch implements SearchInterface {
 
@@ -196,7 +197,7 @@ class CustomSearch implements SearchInterface {
         $searchResult->setSearchCriteria($searchCriteria);
 
         $items = [];
-        foreach ($defaultResponse->getDocuments() as $document) {
+        foreach ($defaultResponse->getIterator() as $document) {
             $itemData = [
                 'id' => $document->getId(),
                 // Add other fields if needed
@@ -204,7 +205,7 @@ class CustomSearch implements SearchInterface {
             $items[] = new \Magento\Framework\DataObject($itemData);
         }
         $searchResult->setItems($items);
-        $searchResult->setTotalCount($defaultResponse->getTotal());
+        $searchResult->setTotalCount($defaultResponse->count());
 
         return $searchResult;
     }
