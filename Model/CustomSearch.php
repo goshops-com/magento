@@ -28,7 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
-    protected $search
+    protected $search;
 
     public function __construct(
         ClientInterface $httpClient,
