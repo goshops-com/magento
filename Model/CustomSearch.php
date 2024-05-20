@@ -15,6 +15,7 @@ use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 use Magento\Framework\Search\RequestInterface;
+use Magento\CatalogSearch\Model\Search\Search; // Import the real search class
 
 class CustomSearch implements SearchInterface {
 
@@ -27,6 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
+    protected $realSearchInterface;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -37,7 +39,8 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder
+        SearchRequestBuilder $searchRequestBuilder,
+        Search $realSearchInterface
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -92,10 +95,11 @@ class CustomSearch implements SearchInterface {
 
         // Check if custom search should be disabled
         if ($isEnabled != 'YES' || empty($searchTerm)) {
-            $this->logger->info('CustomSearch: Fallback to default search engine.');
+            $this->logger->info('CustomSearch: Fallback to default Elasticsearch search engine.');
             
-            // Directly pass the searchCriteria to the default engine
-            return $this->defaultSearchEngine->search($searchCriteria);
+            // Use the real Elasticsearch search implementation
+            $request = $this->buildRequest($searchCriteria);
+            return $this->realSearchInterface->search($request); 
         }
 
         if ($isEnabled == 'YES') {
