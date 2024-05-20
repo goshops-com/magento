@@ -158,13 +158,14 @@ class CustomSearch implements SearchInterface {
         // Create a new search request builder instance
         $requestBuilder = $this->searchRequestBuilder->create();
     
-        // Set filter groups and other necessary properties
-        $requestBuilder->setRequestName('catalog_view_container');
-        $requestBuilder->setFilterGroups($searchCriteria->getFilterGroups());
+        // Set filter groups and other necessary properties (with conditions)
+        if ($searchCriteria->getFilterGroups() !== null) {
+            $requestBuilder->setFilterGroups($searchCriteria->getFilterGroups());
+        }
     
         // Set dimensions (if needed)
         $requestBuilder->setDimensions([
-            'scope' => $this->customerSession->getCustomerGroupId()
+            'scope' => $this->customerSession->getCustomerGroupId() // Example dimension
         ]);
         $requestBuilder->setQueryText($searchTerm);
     
