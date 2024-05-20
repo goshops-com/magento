@@ -51,6 +51,7 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
+        $this->search = $search;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
