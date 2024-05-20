@@ -72,6 +72,17 @@ class CustomSearch implements SearchInterface {
         return false;
     }
 
+    private function buildRequest(SearchCriteriaInterface $searchCriteria) {
+        $requestName = 'quick_search_container'; // Adjust this if needed
+        $this->searchRequestBuilder->setRequestName($requestName);
+        foreach ($searchCriteria->getFilterGroups() as $group) {
+            foreach ($group->getFilters() as $filter) {
+                $this->searchRequestBuilder->bind($filter->getField(), $filter->getValue());
+            }
+        }
+        return $this->searchRequestBuilder->create();
+    }
+
     public function search(SearchCriteriaInterface $searchCriteria) {
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -84,8 +95,11 @@ class CustomSearch implements SearchInterface {
         if ($isEnabled != 'YES' || empty($searchTerm)) {
             $this->logger->info('CustomSearch: Fallback to default search engine.');
 
-            // Directly pass the searchCriteria to the default engine
-            return $this->defaultSearchEngine->search($searchCriteria);
+            // Convert SearchCriteriaInterface to RequestInterface
+            $request = $this->buildRequest($searchCriteria);
+
+            // Pass the request to the default search engine
+            return $this->defaultSearchEngine->search($request);
         }
 
         if ($isEnabled == 'YES') {
@@ -148,7 +162,8 @@ class CustomSearch implements SearchInterface {
             if (json_last_error() !== JSON_ERROR_NONE) {
                 // Fallback to default search engine if response is not valid JSON
                 $this->logger->error('CustomSearch: Invalid JSON response from external search, falling back to default search engine.');
-                return $this->defaultSearchEngine->search($searchCriteria);
+                $request = $this->buildRequest($searchCriteria);
+                return $this->defaultSearchEngine->search($request);
             }
 
             $searchResult = $this->searchResultFactory->create();
