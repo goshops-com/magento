@@ -14,7 +14,6 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
-use Magento\Framework\Search\Adapter\Mysql\Search\FilterMapper;
 use Magento\Framework\Search\RequestInterface;
 
 class CustomSearch implements SearchInterface {
@@ -28,7 +27,6 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
-    protected $filterMapper;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -39,8 +37,7 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder,
-        FilterMapper $filterMapper
+        SearchRequestBuilder $searchRequestBuilder
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -51,7 +48,6 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
-        $this->filterMapper = $filterMapper;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -78,9 +74,8 @@ class CustomSearch implements SearchInterface {
 
     private function buildRequest(SearchCriteriaInterface $searchCriteria) {
         $requestName = 'quick_search_container'; // You may need to adjust this based on your configuration
-        $filterGroups = $this->filterMapper->map($searchCriteria);
         return $this->searchRequestBuilder->setRequestName($requestName)
-            ->setFilterGroups($filterGroups)
+            ->setQuery($this->searchRequestBuilder->createMatchQuery('search_term', '*'))
             ->create();
     }
 
