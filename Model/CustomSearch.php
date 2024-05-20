@@ -4,6 +4,7 @@ namespace Gopersonal\Magento\Model;
 
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
+use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -14,7 +15,6 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
-use Magento\Framework\Search\RequestInterface;
 
 class CustomSearch implements SearchInterface {
 
@@ -70,126 +70,81 @@ class CustomSearch implements SearchInterface {
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
         if ($isEnabled != 'YES' || empty($searchTerm)) {
-            $this->logger->info('CustomSearch: Falling back to default Magento search');
-            return; // Exit the method, allowing default search to take over
+            $this->logger->info('CustomSearch: Fallback to default search engine (no search term or disabled)');
+            return $this->defaultSearchEngine->search($searchCriteria);
         }
 
-        $this->logger->info('CustomSearch: External search is enabled');
+        if ($isEnabled == 'YES') {
+            $this->logger->info('CustomSearch: External search is enabled');
 
-        $filtersJson = [];
+            $filtersJson = [];
 
-        foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
-            foreach ($filterGroup->getFilters() as $filter) {
-                $field = $filter->getField();
-                $value = $filter->getValue();
+            foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
+                foreach ($filterGroup->getFilters() as $filter) {
+                    $field = $filter->getField();
+                    $value = $filter->getValue();
 
-                if (!isset($filtersJson[$field])) {
-                    $filtersJson[$field] = [];
+                    if (!isset($filtersJson[$field])) {
+                        $filtersJson[$field] = [];
+                    }
+
+                    $filtersJson[$field][] = $value;
                 }
-
-                $filtersJson[$field][] = $value;
             }
-        }
 
-        $token = $this->cookieManager->getCookie('gopersonal_jwt');
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
-        if (!$token) {
-            $this->logger->info('No API token found in session.');
+            if (!$token) {
+                $this->logger->info('No API token found in session.');
+                $searchResult = $this->searchResultFactory->create();
+                $searchResult->setSearchCriteria($searchCriteria);
+
+                $itemData = [
+                    'id' => 1556
+                ];
+                $item = new \Magento\Framework\DataObject($itemData);
+
+                $searchResult->setItems([$item]);
+                $searchResult->setTotalCount(1);
+
+                return $searchResult;
+            }
+
+            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
+            $url = 'https://discover.gopersonal.ai/item/search?adapter=magento';
+
+            if (strpos($clientId, 'D-') === 0) {
+                $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
+            }
+
+            $query = $searchTerm;
+
+            $queryParam = $query ? '&query=' . urlencode($query) : '';
+            $filtersParam = !empty($filtersJson) ? '&filters=' . urlencode(json_encode($filtersJson)) : '';
+
+            $url .= $queryParam . $filtersParam;
+
+            $this->httpClient->addHeader("Authorization", "Bearer " . $token);
+
+            $this->httpClient->get($url);
+            $response = $this->httpClient->getBody();
+
+            $productIds = json_decode($response);
+
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
 
-            $itemData = [
-                'id' => 1556
-            ];
-            $item = new \Magento\Framework\DataObject($itemData);
-
-            $searchResult->setItems([$item]);
-            $searchResult->setTotalCount(1);
+            $items = [];
+            foreach ($productIds as $productId) {
+                $itemData = [
+                    'id' => $productId
+                ];
+                $items[] = new \Magento\Framework\DataObject($itemData);
+            }
+            $searchResult->setItems($items);
+            $searchResult->setTotalCount(count($items));
 
             return $searchResult;
         }
-
-        $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-        $url = 'https://discover.gopersonal.ai/item/search?adapter=magento';
-
-        if (strpos($clientId, 'D-') === 0) {
-            $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
-        }
-
-        $query = $searchTerm;
-
-        $queryParam = $query ? '&query=' . urlencode($query) : '';
-        $filtersParam = !empty($filtersJson) ? '&filters=' . urlencode(json_encode($filtersJson)) : '';
-
-        $url .= $queryParam . $filtersParam;
-
-        $this->httpClient->addHeader("Authorization", "Bearer " . $token);
-
-        $this->httpClient->get($url);
-        $response = $this->httpClient->getBody();
-
-        $productIds = json_decode($response);
-
-        $searchResult = $this->searchResultFactory->create();
-        $searchResult->setSearchCriteria($searchCriteria);
-
-        $items = [];
-        foreach ($productIds as $productId) {
-            $itemData = [
-                'id' => $productId
-            ];
-            $items[] = new \Magento\Framework\DataObject($itemData);
-        }
-        $searchResult->setItems($items);
-        $searchResult->setTotalCount(count($items));
-
-        return $searchResult;
     }
-
-    private function defaultSearch(SearchCriteriaInterface $searchCriteria) {
-        $this->logger->info('Executing default Magento search (refined)');
-    
-        // Log relevant search criteria details
-        $filterGroupDetails = [];
-        foreach ($searchCriteria->getFilterGroups() ?: [] as $group) {
-            $filters = [];
-            foreach ($group->getFilters() as $filter) {
-                $filters[] = [
-                    'field' => $filter->getField(),
-                    'value' => $filter->getValue(),
-                    'conditionType' => $filter->getConditionType()
-                ];
-            }
-            $filterGroupDetails[] = $filters;
-        }
-    
-        $this->logger->info('Search Criteria: ' . json_encode([
-            'filterGroups' => $filterGroupDetails,
-            'pageSize' => $searchCriteria->getPageSize(),
-            'currentPage' => $searchCriteria->getCurrentPage()
-        ]));
-    
-        // Build the search request
-        $requestBuilder = $this->searchRequestBuilder->create();
-    
-        // Try both request names (fallback if the first fails)
-        try {
-            $requestBuilder->setRequestName('catalog_view_container');
-        } catch (\InvalidArgumentException $e) {
-            $requestBuilder->setRequestName('quick_search_container'); 
-        }
-    
-        $requestBuilder->setPageSize($searchCriteria->getPageSize());
-        $requestBuilder->setCurrentPage($searchCriteria->getCurrentPage());
-        $requestBuilder->setQueryText($this->getQueryFromSearchCriteria($searchCriteria) ?: '*');
-    
-        // Build the request
-        $request = $requestBuilder->build();
-    
-        // Log the request object for debugging
-        $this->logger->info('Search Request: ' . print_r($request->toArray(), true));
-    
-        return $this->defaultSearchEngine->search($request);
-    }
-
 }
