@@ -15,6 +15,7 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -27,6 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
+    protected $productCollectionFactory;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -37,7 +39,8 @@ class CustomSearch implements SearchInterface {
         SearchResultFactory $searchResultFactory,
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
-        SearchRequestBuilder $searchRequestBuilder
+        SearchRequestBuilder $searchRequestBuilder,
+        ProductCollectionFactory $productCollectionFactory
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -48,6 +51,7 @@ class CustomSearch implements SearchInterface {
         $this->cookieManager = $cookieManager;
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
+        $this->productCollectionFactory = $productCollectionFactory;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -131,18 +135,30 @@ class CustomSearch implements SearchInterface {
 
             $productIds = json_decode($response);
 
+            // Create a search result object
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
 
+            // Apply filters to the retrieved product IDs
+            $productCollection = $this->productCollectionFactory->create();
+            $productCollection->addIdFilter($productIds);
+
+            // Apply additional filters from search criteria
+            foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
+                foreach ($filterGroup->getFilters() as $filter) {
+                    $productCollection->addAttributeToFilter($filter->getField(), $filter->getValue());
+                }
+            }
+
             $items = [];
-            foreach ($productIds as $productId) {
+            foreach ($productCollection as $product) {
                 $itemData = [
-                    'id' => $productId
+                    'id' => $product->getId()
                 ];
                 $items[] = new \Magento\Framework\DataObject($itemData);
             }
             $searchResult->setItems($items);
-            $searchResult->setTotalCount(count($items));
+            $searchResult->setTotalCount($productCollection->getSize());
 
             return $searchResult;
         }
