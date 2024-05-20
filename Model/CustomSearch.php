@@ -153,16 +153,15 @@ class CustomSearch implements SearchInterface {
 
     private function defaultSearch(SearchCriteriaInterface $searchCriteria) {
         $this->logger->info('Executing default Magento search');
-        $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria) ?: '*'; 
-
-        // Correct way to build the search request
+        $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria) ?: '*';
+    
+        // Build the search request (without setRequestName)
         $request = $this->searchRequestBuilder->create();
-        $request->setRequestName('quick_search_container');
         $request->setDimensions([
             'scope' => $this->customerSession->getCustomerGroupId() // Example dimension
         ]);
         $request->setQueryText($searchTerm);
-
+    
         return $this->defaultSearchEngine->search($request);
     }
 
