@@ -91,10 +91,11 @@ class CustomSearch implements SearchInterface {
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
         // Check if custom search should be disabled
-        if ($isEnabled != 'YES' || empty($searchTerm) || $this->isCategoryPage($searchCriteria)) {
-            $this->logger->info('CustomSearch: Fallback to default search engine (no search term, disabled or category page)');
-            $request = $this->buildRequest($searchCriteria);
-            return $this->defaultSearchEngine->search($request);
+        if ($isEnabled != 'YES' || empty($searchTerm)) {
+            $this->logger->info('CustomSearch: Fallback to default search engine.');
+            
+            // Directly pass the searchCriteria to the default engine
+            return $this->defaultSearchEngine->search($searchCriteria);
         }
 
         if ($isEnabled == 'YES') {
