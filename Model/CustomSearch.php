@@ -146,7 +146,14 @@ class CustomSearch implements SearchInterface {
             // Apply additional filters from search criteria
             foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
                 foreach ($filterGroup->getFilters() as $filter) {
-                    $productCollection->addAttributeToFilter($filter->getField(), $filter->getValue());
+                    $field = $filter->getField();
+                    $value = $filter->getValue();
+                    
+                    if ($field === 'price') {
+                        $productCollection->addFieldToFilter($field, ['gteq' => $value]);
+                    } else {
+                        $productCollection->addAttributeToFilter($field, $value);
+                    }
                 }
             }
 
