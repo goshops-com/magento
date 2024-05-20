@@ -155,12 +155,21 @@ class CustomSearch implements SearchInterface {
         $this->logger->info('Executing default Magento search');
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria) ?: '*';
     
-        // Build the search request (without setRequestName)
-        $request = $this->searchRequestBuilder->create();
-        $request->setDimensions([
-            'scope' => $this->customerSession->getCustomerGroupId() // Example dimension
+        // Create a new search request builder instance
+        $requestBuilder = $this->searchRequestBuilder->create();
+    
+        // Set filter groups and other necessary properties
+        $requestBuilder->setRequestName('catalog_view_container');
+        $requestBuilder->setFilterGroups($searchCriteria->getFilterGroups());
+    
+        // Set dimensions (if needed)
+        $requestBuilder->setDimensions([
+            'scope' => $this->customerSession->getCustomerGroupId()
         ]);
-        $request->setQueryText($searchTerm);
+        $requestBuilder->setQueryText($searchTerm);
+    
+        // Build the request
+        $request = $requestBuilder->build();
     
         return $this->defaultSearchEngine->search($request);
     }
