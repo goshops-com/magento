@@ -4,8 +4,8 @@
 
     <type name="Gopersonal\Magento\Model\CustomSearch">
         <arguments>
-            <argument name="realSearchInterface" xsi:type="object">Magento\CatalogSearch\Model\Search\Search</argument> 
+            <argument name="search" xsi:type="object">Magento\CatalogSearch\Model\Search\Search</argument> 
             <argument name="searchResultFactory" xsi:type="object">Magento\Framework\Api\Search\SearchResultFactory</argument>
-            </arguments>
+        </arguments>
     </type>
 </config>

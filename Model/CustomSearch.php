@@ -28,7 +28,7 @@ class CustomSearch implements SearchInterface {
     protected $cookieManager;
     protected $searchRequestBuilder;
     protected $customerSession;
-    protected $realSearchInterface;
+    protected $search
 
     public function __construct(
         ClientInterface $httpClient,
@@ -40,7 +40,7 @@ class CustomSearch implements SearchInterface {
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
         SearchRequestBuilder $searchRequestBuilder,
-        Search $realSearchInterface
+        Search $search
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -99,7 +99,7 @@ class CustomSearch implements SearchInterface {
             
             // Use the real Elasticsearch search implementation
             $request = $this->buildRequest($searchCriteria);
-            return $this->realSearchInterface->search($request); 
+            return $this->search->search($request); // 
         }
 
         if ($isEnabled == 'YES') {
