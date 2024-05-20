@@ -72,11 +72,14 @@ class CustomSearch implements SearchInterface {
         return false;
     }
 
-    private function buildRequest(SearchCriteriaInterface $searchCriteria) {
+    private function buildRequest(SearchCriteriaInterface $searchCriteria)
+    {
         $requestName = 'quick_search_container'; // You may need to adjust this based on your configuration
-        return $this->searchRequestBuilder->setRequestName($requestName)
-            ->setQuery($this->searchRequestBuilder->createMatchQuery('search_term', '*'))
-            ->create();
+
+        $this->searchRequestBuilder->setRequestName($requestName);
+        $this->searchRequestBuilder->bindRequestValue('search_term', $searchCriteria->getRequestValue('search_term'));
+
+        return $this->searchRequestBuilder->create();
     }
 
     public function search(SearchCriteriaInterface $searchCriteria) {
