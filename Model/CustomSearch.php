@@ -3,8 +3,6 @@
 namespace Gopersonal\Magento\Model;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\CatalogInventory\Api\StockStateInterface;
-use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use Magento\Catalog\Model\Product\Visibility;
 use Magento\Search\Api\SearchInterface;
@@ -38,8 +36,6 @@ class CustomSearch implements SearchInterface {
     protected $documentFactory;
     protected $httpRequest;
     protected $productRepository;
-    protected $stockState;
-    protected $stockRegistry;
     protected $productCollectionFactory;
     protected $productVisibility;
 
@@ -56,8 +52,6 @@ class CustomSearch implements SearchInterface {
         DocumentFactory $documentFactory,
         HttpRequestInterface $httpRequest,
         ProductRepositoryInterface $productRepository,
-        StockStateInterface $stockState,
-        StockRegistryInterface $stockRegistry,
         ProductCollectionFactory $productCollectionFactory,
         Visibility $productVisibility
     ) {
@@ -73,8 +67,6 @@ class CustomSearch implements SearchInterface {
         $this->documentFactory = $documentFactory;
         $this->httpRequest = $httpRequest;
         $this->productRepository = $productRepository;
-        $this->stockState = $stockState;
-        $this->stockRegistry = $stockRegistry;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productVisibility = $productVisibility;
     }
@@ -237,14 +229,7 @@ class CustomSearch implements SearchInterface {
             ->addFieldToFilter('status', ['eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED])
             ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
 
-        $validProductIds = [];
-
-        foreach ($collection as $product) {
-            $stockItem = $this->stockRegistry->getStockItem($product->getId());
-            if ($stockItem->getIsInStock() && $stockItem->getQty() > 0) {
-                $validProductIds[] = $product->getId();
-            }
-        }
+        $validProductIds = $collection->getAllIds();
 
         return $validProductIds;
     }
