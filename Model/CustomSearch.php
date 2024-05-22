@@ -240,11 +240,19 @@ class CustomSearch implements SearchInterface {
             ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
 
         if ($validateStock) {
-            $collection->joinTable(
-                ['stock_item' => 'cataloginventory_stock_item'],
+            $collection->joinField(
+                'qty',
+                'cataloginventory_stock_item',
+                'qty',
                 'product_id=entity_id',
-                ['qty', 'is_in_stock'],
-                '{{table}}.stock_id=1',
+                ['stock_id' => 1],
+                'left'
+            )->joinField(
+                'is_in_stock',
+                'cataloginventory_stock_item',
+                'is_in_stock',
+                'product_id=entity_id',
+                ['stock_id' => 1],
                 'left'
             )->addFieldToFilter('is_in_stock', ['eq' => 1])
              ->addFieldToFilter('qty', ['gt' => 0]);
