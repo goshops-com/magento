@@ -254,8 +254,7 @@ class CustomSearch implements SearchInterface {
                 'product_id=entity_id',
                 ['stock_id' => 1],
                 'left'
-            )->addFieldToFilter('is_in_stock', ['eq' => 1])
-             ->addFieldToFilter('qty', ['gt' => 0]);
+            )->addFieldToFilter('is_in_stock', ['eq' => 1]);
         }
 
         $validProductIds = $collection->getAllIds();
