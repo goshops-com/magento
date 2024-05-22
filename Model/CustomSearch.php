@@ -243,7 +243,7 @@ class CustomSearch implements SearchInterface {
         foreach ($collection as $product) {
             if ($validateStock) {
                 $stockItem = $this->stockRegistry->getStockItem($product->getId());
-                if ($stockItem->getIsInStock() && $stockItem->getQty() > 0) {
+                if ($stockItem->getIsInStock()) {
                     $validProductIds[] = $product->getId();
                 }
             } else {
