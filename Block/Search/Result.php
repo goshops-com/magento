@@ -14,7 +14,7 @@ class Result extends \Magento\Framework\View\Element\Template
 
     public function getCacheKeyInfo()
     {
-        // Return false to completely disable caching
-        return false;
+        // Return an empty array to effectively disable caching
+        return [];
     }
 }
