@@ -7,4 +7,7 @@
             <argument name="searchResultFactory" xsi:type="object">Magento\Framework\Api\Search\SearchResultFactory</argument>
         </arguments>
     </type>
+    <type name="Magento\CatalogSearch\Block\Result">
+        <plugin name="gopersonal_magento_result_plugin" type="Gopersonal\Magento\Plugin\Block\Search\ResultPlugin" />
+    </type>
 </config>
