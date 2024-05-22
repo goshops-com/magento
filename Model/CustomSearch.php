@@ -239,17 +239,26 @@ class CustomSearch implements SearchInterface {
             ->addFieldToFilter('status', ['eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED])
             ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
 
-        $validProductIds = [];
-        foreach ($collection as $product) {
-            if ($validateStock) {
-                $stockItem = $this->stockRegistry->getStockItem($product->getId());
-                if ($stockItem->getIsInStock()) {
-                    $validProductIds[] = $product->getId();
-                }
-            } else {
-                $validProductIds[] = $product->getId();
-            }
+        if ($validateStock) {
+            $collection->joinField(
+                'qty',
+                'cataloginventory/stock_item',
+                'qty',
+                'product_id=entity_id',
+                '{{table}}.stock_id=1',
+                'left'
+            )->joinField(
+                'is_in_stock',
+                'cataloginventory/stock_item',
+                'is_in_stock',
+                'product_id=entity_id',
+                '{{table}}.stock_id=1',
+                'left'
+            )->addFieldToFilter('is_in_stock', ['eq' => 1])
+             ->addFieldToFilter('qty', ['gt' => 0]);
         }
+
+        $validProductIds = $collection->getAllIds();
 
         return $validProductIds;
     }
