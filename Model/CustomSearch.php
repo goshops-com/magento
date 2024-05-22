@@ -2,6 +2,10 @@
 
 namespace Gopersonal\Magento\Model;
 
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\CatalogInventory\Api\StockRegistryInterface;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
+use Magento\Catalog\Model\Product\Visibility;
 use Magento\Search\Api\SearchInterface;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -32,6 +36,10 @@ class CustomSearch implements SearchInterface {
     protected $customerSession;
     protected $documentFactory;
     protected $httpRequest;
+    protected $productRepository;
+    protected $stockRegistry;
+    protected $productCollectionFactory;
+    protected $productVisibility;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -44,7 +52,11 @@ class CustomSearch implements SearchInterface {
         CustomerSession $customerSession,
         SearchRequestBuilder $searchRequestBuilder,
         DocumentFactory $documentFactory,
-        HttpRequestInterface $httpRequest
+        HttpRequestInterface $httpRequest,
+        ProductRepositoryInterface $productRepository,
+        StockRegistryInterface $stockRegistry,
+        ProductCollectionFactory $productCollectionFactory,
+        Visibility $productVisibility
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -57,6 +69,10 @@ class CustomSearch implements SearchInterface {
         $this->searchRequestBuilder = $searchRequestBuilder;
         $this->documentFactory = $documentFactory;
         $this->httpRequest = $httpRequest;
+        $this->productRepository = $productRepository;
+        $this->stockRegistry = $stockRegistry;
+        $this->productCollectionFactory = $productCollectionFactory;
+        $this->productVisibility = $productVisibility;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -110,11 +126,14 @@ class CustomSearch implements SearchInterface {
         if ($customProductIdsString) {
             $productIds = $this->parseProductIds($customProductIdsString);
 
+            // Validate product IDs
+            $validProductIds = $this->validateProductIds($productIds);
+
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
 
             $items = [];
-            foreach ($productIds as $productId) {
+            foreach ($validProductIds as $productId) {
                 $itemData = [
                     'id' => $productId
                 ];
@@ -126,10 +145,10 @@ class CustomSearch implements SearchInterface {
             return $searchResult;
         }
 
-        // Check if custom search should be disabled
-        if ($isEnabled != 'YES' || empty($searchTerm)) {
-            $this->logger->info('CustomSearch: Fallback to default search engine.');
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
+        // Check if custom search should be disabled
+        if ($isEnabled != 'YES' || empty($searchTerm) || !$token) {
             // Convert SearchCriteriaInterface to RequestInterface
             $request = $this->buildRequest($searchCriteria);
 
@@ -156,24 +175,6 @@ class CustomSearch implements SearchInterface {
 
                     $filtersJson[$field][] = $value;
                 }
-            }
-
-            $token = $this->cookieManager->getCookie('gopersonal_jwt');
-
-            if (!$token) {
-                $this->logger->info('No API token found in session.');
-                $searchResult = $this->searchResultFactory->create();
-                $searchResult->setSearchCriteria($searchCriteria);
-
-                $itemData = [
-                    'id' => 1556
-                ];
-                $item = new \Magento\Framework\DataObject($itemData);
-
-                $searchResult->setItems([$item]);
-                $searchResult->setTotalCount(1);
-
-                return $searchResult;
             }
 
             $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
@@ -205,11 +206,14 @@ class CustomSearch implements SearchInterface {
                 return $this->convertToSearchResult($defaultResponse, $searchCriteria);
             }
 
+            // Validate product IDs
+            $validProductIds = $this->validateProductIds($productIds);
+
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
 
             $items = [];
-            foreach ($productIds as $productId) {
+            foreach ($validProductIds as $productId) {
                 $itemData = [
                     'id' => $productId
                 ];
@@ -220,6 +224,26 @@ class CustomSearch implements SearchInterface {
 
             return $searchResult;
         }
+    }
+
+    private function validateProductIds($productIds) {
+        $collection = $this->productCollectionFactory->create()
+            ->addAttributeToSelect(['entity_id', 'status', 'visibility'])
+            ->addFieldToFilter('entity_id', ['in' => $productIds])
+            ->addFieldToFilter('status', ['eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED])
+            ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
+
+        $stockItemCollection = $this->stockRegistry->getStockItemCollection()
+            ->addFieldToFilter('product_id', ['in' => $productIds])
+            ->addFieldToFilter('is_in_stock', 1)
+            ->addFieldToFilter('qty', ['gt' => 0]);
+
+        $validProductIds = array_intersect(
+            $collection->getAllIds(),
+            $stockItemCollection->getColumnValues('product_id')
+        );
+
+        return $validProductIds;
     }
 
     private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
