@@ -21,6 +21,8 @@ use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Api\Search\DocumentFactory;
 use Magento\Framework\Api\Search\Document;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
+use Magento\CatalogInventory\Api\StockStateInterface;
+use Magento\CatalogInventory\Api\StockRegistryInterface;
 
 class CustomSearch implements SearchInterface {
 
@@ -38,6 +40,8 @@ class CustomSearch implements SearchInterface {
     protected $productRepository;
     protected $productCollectionFactory;
     protected $productVisibility;
+    protected $stockState;
+    protected $stockRegistry;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -53,7 +57,9 @@ class CustomSearch implements SearchInterface {
         HttpRequestInterface $httpRequest,
         ProductRepositoryInterface $productRepository,
         ProductCollectionFactory $productCollectionFactory,
-        Visibility $productVisibility
+        Visibility $productVisibility,
+        StockStateInterface $stockState,
+        StockRegistryInterface $stockRegistry
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -69,6 +75,8 @@ class CustomSearch implements SearchInterface {
         $this->productRepository = $productRepository;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productVisibility = $productVisibility;
+        $this->stockState = $stockState;
+        $this->stockRegistry = $stockRegistry;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -123,7 +131,8 @@ class CustomSearch implements SearchInterface {
             $productIds = $this->parseProductIds($customProductIdsString);
 
             // Validate product IDs
-            $validProductIds = $this->validateProductIds($productIds);
+            $validateStock = true; // Set this to false to disable stock validation
+            $validProductIds = $this->validateProductIds($productIds, $validateStock);
 
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
@@ -203,7 +212,8 @@ class CustomSearch implements SearchInterface {
             }
 
             // Validate product IDs
-            $validProductIds = $this->validateProductIds($productIds);
+            $validateStock = true; // Set this to false to disable stock validation
+            $validProductIds = $this->validateProductIds($productIds, $validateStock);
 
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
@@ -222,14 +232,24 @@ class CustomSearch implements SearchInterface {
         }
     }
 
-    private function validateProductIds($productIds) {
+    private function validateProductIds($productIds, $validateStock = true) {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect(['entity_id', 'status', 'visibility'])
             ->addFieldToFilter('entity_id', ['in' => $productIds])
             ->addFieldToFilter('status', ['eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED])
             ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
 
-        $validProductIds = $collection->getAllIds();
+        $validProductIds = [];
+        foreach ($collection as $product) {
+            if ($validateStock) {
+                $stockItem = $this->stockRegistry->getStockItem($product->getId());
+                if ($stockItem->getIsInStock() && $stockItem->getQty() > 0) {
+                    $validProductIds[] = $product->getId();
+                }
+            } else {
+                $validProductIds[] = $product->getId();
+            }
+        }
 
         return $validProductIds;
     }
