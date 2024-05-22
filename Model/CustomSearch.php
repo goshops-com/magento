@@ -17,6 +17,7 @@ use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
 use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Api\Search\DocumentFactory;
 use Magento\Framework\Api\Search\Document;
+use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 
 class CustomSearch implements SearchInterface {
 
@@ -30,6 +31,7 @@ class CustomSearch implements SearchInterface {
     protected $searchRequestBuilder;
     protected $customerSession;
     protected $documentFactory;
+    protected $httpRequest;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -41,7 +43,8 @@ class CustomSearch implements SearchInterface {
         CookieManagerInterface $cookieManager,
         CustomerSession $customerSession,
         SearchRequestBuilder $searchRequestBuilder,
-        DocumentFactory $documentFactory
+        DocumentFactory $documentFactory,
+        HttpRequestInterface $httpRequest
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -53,6 +56,7 @@ class CustomSearch implements SearchInterface {
         $this->customerSession = $customerSession;
         $this->searchRequestBuilder = $searchRequestBuilder;
         $this->documentFactory = $documentFactory;
+        $this->httpRequest = $httpRequest;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -101,11 +105,10 @@ class CustomSearch implements SearchInterface {
 
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
-        // Check for custom query param
-        $productIdsParam = $this->scopeConfig->getValue('gs_product_ids', ScopeInterface::SCOPE_STORE);
-
-        if (!empty($productIdsParam)) {
-            $productIds = $this->parseProductIds($productIdsParam);
+        // Check for custom query parameter in the URL
+        $customProductIdsString = $this->httpRequest->getParam('gs_product_ids');
+        if ($customProductIdsString) {
+            $productIds = $this->parseProductIds($customProductIdsString);
 
             $searchResult = $this->searchResultFactory->create();
             $searchResult->setSearchCriteria($searchCriteria);
