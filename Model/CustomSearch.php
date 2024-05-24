@@ -233,6 +233,8 @@ class CustomSearch implements SearchInterface {
     }
 
     private function validateProductIds($productIds, $validateStock = true) {
+        return $productIds;
+        
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect(['entity_id', 'status', 'visibility'])
             ->addFieldToFilter('entity_id', ['in' => $productIds])
