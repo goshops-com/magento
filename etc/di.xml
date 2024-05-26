@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <type name="Magento\Search\Model\SearchEngine">
-        <plugin name="custom_search_engine_plugin" type="Gopersonal\Magento\Plugin\SearchEnginePlugin" sortOrder="10"/>
+    <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
+        <plugin name="Gopersonal_Magento::search_plugin" type="Gopersonal\Magento\Plugin\SearchPlugin" />
     </type>
 </config>
