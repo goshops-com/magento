@@ -234,48 +234,47 @@ class CustomSearch implements SearchInterface {
 
     private function validateProductIds($productIds, $validateStock = true) {
         return $productIds;
-        
-        $collection = $this->productCollectionFactory->create()
-            ->addAttributeToSelect(['entity_id', 'status', 'visibility'])
-            ->addFieldToFilter('entity_id', ['in' => $productIds])
-            ->addFieldToFilter('status', ['eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED])
-            ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-
-        if ($validateStock) {
-            $collection->joinField(
-                'qty',
-                'cataloginventory_stock_item',
-                'qty',
-                'product_id=entity_id',
-                ['stock_id' => 1],
-                'left'
-            )->joinField(
-                'is_in_stock',
-                'cataloginventory_stock_item',
-                'is_in_stock',
-                'product_id=entity_id',
-                ['stock_id' => 1],
-                'left'
-            )->addFieldToFilter('is_in_stock', ['eq' => 1]);
-        }
-
-        $validProductIds = $collection->getAllIds();
-
-        return $validProductIds;
     }
+
+    // private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
+    //     $searchResult = $this->searchResultFactory->create();
+    //     $searchResult->setSearchCriteria($searchCriteria);
+
+    //     $items = [];
+    //     foreach ($defaultResponse->getIterator() as $document) {
+    //         $itemData = [
+    //             'id' => $document->getId(),
+    //             // Add other fields if needed
+    //         ];
+    //         $items[] = new \Magento\Framework\DataObject($itemData);
+    //     }
+    //     $searchResult->setItems($items);
+    //     $searchResult->setTotalCount($defaultResponse->count());
+
+    //     return $searchResult;
+    // }
 
     private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
         $searchResult = $this->searchResultFactory->create();
         $searchResult->setSearchCriteria($searchCriteria);
 
-        $items = [];
+        // Collect product IDs from the default response
+        $productIds = [];
         foreach ($defaultResponse->getIterator() as $document) {
-            $itemData = [
-                'id' => $document->getId(),
-                // Add other fields if needed
-            ];
-            $items[] = new \Magento\Framework\DataObject($itemData);
+            $productIds[] = $document->getId();
         }
+
+        // Create a product collection with the retrieved product IDs
+        $collection = $this->productCollectionFactory->create()
+            ->addAttributeToSelect('*')
+            ->addAttributeToFilter('entity_id', ['in' => $productIds])
+            ->addAttributeToFilter('status', Status::STATUS_ENABLED);
+
+        $items = [];
+        foreach ($collection as $product) {
+            $items[] = $product;
+        }
+
         $searchResult->setItems($items);
         $searchResult->setTotalCount($defaultResponse->count());
 
