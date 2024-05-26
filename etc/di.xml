@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <preference for="Magento\Search\Api\SearchInterface" type="Gopersonal\Magento\Model\CustomSearch"/>
-    <type name="Gopersonal\Magento\Model\CustomSearch">
-        <arguments>
-            <argument name="defaultSearchEngine" xsi:type="object">Magento\Search\Model\SearchEngine</argument>
-            <argument name="searchResultFactory" xsi:type="object">Magento\Framework\Api\Search\SearchResultFactory</argument>
-        </arguments>
+    <type name="Magento\Search\Model\SearchEngine">
+        <plugin name="custom_search_engine_plugin" type="Gopersonal\Magento\Plugin\SearchEnginePlugin" sortOrder="10"/>
     </type>
 </config>
