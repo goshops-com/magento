@@ -253,41 +253,14 @@ class CustomSearch implements SearchInterface {
             ->addAttributeToFilter('entity_id', ['in' => $productIds])
             ->addAttributeToFilter('status', Status::STATUS_ENABLED)
             ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-        
-        // Apply filters from the search criteria to the collection
-        // foreach ($searchCriteria->getFilterGroups() as $group) {
-        //     foreach ($group->getFilters() as $filter) {
-        //         $collection->addFieldToFilter($filter->getField(), $filter->getValue());
-        //     }
-        // }
-
+    
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
-        
-        // Build aggregations manually
-        $aggregations = [];
-        foreach ($collection as $product) {
-            foreach ($product->getAttributes() as $attribute) {
-                if ($attribute->getIsFilterable()) {
-                    $attributeCode = $attribute->getAttributeCode();
-                    $attributeValue = $product->getData($attributeCode);
-
-                    if (!isset($aggregations[$attributeCode])) {
-                        $aggregations[$attributeCode] = [];
-                    }
-
-                    if (!isset($aggregations[$attributeCode][$attributeValue])) {
-                        $aggregations[$attributeCode][$attributeValue] = 0;
-                    }
-
-                    $aggregations[$attributeCode][$attributeValue]++;
-                }
-            }
-        }
-
-        // Set aggregations on the search result
+    
+        // Build and set aggregations on the search result
+        $aggregations = $this->buildAggregations($collection);
         $searchResult->setAggregations($aggregations);
-
+    
         $items = [];
         foreach ($collection as $product) {
             $items[] = $product;
@@ -301,50 +274,24 @@ class CustomSearch implements SearchInterface {
 
     private function buildAggregations($collection) {
         $aggregations = $this->aggregationFactory->create();
-        
-        // Example of how to add a price aggregation (simplified)
-        $priceAggregation = $this->aggregationFactory->create();
-        $priceAggregation->setName('price');
-        $priceAggregation->setLabel(__('Price'));
     
-        // Add price buckets to the aggregation (example ranges)
-        $priceBuckets = [
-            ['from' => 0, 'to' => 50, 'label' => '0-50'],
-            ['from' => 50, 'to' => 100, 'label' => '50-100'],
-            ['from' => 100, 'to' => 200, 'label' => '100-200'],
-            ['from' => 200, 'to' => 500, 'label' => '200-500'],
-            ['from' => 500, 'to' => null, 'label' => '500+'],
-        ];
-        foreach ($priceBuckets as $bucket) {
-            $priceAggregation->addBucket(
-                $this->bucketFactory->create()
-                    ->setName($bucket['label'])
-                    ->setLabel(__($bucket['label']))
-                    ->setValue($bucket)
-            );
+        // Example of how you might build aggregations
+        // Adjust this according to your specific needs
+        $attribute = 'price'; // Example attribute
+        $counts = [];
+        foreach ($collection as $product) {
+            $value = $product->getData($attribute);
+            if (!isset($counts[$value])) {
+                $counts[$value] = 0;
+            }
+            $counts[$value]++;
         }
-        $aggregations->addAggregation($priceAggregation);
     
-        // Example of category aggregation
-        $categoryAggregation = $this->aggregationFactory->create();
-        $categoryAggregation->setName('category');
-        $categoryAggregation->setLabel(__('Category'));
-    
-        $categories = $collection->getColumnValues('category_ids');
-        $categoryIds = array_unique(array_merge(...array_map('explode', ',', $categories)));
-    
-        foreach ($categoryIds as $categoryId) {
-            $category = $this->categoryRepository->get($categoryId);
-            $categoryAggregation->addBucket(
-                $this->bucketFactory->create()
-                    ->setName($category->getId())
-                    ->setLabel($category->getName())
-                    ->setValue($category->getId())
-            );
+        $bucket = $this->bucketFactory->create();
+        foreach ($counts as $value => $count) {
+            $bucket->addItem($value, $count);
         }
-        $aggregations->addAggregation($categoryAggregation);
-    
-        // Add other necessary aggregations dynamically based on product attributes
+        $aggregations->addBucket($attribute, $bucket);
     
         return $aggregations;
     }
