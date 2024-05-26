@@ -99,15 +99,8 @@ class CustomSearch implements SearchInterface {
         return null;
     }
 
-    private function isCategoryPage(SearchCriteriaInterface $searchCriteria) {
-        foreach ($searchCriteria->getFilterGroups() as $group) {
-            foreach ($group->getFilters() as $filter) {
-                if ($filter->getField() === 'category_ids') {
-                    return true;
-                }
-            }
-        }
-        return false;
+    private function isCategoryPage() {
+        return $this->catalogSession->getLastVisitedCategoryId() !== null;
     }
 
     private function buildRequest(SearchCriteriaInterface $searchCriteria) {
@@ -131,6 +124,13 @@ class CustomSearch implements SearchInterface {
             'gopersonal/general/gopersonal_has_search',
             ScopeInterface::SCOPE_STORE
         );
+
+        // Check if the request is from a category page
+        if ($this->isCategoryPage()) {
+            // Let Magento handle category page requests
+            $request = $this->buildRequest($searchCriteria);
+            return $this->defaultSearchEngine->search($request);
+        }
 
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
@@ -166,17 +166,11 @@ class CustomSearch implements SearchInterface {
             // Convert SearchCriteriaInterface to RequestInterface
             $request = $this->buildRequest($searchCriteria);
 
-            // Check if the request is from a category page
-            if ($this->catalogSession->getLastVisitedCategoryId()) {
-                // Let Magento handle category page aggregations
-                return $this->defaultSearchEngine->search($request);
-            } else {
-                // Pass the request to the default search engine
-                $defaultResponse = $this->defaultSearchEngine->search($request);
+            // Pass the request to the default search engine
+            $defaultResponse = $this->defaultSearchEngine->search($request);
 
-                // Convert default response to SearchResultInterface
-                return $this->convertToSearchResult($defaultResponse, $searchCriteria);
-            }
+            // Convert default response to SearchResultInterface
+            return $this->convertToSearchResult($defaultResponse, $searchCriteria);
         }
 
         if ($isEnabled == 'YES') {
