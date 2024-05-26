@@ -24,10 +24,8 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\CatalogInventory\Api\StockStateInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
-use Magento\Framework\Api\Search\AggregationInterfaceFactory;
-use Magento\Framework\Api\Search\BucketInterfaceFactory;
-use Magento\Framework\Api\Search\AggregationInterface;
-use Magento\Framework\Api\Search\BucketInterface;
+use Magento\Framework\Api\Search\AggregationFactory;
+use Magento\Framework\Api\Search\BucketFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -67,8 +65,8 @@ class CustomSearch implements SearchInterface {
         Visibility $productVisibility,
         StockStateInterface $stockState,
         StockRegistryInterface $stockRegistry,
-        AggregationInterfaceFactory $aggregationFactory,
-        BucketInterfaceFactory $bucketFactory
+        AggregationFactory $aggregationFactory,
+        BucketFactory $bucketFactory
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -299,17 +297,17 @@ class CustomSearch implements SearchInterface {
         // Create bucket items
         $bucketItems = [];
         foreach ($counts as $value => $count) {
-            $bucketItems[] = $this->bucketFactory->create([
-                'name' => $value,
-                'values' => ['count' => $count]
-            ]);
+            $bucketItems[] = [
+                'value' => $value,
+                'count' => $count
+            ];
         }
     
         // Create the bucket
-        $bucket = $this->bucketFactory->create([
+        $bucket = [
             'name' => $attribute,
             'values' => $bucketItems
-        ]);
+        ];
     
         $buckets[] = $bucket;
     
