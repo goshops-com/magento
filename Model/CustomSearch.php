@@ -24,6 +24,8 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\CatalogInventory\Api\StockStateInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
+use Magento\Framework\Api\Search\AggregationFactory;
+use Magento\Framework\Api\Search\BucketInterfaceFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -60,7 +62,9 @@ class CustomSearch implements SearchInterface {
         ProductCollectionFactory $productCollectionFactory,
         Visibility $productVisibility,
         StockStateInterface $stockState,
-        StockRegistryInterface $stockRegistry
+        StockRegistryInterface $stockRegistry,
+        AggregationFactory $aggregationFactory,
+        BucketInterfaceFactory $bucketFactory
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -78,6 +82,8 @@ class CustomSearch implements SearchInterface {
         $this->productVisibility = $productVisibility;
         $this->stockState = $stockState;
         $this->stockRegistry = $stockRegistry;
+        $this->aggregationFactory = $aggregationFactory;
+        $this->bucketFactory = $bucketFactory;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
