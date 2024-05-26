@@ -253,12 +253,41 @@ class CustomSearch implements SearchInterface {
             ->addAttributeToFilter('entity_id', ['in' => $productIds])
             ->addAttributeToFilter('status', Status::STATUS_ENABLED)
             ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-    
+        
+        // Apply filters from the search criteria to the collection
+        foreach ($searchCriteria->getFilterGroups() as $group) {
+            foreach ($group->getFilters() as $filter) {
+                $collection->addFieldToFilter($filter->getField(), $filter->getValue());
+            }
+        }
+        
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
         
-        $searchResult->setAggregations($collection->getAggregations());
-        
+        // Build aggregations manually
+        $aggregations = [];
+        foreach ($collection as $product) {
+            foreach ($product->getAttributes() as $attribute) {
+                if ($attribute->getIsFilterable()) {
+                    $attributeCode = $attribute->getAttributeCode();
+                    $attributeValue = $product->getData($attributeCode);
+
+                    if (!isset($aggregations[$attributeCode])) {
+                        $aggregations[$attributeCode] = [];
+                    }
+
+                    if (!isset($aggregations[$attributeCode][$attributeValue])) {
+                        $aggregations[$attributeCode][$attributeValue] = 0;
+                    }
+
+                    $aggregations[$attributeCode][$attributeValue]++;
+                }
+            }
+        }
+
+        // Set aggregations on the search result
+        $searchResult->setAggregations($aggregations);
+
         $items = [];
         foreach ($collection as $product) {
             $items[] = $product;
