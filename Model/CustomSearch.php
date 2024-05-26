@@ -40,8 +40,6 @@ class CustomSearch implements SearchInterface {
     protected $productRepository;
     protected $productCollectionFactory;
     protected $productVisibility;
-    protected $stockState;
-    protected $stockRegistry;
     protected $aggregationFactory;
     protected $bucketFactory;
     protected $catalogSession;
@@ -61,8 +59,6 @@ class CustomSearch implements SearchInterface {
         ProductRepositoryInterface $productRepository,
         ProductCollectionFactory $productCollectionFactory,
         Visibility $productVisibility,
-        StockStateInterface $stockState,
-        StockRegistryInterface $stockRegistry,
         AggregationFactory $aggregationFactory,
         BucketFactory $bucketFactory,
         CatalogSession $catalogSession
@@ -81,8 +77,6 @@ class CustomSearch implements SearchInterface {
         $this->productRepository = $productRepository;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productVisibility = $productVisibility;
-        $this->stockState = $stockState;
-        $this->stockRegistry = $stockRegistry;
         $this->aggregationFactory = $aggregationFactory;
         $this->bucketFactory = $bucketFactory;
         $this->catalogSession = $catalogSession;
