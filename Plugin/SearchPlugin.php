@@ -2,14 +2,24 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
+use Magento\Framework\App\RequestInterface;
+use Magento\Store\Model\StoreManagerInterface;
 
 class SearchPlugin
 {
+    protected $request;
+    protected $storeManager;
+
+    public function __construct(RequestInterface $request, StoreManagerInterface $storeManager)
+    {
+        $this->request = $request;
+        $this->storeManager = $storeManager;
+    }
+
     public function aroundLoad(Collection $subject, \Closure $proceed, $printQuery = false, $logQuery = false)
     {
         // Check if the current request is a search request
-        $request = $subject->getResource()->getRequest();
-        if ($request->getFullActionName() === 'catalogsearch_result_index') {
+        if ($this->isSearchRequest()) {
             // Override the search result
             $subject->getSelect()->reset(\Magento\Framework\DB\Select::FROM);
             $subject->getSelect()->reset(\Magento\Framework\DB\Select::COLUMNS);
@@ -25,5 +35,12 @@ class SearchPlugin
 
         // If not a search request, proceed as usual
         return $proceed($printQuery, $logQuery);
+    }
+
+    private function isSearchRequest()
+    {
+        $fullActionName = $this->request->getFullActionName();
+        $query = $this->request->getParam('q');
+        return $fullActionName === 'catalogsearch_result_index' && !empty($query);
     }
 }
