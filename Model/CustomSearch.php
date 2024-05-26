@@ -24,8 +24,8 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\CatalogInventory\Api\StockStateInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
-use Magento\Framework\Api\Search\AggregationFactory;
-use Magento\Framework\Api\Search\BucketFactory;
+use Magento\Framework\Search\Response\AggregationFactory;
+use Magento\Framework\Search\Response\BucketFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -297,17 +297,17 @@ class CustomSearch implements SearchInterface {
         // Create bucket items
         $bucketItems = [];
         foreach ($counts as $value => $count) {
-            $bucketItems[] = [
-                'value' => $value,
-                'count' => $count
-            ];
+            $bucketItems[] = new \Magento\Framework\Search\Response\Aggregation\Value(
+                $value,
+                $count
+            );
         }
     
         // Create the bucket
-        $bucket = [
-            'name' => $attribute,
-            'values' => $bucketItems
-        ];
+        $bucket = new \Magento\Framework\Search\Response\Aggregation\Bucket(
+            $attribute,
+            $bucketItems
+        );
     
         $buckets[] = $bucket;
     
