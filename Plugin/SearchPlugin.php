@@ -2,28 +2,28 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
-use Psr\Log\LoggerInterface;
 
 class SearchPlugin
 {
-    protected $logger;
-
-    public function __construct(LoggerInterface $logger)
+    public function aroundLoad(Collection $subject, \Closure $proceed, $printQuery = false, $logQuery = false)
     {
-        $this->logger = $logger;
-    }
+        // Check if the current request is a search request
+        $request = $subject->getResource()->getRequest();
+        if ($request->getFullActionName() === 'catalogsearch_result_index') {
+            // Override the search result
+            $subject->getSelect()->reset(\Magento\Framework\DB\Select::FROM);
+            $subject->getSelect()->reset(\Magento\Framework\DB\Select::COLUMNS);
+            $subject->getSelect()->reset(\Magento\Framework\DB\Select::WHERE);
+            $subject->getSelect()->from(
+                ['e' => $subject->getTable('catalog_product_entity')],
+                ['entity_id']
+            );
+            $subject->getSelect()->where('e.entity_id = ?', 1556);
 
-    public function beforeAddSearchFilter(Collection $subject, $query)
-    {
-        $this->logger->info('SearchPlugin beforeAddSearchFilter called with query: ' . $query);
+            return $subject;
+        }
 
-        // Hardcode the product ID for testing purposes
-        $hardcodedProductIds = [1556];
-
-        $this->logger->info('Filtering search results to include only product ID: ' . implode(', ', $hardcodedProductIds));
-
-        $subject->addFieldToFilter('entity_id', ['in' => $hardcodedProductIds]);
-
-        return [$query];
+        // If not a search request, proceed as usual
+        return $proceed($printQuery, $logQuery);
     }
 }
