@@ -102,14 +102,30 @@ class CustomSearch implements SearchInterface {
         return false;
     }
 
+    // private function buildRequest(SearchCriteriaInterface $searchCriteria) {
+    //     $requestName = 'quick_search_container'; // Adjust this if needed
+    //     $this->searchRequestBuilder->setRequestName($requestName);
+    //     foreach ($searchCriteria->getFilterGroups() as $group) {
+    //         foreach ($group->getFilters() as $filter) {
+    //             $this->searchRequestBuilder->bind($filter->getField(), $filter->getValue());
+    //         }
+    //     }
+    //     return $this->searchRequestBuilder->create();
+    // }
     private function buildRequest(SearchCriteriaInterface $searchCriteria) {
-        $requestName = 'quick_search_container'; // Adjust this if needed
+        $requestName = 'quick_search_container';
         $this->searchRequestBuilder->setRequestName($requestName);
+        
         foreach ($searchCriteria->getFilterGroups() as $group) {
             foreach ($group->getFilters() as $filter) {
-                $this->searchRequestBuilder->bind($filter->getField(), $filter->getValue());
+                $field = $filter->getField();
+                $value = $filter->getValue();
+                $conditionType = $filter->getConditionType() ?: 'eq';
+                $this->searchRequestBuilder->bind($field, $value, $conditionType);
+                $this->logger->info("Filter applied: Field = {$field}, Value = {$value}, ConditionType = {$conditionType}");
             }
         }
+        
         return $this->searchRequestBuilder->create();
     }
 
@@ -237,34 +253,121 @@ class CustomSearch implements SearchInterface {
         return $productIds;
     }
 
+    // private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
+    //     $searchResult = $this->searchResultFactory->create();
+    //     $searchResult->setSearchCriteria($searchCriteria);
+    
+    //     // Collect product IDs from the default response
+    //     $productIds = [];
+    //     foreach ($defaultResponse->getIterator() as $document) {
+    //         $productIds[] = $document->getId();
+    //     }
+    
+    //     // Create a product collection with the retrieved product IDs
+    //     $collection = $this->productCollectionFactory->create()
+    //         ->addAttributeToSelect('*')
+    //         ->addAttributeToFilter('entity_id', ['in' => $productIds])
+    //         ->addAttributeToFilter('status', Status::STATUS_ENABLED)
+    //         ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
+    
+    //     // Ensure all attributes are loaded for layered navigation
+    //     $collection->load();
+    
+    //     $items = [];
+    //     foreach ($collection as $product) {
+    //         $items[] = $product;
+    //     }
+    
+    //     $searchResult->setItems($items);
+    //     $searchResult->setTotalCount($collection->getSize());
+    
+    //     return $searchResult;
+    // }
+
     private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
         $searchResult = $this->searchResultFactory->create();
         $searchResult->setSearchCriteria($searchCriteria);
-
+    
         // Collect product IDs from the default response
         $productIds = [];
         foreach ($defaultResponse->getIterator() as $document) {
             $productIds[] = $document->getId();
         }
-
+    
         // Create a product collection with the retrieved product IDs
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             ->addAttributeToFilter('entity_id', ['in' => $productIds])
             ->addAttributeToFilter('status', Status::STATUS_ENABLED)
             ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-
+    
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
-
+        $this->logger->info("Product Collection Loaded with IDs: " . implode(',', $productIds));
+    
+        // Collect necessary data for layered navigation filters
+        $aggregations = $this->buildAggregations($collection);
+    
         $items = [];
         foreach ($collection as $product) {
             $items[] = $product;
         }
-
+    
         $searchResult->setItems($items);
         $searchResult->setTotalCount($collection->getSize());
-
+        $searchResult->setAggregations($aggregations);
+    
         return $searchResult;
     }
+
+    private function buildAggregations($collection) {
+        $aggregations = $this->aggregationFactory->create();
+        
+        // Example of how to add a price aggregation (simplified)
+        $priceAggregation = $this->aggregationFactory->create();
+        $priceAggregation->setName('price');
+        $priceAggregation->setLabel(__('Price'));
+    
+        // Add price buckets to the aggregation (example ranges)
+        $priceBuckets = [
+            ['from' => 0, 'to' => 50, 'label' => '0-50'],
+            ['from' => 50, 'to' => 100, 'label' => '50-100'],
+            ['from' => 100, 'to' => 200, 'label' => '100-200'],
+            ['from' => 200, 'to' => 500, 'label' => '200-500'],
+            ['from' => 500, 'to' => null, 'label' => '500+'],
+        ];
+        foreach ($priceBuckets as $bucket) {
+            $priceAggregation->addBucket(
+                $this->bucketFactory->create()
+                    ->setName($bucket['label'])
+                    ->setLabel(__($bucket['label']))
+                    ->setValue($bucket)
+            );
+        }
+        $aggregations->addAggregation($priceAggregation);
+    
+        // Example of category aggregation
+        $categoryAggregation = $this->aggregationFactory->create();
+        $categoryAggregation->setName('category');
+        $categoryAggregation->setLabel(__('Category'));
+    
+        $categories = $collection->getColumnValues('category_ids');
+        $categoryIds = array_unique(array_merge(...array_map('explode', ',', $categories)));
+    
+        foreach ($categoryIds as $categoryId) {
+            $category = $this->categoryRepository->get($categoryId);
+            $categoryAggregation->addBucket(
+                $this->bucketFactory->create()
+                    ->setName($category->getId())
+                    ->setLabel($category->getName())
+                    ->setValue($category->getId())
+            );
+        }
+        $aggregations->addAggregation($categoryAggregation);
+    
+        // Add other necessary aggregations dynamically based on product attributes
+    
+        return $aggregations;
+    }
+    
 }
