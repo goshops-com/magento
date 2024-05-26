@@ -291,7 +291,7 @@ class CustomSearch implements SearchInterface {
         $buckets = [];
         $attribute = 'price'; // Example attribute
         $counts = [];
-    
+        
         // Calculate counts for the attribute
         foreach ($collection as $product) {
             $value = $product->getData($attribute);
@@ -300,25 +300,26 @@ class CustomSearch implements SearchInterface {
             }
             $counts[$value]++;
         }
-    
+        
         // Create bucket items
         $bucketItems = [];
         foreach ($counts as $value => $count) {
-            $bucketItems[] = $this->bucketFactory->create([
-                'value' => $value,
-                'count' => $count
-            ]);
+            $bucketItems[] = new \Magento\Framework\Search\Response\Aggregation\Value(
+                $value,
+                $count
+            );
         }
-    
+        
         // Create the bucket
-        $bucket = $this->bucketFactory->create([
-            'name' => $attribute,
-            'values' => $bucketItems
-        ]);
-    
+        $bucket = new \Magento\Framework\Search\Response\Bucket(
+            $attribute,
+            $bucketItems
+        );
+        
         $buckets[] = $bucket;
-    
+        
         // Create the aggregation
-        return $this->aggregationFactory->create(['buckets' => $buckets]);
+        $aggregation = $this->aggregationFactory->create(['buckets' => $buckets]);
+        return $aggregation;
     }
 }
