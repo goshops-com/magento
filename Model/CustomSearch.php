@@ -251,7 +251,11 @@ class CustomSearch implements SearchInterface {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             ->addAttributeToFilter('entity_id', ['in' => $productIds])
-            ->addAttributeToFilter('status', Status::STATUS_ENABLED);
+            ->addAttributeToFilter('status', Status::STATUS_ENABLED)
+            ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
+
+        // Ensure all attributes are loaded for layered navigation
+        $collection->load();
 
         $items = [];
         foreach ($collection as $product) {
@@ -259,7 +263,7 @@ class CustomSearch implements SearchInterface {
         }
 
         $searchResult->setItems($items);
-        $searchResult->setTotalCount($defaultResponse->count());
+        $searchResult->setTotalCount($collection->getSize());
 
         return $searchResult;
     }
