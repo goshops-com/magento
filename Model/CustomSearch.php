@@ -122,7 +122,7 @@ class CustomSearch implements SearchInterface {
                 $value = $filter->getValue();
                 $conditionType = $filter->getConditionType() ?: 'eq';
                 $this->searchRequestBuilder->bind($field, $value, $conditionType);
-                $this->logger->info("Filter applied: Field = {$field}, Value = {$value}, ConditionType = {$conditionType}");
+                // $this->logger->info("Filter applied: Field = {$field}, Value = {$value}, ConditionType = {$conditionType}");
             }
         }
         
