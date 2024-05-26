@@ -266,7 +266,7 @@ class CustomSearch implements SearchInterface {
         $collection->load();
         
         // Set the aggregations from the default response
-        $searchResult->setAggregations($defaultResponse->getAggregations());
+        // $searchResult->setAggregations($defaultResponse->getAggregations());
         
         $items = [];
         foreach ($collection as $product) {
@@ -279,38 +279,38 @@ class CustomSearch implements SearchInterface {
         return $searchResult;
     }
 
-    private function buildAggregations($collection) {
-        $buckets = [];
-        $attribute = 'price'; // Example attribute
-        $counts = [];
+    // private function buildAggregations($collection) {
+    //     $buckets = [];
+    //     $attribute = 'price'; // Example attribute
+    //     $counts = [];
     
-        // Calculate counts for the attribute
-        foreach ($collection as $product) {
-            $value = $product->getData($attribute);
-            if (!isset($counts[$value])) {
-                $counts[$value] = 0;
-            }
-            $counts[$value]++;
-        }
+    //     // Calculate counts for the attribute
+    //     foreach ($collection as $product) {
+    //         $value = $product->getData($attribute);
+    //         if (!isset($counts[$value])) {
+    //             $counts[$value] = 0;
+    //         }
+    //         $counts[$value]++;
+    //     }
     
-        // Create bucket items
-        $bucketItems = [];
-        foreach ($counts as $value => $count) {
-            $bucketItems[] = new \Magento\Framework\Search\Response\Aggregation\Value(
-                $value,
-                $count
-            );
-        }
+    //     // Create bucket items
+    //     $bucketItems = [];
+    //     foreach ($counts as $value => $count) {
+    //         $bucketItems[] = new \Magento\Framework\Search\Response\Aggregation\Value(
+    //             $value,
+    //             $count
+    //         );
+    //     }
     
-        // Create the bucket
-        $bucket = new \Magento\Framework\Search\Response\Aggregation\Bucket(
-            $attribute,
-            $bucketItems
-        );
+    //     // Create the bucket
+    //     $bucket = new \Magento\Framework\Search\Response\Aggregation\Bucket(
+    //         $attribute,
+    //         $bucketItems
+    //     );
     
-        $buckets[] = $bucket;
+    //     $buckets[] = $bucket;
     
-        // Create the aggregation
-        return $this->aggregationFactory->create(['buckets' => $buckets]);
-    }
+    //     // Create the aggregation
+    //     return $this->aggregationFactory->create(['buckets' => $buckets]);
+    // }
 }
