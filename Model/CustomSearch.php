@@ -255,12 +255,12 @@ class CustomSearch implements SearchInterface {
             ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
         
         // Apply filters from the search criteria to the collection
-        foreach ($searchCriteria->getFilterGroups() as $group) {
-            foreach ($group->getFilters() as $filter) {
-                $collection->addFieldToFilter($filter->getField(), $filter->getValue());
-            }
-        }
-        
+        // foreach ($searchCriteria->getFilterGroups() as $group) {
+        //     foreach ($group->getFilters() as $filter) {
+        //         $collection->addFieldToFilter($filter->getField(), $filter->getValue());
+        //     }
+        // }
+
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
         
