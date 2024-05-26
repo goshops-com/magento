@@ -102,30 +102,14 @@ class CustomSearch implements SearchInterface {
         return false;
     }
 
-    // private function buildRequest(SearchCriteriaInterface $searchCriteria) {
-    //     $requestName = 'quick_search_container'; // Adjust this if needed
-    //     $this->searchRequestBuilder->setRequestName($requestName);
-    //     foreach ($searchCriteria->getFilterGroups() as $group) {
-    //         foreach ($group->getFilters() as $filter) {
-    //             $this->searchRequestBuilder->bind($filter->getField(), $filter->getValue());
-    //         }
-    //     }
-    //     return $this->searchRequestBuilder->create();
-    // }
     private function buildRequest(SearchCriteriaInterface $searchCriteria) {
-        $requestName = 'quick_search_container';
+        $requestName = 'quick_search_container'; // Adjust this if needed
         $this->searchRequestBuilder->setRequestName($requestName);
-        
         foreach ($searchCriteria->getFilterGroups() as $group) {
             foreach ($group->getFilters() as $filter) {
-                $field = $filter->getField();
-                $value = $filter->getValue();
-                $conditionType = $filter->getConditionType() ?: 'eq';
-                $this->searchRequestBuilder->bind($field, $value, $conditionType);
-                // $this->logger->info("Filter applied: Field = {$field}, Value = {$value}, ConditionType = {$conditionType}");
+                $this->searchRequestBuilder->bind($filter->getField(), $filter->getValue());
             }
         }
-        
         return $this->searchRequestBuilder->create();
     }
 
@@ -253,37 +237,6 @@ class CustomSearch implements SearchInterface {
         return $productIds;
     }
 
-    // private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
-    //     $searchResult = $this->searchResultFactory->create();
-    //     $searchResult->setSearchCriteria($searchCriteria);
-    
-    //     // Collect product IDs from the default response
-    //     $productIds = [];
-    //     foreach ($defaultResponse->getIterator() as $document) {
-    //         $productIds[] = $document->getId();
-    //     }
-    
-    //     // Create a product collection with the retrieved product IDs
-    //     $collection = $this->productCollectionFactory->create()
-    //         ->addAttributeToSelect('*')
-    //         ->addAttributeToFilter('entity_id', ['in' => $productIds])
-    //         ->addAttributeToFilter('status', Status::STATUS_ENABLED)
-    //         ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-    
-    //     // Ensure all attributes are loaded for layered navigation
-    //     $collection->load();
-    
-    //     $items = [];
-    //     foreach ($collection as $product) {
-    //         $items[] = $product;
-    //     }
-    
-    //     $searchResult->setItems($items);
-    //     $searchResult->setTotalCount($collection->getSize());
-    
-    //     return $searchResult;
-    // }
-
     private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
         $searchResult = $this->searchResultFactory->create();
         $searchResult->setSearchCriteria($searchCriteria);
@@ -303,11 +256,9 @@ class CustomSearch implements SearchInterface {
     
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
-        $this->logger->info("Product Collection Loaded with IDs: " . implode(',', $productIds));
-    
-        // Collect necessary data for layered navigation filters
-        $aggregations = $this->buildAggregations($collection);
-    
+        
+        $searchResult->setAggregations($collection->getAggregations());
+        
         $items = [];
         foreach ($collection as $product) {
             $items[] = $product;
@@ -315,7 +266,6 @@ class CustomSearch implements SearchInterface {
     
         $searchResult->setItems($items);
         $searchResult->setTotalCount($collection->getSize());
-        $searchResult->setAggregations($aggregations);
     
         return $searchResult;
     }
