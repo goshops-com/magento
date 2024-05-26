@@ -5,27 +5,24 @@ namespace Gopersonal\Magento\Model;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use Magento\Catalog\Model\Product\Visibility;
-use Magento\Search\Api\SearchInterface;
+use Magento\Catalog\Model\Session as CatalogSession;
 use Magento\Framework\Api\Search\SearchCriteriaInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Store\Model\ScopeInterface;
-use Magento\Framework\Controller\Result\JsonFactory;
-use Psr\Log\LoggerInterface;
-use Magento\Search\Model\SearchEngine;
-use Magento\Framework\Api\Search\SearchResultFactory;
-use Magento\Customer\Model\Session as CustomerSession;
-use Magento\Framework\HTTP\ClientInterface;
-use Magento\Framework\Stdlib\CookieManagerInterface;
-use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
-use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Api\Search\DocumentFactory;
-use Magento\Framework\Api\Search\Document;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
-use Magento\CatalogInventory\Api\StockStateInterface;
-use Magento\CatalogInventory\Api\StockRegistryInterface;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\HTTP\ClientInterface;
+use Magento\Framework\Search\Request\Builder as SearchRequestBuilder;
+use Magento\Framework\Search\Response\AggregationFactory;
+use Magento\Framework\Search\Response\BucketFactory;
+use Magento\Search\Api\SearchInterface;
+use Magento\Search\Model\SearchEngine;
+use Magento\Store\Model\ScopeInterface;
+use Psr\Log\LoggerInterface;
+use Magento\Customer\Model\Session as CustomerSession;
+use Magento\Framework\Api\Search\DocumentFactory;
+use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Framework\Api\Search\SearchResultFactory;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
-use Magento\Framework\Search\Response\AggregationFactory as AggregationFactory;
-use Magento\Framework\Search\Response\BucketFactory as BucketFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -47,6 +44,7 @@ class CustomSearch implements SearchInterface {
     protected $stockRegistry;
     protected $aggregationFactory;
     protected $bucketFactory;
+    protected $catalogSession;
 
     public function __construct(
         ClientInterface $httpClient,
@@ -66,7 +64,8 @@ class CustomSearch implements SearchInterface {
         StockStateInterface $stockState,
         StockRegistryInterface $stockRegistry,
         AggregationFactory $aggregationFactory,
-        BucketFactory $bucketFactory
+        BucketFactory $bucketFactory,
+        CatalogSession $catalogSession
     ) {
         $this->httpClient = $httpClient;
         $this->scopeConfig = $scopeConfig;
@@ -86,6 +85,7 @@ class CustomSearch implements SearchInterface {
         $this->stockRegistry = $stockRegistry;
         $this->aggregationFactory = $aggregationFactory;
         $this->bucketFactory = $bucketFactory;
+        $this->catalogSession = $catalogSession;
     }
 
     private function getQueryFromSearchCriteria(SearchCriteriaInterface $searchCriteria) {
@@ -166,11 +166,17 @@ class CustomSearch implements SearchInterface {
             // Convert SearchCriteriaInterface to RequestInterface
             $request = $this->buildRequest($searchCriteria);
 
-            // Pass the request to the default search engine
-            $defaultResponse = $this->defaultSearchEngine->search($request);
+            // Check if the request is from a category page
+            if ($this->catalogSession->getLastVisitedCategoryId()) {
+                // Let Magento handle category page aggregations
+                return $this->defaultSearchEngine->search($request);
+            } else {
+                // Pass the request to the default search engine
+                $defaultResponse = $this->defaultSearchEngine->search($request);
 
-            // Convert default response to SearchResultInterface
-            return $this->convertToSearchResult($defaultResponse, $searchCriteria);
+                // Convert default response to SearchResultInterface
+                return $this->convertToSearchResult($defaultResponse, $searchCriteria);
+            }
         }
 
         if ($isEnabled == 'YES') {
@@ -289,19 +295,48 @@ class CustomSearch implements SearchInterface {
 
     private function buildCategoryAggregations($collection) {
         $buckets = [];
-        $attribute = 'price'; // Example attribute
-        $counts = [];
         
-        // Calculate counts for the attribute
-        foreach ($collection as $product) {
-            $value = $product->getData($attribute);
-            if (!isset($counts[$value])) {
-                $counts[$value] = 0;
-            }
-            $counts[$value]++;
+        // Example: Adding price attribute
+        $priceCounts = $this->getCountsByAttribute($collection, 'price');
+        $priceBucket = $this->createBucket('price', $priceCounts);
+        if ($priceBucket) {
+            $buckets[] = $priceBucket;
         }
-        
-        // Create bucket items
+
+        // Example: Adding category attribute
+        $categoryCounts = $this->getCountsByAttribute($collection, 'category_ids');
+        $categoryBucket = $this->createBucket('category_ids', $categoryCounts);
+        if ($categoryBucket) {
+            $buckets[] = $categoryBucket;
+        }
+
+        // Create the aggregation
+        return $this->aggregationFactory->create(['buckets' => $buckets]);
+    }
+
+    private function getCountsByAttribute($collection, $attribute) {
+        $counts = [];
+        foreach ($collection as $product) {
+            $values = $product->getData($attribute);
+            if (is_array($values)) {
+                foreach ($values as $value) {
+                    if (!isset($counts[$value])) {
+                        $counts[$value] = 0;
+                    }
+                    $counts[$value]++;
+                }
+            } else {
+                $value = (string) $values;
+                if (!isset($counts[$value])) {
+                    $counts[$value] = 0;
+                }
+                $counts[$value]++;
+            }
+        }
+        return $counts;
+    }
+
+    private function createBucket($attribute, $counts) {
         $bucketItems = [];
         foreach ($counts as $value => $count) {
             $bucketItems[] = new \Magento\Framework\Search\Response\Aggregation\Value(
@@ -309,17 +344,13 @@ class CustomSearch implements SearchInterface {
                 $count
             );
         }
-        
-        // Create the bucket
-        $bucket = new \Magento\Framework\Search\Response\Bucket(
-            $attribute,
-            $bucketItems
-        );
-        
-        $buckets[] = $bucket;
-        
-        // Create the aggregation
-        $aggregation = $this->aggregationFactory->create(['buckets' => $buckets]);
-        return $aggregation;
+
+        if (!empty($bucketItems)) {
+            return new \Magento\Framework\Search\Response\Bucket(
+                $attribute,
+                $bucketItems
+            );
+        }
+        return null;
     }
 }
