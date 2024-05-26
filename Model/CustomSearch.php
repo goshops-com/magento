@@ -127,7 +127,10 @@ class CustomSearch implements SearchInterface {
         if ($this->isCategoryPage() || empty($searchTerm)) {
             // Let Magento handle category page requests
             $request = $this->buildRequest($searchCriteria);
-            return $this->defaultSearchEngine->search($request);
+            $defaultResponse = $this->defaultSearchEngine->search($request);
+
+            // Convert default response to SearchResultInterface
+            return $this->convertToSearchResult($defaultResponse, $searchCriteria);
         }
 
         // Check for custom query parameter in the URL
