@@ -3,30 +3,32 @@ namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
 use Magento\Framework\App\RequestInterface;
-use Magento\Catalog\Model\Product;
-use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
+use Magento\Catalog\Model\ProductFactory;
 
 class SearchPlugin
 {
     protected $request;
-    protected $productCollectionFactory;
+    protected $productFactory;
 
     public function __construct(
         RequestInterface $request,
-        ProductCollectionFactory $productCollectionFactory
+        ProductFactory $productFactory
     ) {
         $this->request = $request;
-        $this->productCollectionFactory = $productCollectionFactory;
+        $this->productFactory = $productFactory;
     }
 
     public function aroundLoad(Collection $subject, \Closure $proceed, $printQuery = false, $logQuery = false)
     {
         if ($this->isSearchRequest()) {
-            // Override the search result
-            $productCollection = $this->productCollectionFactory->create();
-            $productCollection->addFieldToFilter('entity_id', 1556);
-            $subject->clear()->setItems($productCollection->getItems());
-
+            // Create the product model
+            $product = $this->productFactory->create()->load(1556);
+            if ($product->getId()) {
+                // Clear the collection and add the product
+                $subject->clear();
+                $subject->addItem($product);
+                $subject->setPageSize(1);
+            }
             return $subject;
         }
 
