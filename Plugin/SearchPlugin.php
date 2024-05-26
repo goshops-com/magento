@@ -4,24 +4,22 @@ namespace Gopersonal\Magento\Plugin;
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
 use Magento\Framework\App\RequestInterface;
 use Magento\Catalog\Model\ProductFactory;
-use Magento\Framework\Api\Search\AggregationInterface;
-use Magento\Framework\Api\Search\SearchResultInterface;
-use Magento\Framework\Data\Collection\EntityFactory;
+use Magento\Framework\Api\Search\AggregationInterfaceFactory;
 
 class SearchPlugin
 {
     protected $request;
     protected $productFactory;
-    protected $entityFactory;
+    protected $aggregationFactory;
 
     public function __construct(
         RequestInterface $request,
         ProductFactory $productFactory,
-        EntityFactory $entityFactory
+        AggregationInterfaceFactory $aggregationFactory
     ) {
         $this->request = $request;
         $this->productFactory = $productFactory;
-        $this->entityFactory = $entityFactory;
+        $this->aggregationFactory = $aggregationFactory;
     }
 
     public function aroundLoad(Collection $subject, \Closure $proceed, $printQuery = false, $logQuery = false)
@@ -36,7 +34,7 @@ class SearchPlugin
                 $subject->setPageSize(1);
                 
                 // Set up dummy aggregations
-                $subject->setAggregations($this->createDummyAggregations());
+                $subject->setData('aggregations', $this->createDummyAggregations());
             }
             return $subject;
         }
@@ -54,9 +52,6 @@ class SearchPlugin
 
     private function createDummyAggregations()
     {
-        $aggregation = $this->entityFactory->create(AggregationInterface::class);
-        // Set up any necessary dummy data for aggregations
-        // For simplicity, this example does not add real data
-        return $aggregation;
+        return $this->aggregationFactory->create();
     }
 }
