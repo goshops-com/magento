@@ -26,6 +26,9 @@ use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\Api\Search\AggregationInterfaceFactory;
 use Magento\Framework\Api\Search\BucketInterfaceFactory;
+use Magento\Framework\Search\Response\Aggregation;
+use Magento\Framework\Search\Response\Aggregation\Bucket;
+use Magento\Framework\Search\Response\Aggregation\Value;
 
 class CustomSearch implements SearchInterface {
 
@@ -281,12 +284,11 @@ class CustomSearch implements SearchInterface {
     }
 
     private function buildAggregations($collection) {
-        $aggregations = $this->aggregationFactory->create();
-    
-        // Example of how you might build aggregations
-        // Adjust this according to your specific needs
+        $buckets = [];
         $attribute = 'price'; // Example attribute
         $counts = [];
+    
+        // Calculate counts for the attribute
         foreach ($collection as $product) {
             $value = $product->getData($attribute);
             if (!isset($counts[$value])) {
@@ -295,12 +297,24 @@ class CustomSearch implements SearchInterface {
             $counts[$value]++;
         }
     
-        $bucket = $this->bucketFactory->create();
+        // Create bucket items
+        $bucketItems = [];
         foreach ($counts as $value => $count) {
-            $bucket->addItem($value, $count);
+            $bucketItems[] = new Value(
+                $value,
+                $count
+            );
         }
-        $aggregations->addBucket($attribute, $bucket);
     
-        return $aggregations;
+        // Create the bucket
+        $bucket = new Bucket(
+            $attribute,
+            $bucketItems
+        );
+    
+        $buckets[] = $bucket;
+    
+        // Create the aggregation
+        return $this->aggregationFactory->create(['buckets' => $buckets]);
     }
 }
