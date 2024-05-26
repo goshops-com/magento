@@ -248,35 +248,34 @@ class CustomSearch implements SearchInterface {
     private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
         $searchResult = $this->searchResultFactory->create();
         $searchResult->setSearchCriteria($searchCriteria);
-    
+        
         // Collect product IDs from the default response
         $productIds = [];
         foreach ($defaultResponse->getIterator() as $document) {
             $productIds[] = $document->getId();
         }
-    
+        
         // Create a product collection with the retrieved product IDs
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             ->addAttributeToFilter('entity_id', ['in' => $productIds])
             ->addAttributeToFilter('status', Status::STATUS_ENABLED)
             ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-    
+        
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
-    
-        // Build and set aggregations on the search result
-        $aggregations = $this->buildAggregations($collection);
-        $searchResult->setAggregations($aggregations);
-    
+        
+        // Set the aggregations from the default response
+        $searchResult->setAggregations($defaultResponse->getAggregations());
+        
         $items = [];
         foreach ($collection as $product) {
             $items[] = $product;
         }
-    
+        
         $searchResult->setItems($items);
         $searchResult->setTotalCount($collection->getSize());
-    
+        
         return $searchResult;
     }
 
