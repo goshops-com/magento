@@ -119,14 +119,16 @@ class CustomSearch implements SearchInterface {
             ScopeInterface::SCOPE_STORE
         );
 
+        
+
+        $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
+
         // Check if the request is from a category page
-        if ($this->isCategoryPage()) {
+        if ($this->isCategoryPage() || empty($searchTerm)) {
             // Let Magento handle category page requests
             $request = $this->buildRequest($searchCriteria);
             return $this->defaultSearchEngine->search($request);
         }
-
-        $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
 
         // Check for custom query parameter in the URL
         $customProductIdsString = $this->httpRequest->getParam('gs_product_ids');
