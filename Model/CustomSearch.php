@@ -24,8 +24,8 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\CatalogInventory\Api\StockStateInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
-use Magento\Framework\Search\Response\AggregationFactory;
-use Magento\Framework\Search\Response\BucketFactory;
+use Magento\Framework\Search\Response\AggregationFactory as AggregationFactory;
+use Magento\Framework\Search\Response\BucketFactory as BucketFactory;
 
 class CustomSearch implements SearchInterface {
 
@@ -248,23 +248,23 @@ class CustomSearch implements SearchInterface {
     private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
         $searchResult = $this->searchResultFactory->create();
         $searchResult->setSearchCriteria($searchCriteria);
-        
+    
         // Collect product IDs from the default response
         $productIds = [];
         foreach ($defaultResponse->getIterator() as $document) {
             $productIds[] = $document->getId();
         }
-        
+    
         // Create a product collection with the retrieved product IDs
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             ->addAttributeToFilter('entity_id', ['in' => $productIds])
             ->addAttributeToFilter('status', Status::STATUS_ENABLED)
             ->addAttributeToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
-        
+    
         // Ensure all attributes are loaded for layered navigation
         $collection->load();
-        
+    
         // Check if there's a search term
         $searchTerm = $this->getQueryFromSearchCriteria($searchCriteria);
         if ($searchTerm) {
@@ -275,23 +275,23 @@ class CustomSearch implements SearchInterface {
             $aggregations = $this->buildCategoryAggregations($collection);
             $searchResult->setAggregations($aggregations);
         }
-        
+    
         $items = [];
         foreach ($collection as $product) {
             $items[] = $product;
         }
-        
+    
         $searchResult->setItems($items);
         $searchResult->setTotalCount($collection->getSize());
-        
+    
         return $searchResult;
     }
-    
+
     private function buildCategoryAggregations($collection) {
         $buckets = [];
         $attribute = 'price'; // Example attribute
         $counts = [];
-        
+    
         // Calculate counts for the attribute
         foreach ($collection as $product) {
             $value = $product->getData($attribute);
@@ -300,24 +300,24 @@ class CustomSearch implements SearchInterface {
             }
             $counts[$value]++;
         }
-        
+    
         // Create bucket items
         $bucketItems = [];
         foreach ($counts as $value => $count) {
-            $bucketItems[] = new \Magento\Framework\Search\Response\Aggregation\Value(
-                $value,
-                $count
-            );
+            $bucketItems[] = $this->bucketFactory->create([
+                'value' => $value,
+                'count' => $count
+            ]);
         }
-        
+    
         // Create the bucket
-        $bucket = new \Magento\Framework\Search\Response\Aggregation\Bucket(
-            $attribute,
-            $bucketItems
-        );
-        
+        $bucket = $this->bucketFactory->create([
+            'name' => $attribute,
+            'values' => $bucketItems
+        ]);
+    
         $buckets[] = $bucket;
-        
+    
         // Create the aggregation
         return $this->aggregationFactory->create(['buckets' => $buckets]);
     }
