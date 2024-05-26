@@ -23,6 +23,7 @@ use Magento\Framework\Api\Search\Document;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\CatalogInventory\Api\StockStateInterface;
 use Magento\CatalogInventory\Api\StockRegistryInterface;
+use Magento\Catalog\Model\Product\Attribute\Source\Status;
 
 class CustomSearch implements SearchInterface {
 
@@ -234,6 +235,33 @@ class CustomSearch implements SearchInterface {
 
     private function validateProductIds($productIds, $validateStock = true) {
         return $productIds;
+        // $collection = $this->productCollectionFactory->create()
+        //     ->addAttributeToSelect(['entity_id', 'status', 'visibility'])
+        //     ->addFieldToFilter('entity_id', ['in' => $productIds])
+        //     ->addFieldToFilter('status', ['eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED])
+        //     ->addFieldToFilter('visibility', ['neq' => Visibility::VISIBILITY_NOT_VISIBLE]);
+
+        // if ($validateStock) {
+        //     $collection->joinField(
+        //         'qty',
+        //         'cataloginventory_stock_item',
+        //         'qty',
+        //         'product_id=entity_id',
+        //         ['stock_id' => 1],
+        //         'left'
+        //     )->joinField(
+        //         'is_in_stock',
+        //         'cataloginventory_stock_item',
+        //         'is_in_stock',
+        //         'product_id=entity_id',
+        //         ['stock_id' => 1],
+        //         'left'
+        //     )->addFieldToFilter('is_in_stock', ['eq' => 1]);
+        // }
+
+        // $validProductIds = $collection->getAllIds();
+
+        // return $validProductIds;
     }
 
     // private function convertToSearchResult($defaultResponse, SearchCriteriaInterface $searchCriteria) {
