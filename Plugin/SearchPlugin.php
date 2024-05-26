@@ -5,25 +5,25 @@ use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
 use Magento\Framework\App\RequestInterface;
 use Magento\Catalog\Model\ProductFactory;
 use Magento\Framework\Api\Search\AggregationInterfaceFactory;
-use Magento\Framework\Api\Search\SearchResultInterfaceFactory;
+use Magento\Framework\Reflection\DataObjectProcessor;
 
 class SearchPlugin
 {
     protected $request;
     protected $productFactory;
     protected $aggregationFactory;
-    protected $searchResultFactory;
+    protected $dataObjectProcessor;
 
     public function __construct(
         RequestInterface $request,
         ProductFactory $productFactory,
         AggregationInterfaceFactory $aggregationFactory,
-        SearchResultInterfaceFactory $searchResultFactory
+        DataObjectProcessor $dataObjectProcessor
     ) {
         $this->request = $request;
         $this->productFactory = $productFactory;
         $this->aggregationFactory = $aggregationFactory;
-        $this->searchResultFactory = $searchResultFactory;
+        $this->dataObjectProcessor = $dataObjectProcessor;
     }
 
     public function aroundLoad(Collection $subject, \Closure $proceed, $printQuery = false, $logQuery = false)
@@ -37,8 +37,8 @@ class SearchPlugin
                 $subject->addItem($product);
                 $subject->setPageSize(1);
                 
-                // Set up dummy aggregations
-                $subject->setAggregations($this->createDummyAggregations());
+                // Set up dummy aggregations using reflection
+                $this->setAggregations($subject, $this->createDummyAggregations());
             }
             return $subject;
         }
@@ -56,9 +56,14 @@ class SearchPlugin
 
     private function createDummyAggregations()
     {
-        $aggregation = $this->aggregationFactory->create();
-        // Set up any necessary dummy data for aggregations
-        // For simplicity, this example does not add real data
-        return $aggregation;
+        return $this->aggregationFactory->create();
+    }
+
+    private function setAggregations($collection, $aggregations)
+    {
+        $reflection = new \ReflectionClass($collection);
+        $property = $reflection->getProperty('_aggregations');
+        $property->setAccessible(true);
+        $property->setValue($collection, $aggregations);
     }
 }
