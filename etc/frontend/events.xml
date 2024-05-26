@@ -12,5 +12,7 @@
     <event name="checkout_onepage_controller_success_action">
         <observer name="gopersonal_order_place_after" instance="Gopersonal\Magento\Observer\AfterOrderPlace" />
     </event>
-
+    <event name="catalogsearch_searchable_attributes_load_after">
+        <observer name="gopersonal_magento_search_observer" instance="Gopersonal\Magento\Observer\SearchObserver" />
+    </event>
 </config>
