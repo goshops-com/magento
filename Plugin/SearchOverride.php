@@ -56,7 +56,9 @@ class SearchOverride
             $fixedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
 
             if (!empty($fixedProductIds)) {
+                // Reset the existing search query conditions
                 $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+                // Add the new condition with the fetched product IDs
                 $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
             }
         }
