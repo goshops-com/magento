@@ -20,9 +20,10 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        $fixedProductIds = [123, 456, 789]; // Your array of fixed product IDs (or fetch dynamically)
+        $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
         if (!empty($fixedProductIds)) {
+            $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
         }
 
