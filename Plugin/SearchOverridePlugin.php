@@ -13,25 +13,22 @@ class SearchOverridePlugin
         $this->logger = $logger;
     }
 
-    public function aroundGetItems(Collection $subject, callable $proceed)
+    public function beforeLoad(Collection $subject, $printQuery = false, $logQuery = false)
     {
         // Log the function call
-        $this->logger->info('SearchOverridePlugin aroundGetItems called.');
+        $this->logger->info('SearchOverridePlugin beforeLoad called.');
 
         $hardcodedProductId = 1556;
 
-        // Clone the collection to avoid modifying the original one directly
-        $clonedCollection = clone $subject;
-        $clonedCollection->clear();
+        $this->logger->info('Filtering search results by product ID: ' . $hardcodedProductId);
 
-        // Apply filter to the cloned collection
-        $clonedCollection->addFieldToFilter('entity_id', $hardcodedProductId);
-        $clonedCollection->load();
+        // Clear existing filters and apply a new filter for the hardcoded product ID
+        $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+        $subject->addFieldToFilter('entity_id', $hardcodedProductId);
 
-        $this->logger->info('Collection size after filter: ' . $clonedCollection->getSize());
-        $this->logger->info('SQL query: ' . $clonedCollection->getSelect()->__toString());
+        // Log the actual SQL query being executed
+        $this->logger->info('SQL query: ' . $subject->getSelect()->__toString());
 
-        // Return the filtered items
-        return $clonedCollection->getItems();
+        return [$printQuery, $logQuery];
     }
 }
