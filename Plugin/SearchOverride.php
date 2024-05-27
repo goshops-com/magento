@@ -2,26 +2,35 @@
 namespace Gopersonal\Magento\Plugin; // Adjust the namespace if needed
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
+use Magento\Framework\App\ResourceConnection;
 
 class SearchOverride
 {
     protected $fixedProductIds;
+    protected $resourceConnection;
 
     public function __construct(
-        array $fixedProductIds = [1556] // Your array of fixed product IDs
+        array $fixedProductIds = [],
+        ResourceConnection $resourceConnection
     ) {
         $this->fixedProductIds = $fixedProductIds;
+        $this->resourceConnection = $resourceConnection;
     }
 
     public function aroundGetSelect(
-        SearchCollection $subject, 
+        SearchCollection $subject,
         \Closure $proceed
     ) {
+        $select = $proceed();
+
         if (!empty($this->fixedProductIds)) {
-            $select = $proceed();
-            $select->where('e.entity_id IN (?)', $this->fixedProductIds);
-            return $select;
+            $connection = $this->resourceConnection->getConnection();
+            $unionSelect = $connection->select()
+                ->from(['fixed_products' => $subject->getMainTable()], null) // Assuming product flat table is the main table
+                ->where('fixed_products.entity_id IN (?)', $this->fixedProductIds);
+            $select->union([$unionSelect]);
         }
-        return $proceed();
+
+        return $select;
     }
 }
