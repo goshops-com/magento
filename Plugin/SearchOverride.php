@@ -14,16 +14,18 @@ class SearchOverride
         $this->resourceConnection = $resourceConnection;
     }
 
-    public function aroundGetSelect(
+    public function aroundLoad(
         SearchCollection $subject,
-        \Closure $proceed
+        \Closure $proceed,
+        $printQuery = false,
+        $logQuery = false
     ) {
         $fixedProductIds = [123, 456, 789]; // Your array of fixed product IDs (or fetch dynamically)
 
         if (!empty($fixedProductIds)) {
-            $subject->getSelect()->orWhere('e.entity_id IN (?)', $fixedProductIds);
+            $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
         }
-        
-        return $proceed(); // Let the original search query proceed with the added condition (if any)
+
+        return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
     }
 }
