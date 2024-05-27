@@ -17,11 +17,15 @@ class CustomAdapter implements AdapterInterface
      */
     public function query(\Magento\Framework\Search\RequestInterface $request)
     {
+        print_r('CustomAdapter query called');
+        
         // Here we create a fixed response with the product IDs we want to return.
         $response = new QueryResponse(
             ['documents' => $this->getDocuments()],
             $this->getTotalCount()
         );
+
+        print_r($response); // Print the response to see the output
 
         return $response;
     }
@@ -34,9 +38,10 @@ class CustomAdapter implements AdapterInterface
     private function getDocuments()
     {
         $documents = [];
-        foreach ($this->fixedProductIds as $productId) {
+        foreach ($this->.fixedProductIds as $productId) {
             $documents[] = ['entity_id' => $productId];
         }
+        print_r($documents); // Print the documents to see the output
         return $documents;
     }
 
@@ -47,6 +52,8 @@ class CustomAdapter implements AdapterInterface
      */
     private function getTotalCount()
     {
-        return count($this->fixedProductIds);
+        $count = count($this->fixedProductIds);
+        print_r($count); // Print the count to see the output
+        return $count;
     }
 }
