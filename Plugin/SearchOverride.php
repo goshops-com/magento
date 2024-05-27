@@ -1,33 +1,67 @@
 <?php
 
-namespace Gopersonal\Magento\Helper;
+namespace Gopersonal\Magento\Plugin;
 
-use Magento\Framework\App\Helper\AbstractHelper;
-use Magento\Framework\App\Helper\Context;
+use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Framework\HTTP\Client\Curl;
 use Psr\Log\LoggerInterface;
 
-class Data extends AbstractHelper
+class SearchOverride
 {
+    protected $resourceConnection;
+    protected $request;
     protected $scopeConfig;
+    protected $cookieManager;
     protected $httpClient;
     protected $logger;
 
     public function __construct(
-        Context $context,
+        ResourceConnection $resourceConnection,
+        Http $request,
         ScopeConfigInterface $scopeConfig,
+        CookieManagerInterface $cookieManager,
         Curl $httpClient,
         LoggerInterface $logger
     ) {
-        parent::__construct($context);
+        $this->resourceConnection = $resourceConnection;
+        $this->request = $request;
         $this->scopeConfig = $scopeConfig;
+        $this->cookieManager = $cookieManager;
         $this->httpClient = $httpClient;
         $this->logger = $logger;
     }
 
-    public function getProductIds($query, $token)
+    public function aroundLoad(
+        SearchCollection $subject,
+        \Closure $proceed,
+        $printQuery = false,
+        $logQuery = false
+    ) {
+        $searchQuery = $this->request->getParam('q'); // Get the search query parameter
+        $isEnabled = $this->scopeConfig->getValue(
+            'gopersonal/general/gopersonal_has_search',
+            ScopeInterface::SCOPE_STORE
+        );
+        $token = $this->cookieManager->getCookie('gopersonal_jwt'); // Get the token from the cookie
+
+        if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
+            $fixedProductIds = $this->getProductIds($searchQuery, $token); // Fetch product IDs dynamically
+
+            if (!empty($fixedProductIds)) {
+                $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+                $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
+            }
+        }
+
+        return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
+    }
+
+    private function getProductIds($query, $token)
     {
         try {
             $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
