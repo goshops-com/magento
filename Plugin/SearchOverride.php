@@ -50,7 +50,10 @@ class SearchOverride
         $token = $this->cookieManager->getCookie('gopersonal_jwt'); // Get the token from the cookie
 
         if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
-            $fixedProductIds = $this->getProductIds($searchQuery, $token); // Fetch product IDs dynamically
+            $filters = $this->request->getParams(); // Get all request parameters (including filters)
+            unset($filters['q']); // Remove the search query from filters if present
+
+            $fixedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
 
             if (!empty($fixedProductIds)) {
                 $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
@@ -61,7 +64,7 @@ class SearchOverride
         return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
     }
 
-    private function getProductIds($query, $token)
+    private function getProductIds($query, $token, $filters)
     {
         try {
             $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
@@ -72,6 +75,7 @@ class SearchOverride
             }
 
             $url .= '&query=' . urlencode($query);
+            $url .= '&filter=' . urlencode(json_encode($filters)); // Add the filters as a JSON-encoded parameter
 
             $this->httpClient->addHeader("Authorization", "Bearer " . $token);
             $this->httpClient->get($url);
