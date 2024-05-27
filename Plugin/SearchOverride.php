@@ -8,7 +8,7 @@ class SearchOverride
     protected $fixedProductIds;
 
     public function __construct(
-        array $fixedProductIds = [] // Your array of fixed product IDs
+        array $fixedProductIds = [1556] // Your array of fixed product IDs
     ) {
         $this->fixedProductIds = $fixedProductIds;
     }
