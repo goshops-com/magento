@@ -57,6 +57,10 @@ class ConsoleLog extends Template
         return $this->isProductPage() ? $this->_registry->registry('current_product') : null;
     }
 
+    public function isSearchResultsPage() {
+        return $this->_request->getFullActionName() == 'catalogsearch_result_index';
+    }
+
     public function getCurrentProductId() {
         $product = $this->getCurrentProduct();
         if ($product) {

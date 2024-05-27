@@ -33,6 +33,12 @@ require(['jquery'], function($) {
             } else if ("<?= $block->isCheckoutPage() ?>") {
                 pageType = 'checkout';
                 contextData = { pageType: pageType, cart_items};
+            } else if ("<?= $block->isSearchResultsPage() ?>") {
+                pageType = 'search';
+                contextData = { pageType: pageType};
+            } else {
+                pageType = 'other';
+                contextData = { pageType: pageType};
             }
 
             window.gsSDK = await new window.GSSDK.default(clientId, {

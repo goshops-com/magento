@@ -19,6 +19,7 @@ class SearchOverride
     protected $cookieManager;
     protected $httpClient;
     protected $logger;
+    protected $fetchedProductIds;
 
     public function __construct(
         ResourceConnection $resourceConnection,
@@ -34,6 +35,7 @@ class SearchOverride
         $this->cookieManager = $cookieManager;
         $this->httpClient = $httpClient;
         $this->logger = $logger;
+        $this->fetchedProductIds = null; // Initialize the fetched product IDs to null
     }
 
     public function aroundLoad(
@@ -51,15 +53,17 @@ class SearchOverride
 
         if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
             $filters = $this->request->getParams(); // Get all request parameters (including filters)
-            unset($filters['q']); // Remove the search query from filters if present
+            unset($filters['q']); // Remove the search query from filters to prevent the default search
 
-            $fixedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
+            if ($this->fetchedProductIds === null) { // Check if the product IDs have already been fetched
+                $this->fetchedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
+            }
 
-            if (!empty($fixedProductIds)) {
+            if (!empty($this->fetchedProductIds)) {
                 // Reset the existing search query conditions
                 $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
                 // Add the new condition with the fetched product IDs
-                $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
+                $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
             }
         }
 
