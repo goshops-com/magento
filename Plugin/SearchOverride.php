@@ -6,14 +6,14 @@ use Magento\Framework\App\ResourceConnection;
 
 class SearchOverride
 {
-    protected $fixedProductIds = [123, 456, 789]; // Your array of fixed product IDs
+    protected $fixedProductIds;
     protected $resourceConnection;
 
     public function __construct(
         array $fixedProductIds = [],
         ResourceConnection $resourceConnection
     ) {
-        $this->fixedProductIds = $fixedProductIds;
+        $this->fixedProductIds = [123, 456, 789];
         $this->resourceConnection = $resourceConnection;
     }
 
