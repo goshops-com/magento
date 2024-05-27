@@ -1,34 +1,42 @@
 <?php
-namespace Gopersonal\Magento\Plugin;
 
-use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
-use Psr\Log\LoggerInterface;
+namespace Gopersonal\Magento\Plugin\Search;
 
-class SearchOverridePlugin
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
+use Magento\Framework\Api\SearchCriteriaInterface;
+use Magento\Catalog\Model\Product\Visibility;
+
+class ProductCollectionPlugin
 {
-    protected $logger;
+    protected $collectionFactory;
+    protected $productVisibility;
 
-    public function __construct(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
+    public function __construct(
+        CollectionFactory $collectionFactory,
+        Visibility $productVisibility
+    ) {
+        $this->collectionFactory = $collectionFactory;
+        $this->productVisibility = $productVisibility;
     }
 
-    public function beforeLoad(Collection $subject, $printQuery = false, $logQuery = false)
-    {
-        // Log the function call
-        $this->logger->info('SearchOverridePlugin beforeLoad called.');
+    public function aroundGetList(
+        \Magento\Catalog\Api\ProductRepositoryInterface $subject,
+        callable $proceed,
+        SearchCriteriaInterface $searchCriteria
+    ) {
+        // List of product IDs to search
+        $productIds = [1556, 1234, 5678]; // Replace with your dynamic IDs
 
-        $hardcodedProductId = 1556;
+        $collection = $this->collectionFactory->create();
+        $collection->addIdFilter($productIds);
+        $collection->setVisibility($this->productVisibility->getVisibleInCatalogIds());
 
-        $this->logger->info('Filtering search results by product ID: ' . $hardcodedProductId);
+        // Convert collection to search results
+        $searchResults = $subject->getSearchResultsFactory()->create();
+        $searchResults->setItems($collection->getItems());
+        $searchResults->setTotalCount($collection->getSize());
+        $searchResults->setSearchCriteria($searchCriteria);
 
-        // Clear existing filters and apply a new filter for the hardcoded product ID
-        $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-        $subject->addFieldToFilter('entity_id', $hardcodedProductId);
-
-        // Log the actual SQL query being executed
-        $this->logger->info('SQL query: ' . $subject->getSelect()->__toString());
-
-        return [$printQuery, $logQuery];
+        return $searchResults;
     }
 }
