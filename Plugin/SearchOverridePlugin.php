@@ -1,6 +1,6 @@
 <?php
 
-namespace Gopersonal\Magento\Plugin\Search;
+namespace Gopersonal\Magento\Plugin;
 
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Framework\Api\SearchCriteriaInterface;
