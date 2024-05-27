@@ -13,23 +13,25 @@ class SearchOverridePlugin
         $this->logger = $logger;
     }
 
-    public function beforeLoad(Collection $subject, $printQuery = false, $logQuery = false)
+    public function aroundGetItems(Collection $subject, callable $proceed)
     {
         // Log the function call
-        $this->logger->info('SearchOverridePlugin called.');
+        $this->logger->info('SearchOverridePlugin aroundGetItems called.');
 
         $hardcodedProductId = 1556;
 
-        $this->logger->info('Filtering search results by product ID: ' . $hardcodedProductId);
+        // Clone the collection to avoid modifying the original one directly
+        $clonedCollection = clone $subject;
+        $clonedCollection->clear();
 
-        // Apply filter and log the collection count
-        $subject->addFieldToFilter('entity_id', $hardcodedProductId);
-        $collectionSize = $subject->getSize();
-        $this->logger->info('Collection size after filter: ' . $collectionSize);
+        // Apply filter to the cloned collection
+        $clonedCollection->addFieldToFilter('entity_id', $hardcodedProductId);
+        $clonedCollection->load();
 
-        // Log the actual SQL query being executed
-        $this->logger->info('SQL query: ' . $subject->getSelect()->__toString());
+        $this->logger->info('Collection size after filter: ' . $clonedCollection->getSize());
+        $this->logger->info('SQL query: ' . $clonedCollection->getSelect()->__toString());
 
-        return [$printQuery, $logQuery];
+        // Return the filtered items
+        return $clonedCollection->getItems();
     }
 }
