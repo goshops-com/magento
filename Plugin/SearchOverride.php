@@ -58,6 +58,7 @@ class SearchOverride
         $this->logger->info('Original Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
 
         if (!empty($fixedProductIds)) {
+            $subject->clear();
             // Reset the WHERE clause of the query
             $subject->getSelect()->reset(Zend_Db_Select::WHERE);
             // Rebuild the WHERE clause to include only the fixed product IDs
