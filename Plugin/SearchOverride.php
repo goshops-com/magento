@@ -4,24 +4,14 @@ namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
 use Magento\Framework\App\ResourceConnection;
-use Magento\Framework\App\Request\Http;
-use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Store\Model\ScopeInterface;
 
 class SearchOverride
 {
     protected $resourceConnection;
-    protected $request;
-    protected $scopeConfig;
 
-    public function __construct(
-        ResourceConnection $resourceConnection,
-        Http $request,
-        ScopeConfigInterface $scopeConfig
-    ) {
+    public function __construct(ResourceConnection $resourceConnection)
+    {
         $this->resourceConnection = $resourceConnection;
-        $this->request = $request;
-        $this->scopeConfig = $scopeConfig;
     }
 
     public function aroundLoad(
@@ -30,21 +20,30 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        $searchQuery = $this->request->getParam('q'); // Get the search query parameter
-        $isEnabled = $this->scopeConfig->getValue(
-            'gopersonal/general/gopersonal_has_search',
-            ScopeInterface::SCOPE_STORE
-        );
+        $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
-        if ($searchQuery && $isEnabled === 'YES') {
-            $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
+        if (!empty($fixedProductIds)) {
+            // Reset the query parts
+            $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+            $subject->getSelect()->reset(\Zend_Db_Select::FROM);
+            $subject->getSelect()->reset(\Zend_Db_Select::COLUMNS);
+            $subject->getSelect()->reset(\Zend_Db_Select::ORDER);
+            $subject->getSelect()->reset(\Zend_Db_Select::LIMIT_COUNT);
+            $subject->getSelect()->reset(\Zend_Db_Select::LIMIT_OFFSET);
 
-            if (!empty($fixedProductIds)) {
-                $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-                $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
-            }
+            // Rebuild the query with only your fixed product IDs
+            $subject->getSelect()->from(['e' => $subject->getMainTable()])
+                ->where('e.entity_id IN (?)', $fixedProductIds);
+
+            // Optionally, reset other parts of the query if needed
+            $subject->setPageSize(false); // Remove any existing page size limit
+            $subject->setCurPage(false);  // Remove any existing current page
+
+            // Proceed with the modified query
+            return $proceed($printQuery, $logQuery);
         }
 
-        return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
+        // If no fixed product IDs, proceed with the original query
+        return $proceed($printQuery, $logQuery);
     }
 }
