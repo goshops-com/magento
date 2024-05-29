@@ -16,6 +16,7 @@ class SearchOverride
     protected $cookieManager;
     protected $logger;
     protected $fetchedProductIds;
+    protected static $alreadyProcessed = false;
 
     public function __construct(
         Http $request,
@@ -36,6 +37,10 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
+        if (self::$alreadyProcessed) {
+            return $subject; // Avoid recursion by returning the collection as-is
+        }
+
         $searchQuery = $this->request->getParam('q');
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -52,18 +57,18 @@ class SearchOverride
             }
 
             if (!empty($this->fetchedProductIds)) {
+                self::$alreadyProcessed = true; // Set the flag to true to prevent recursion
+
                 $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
                 $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
 
                 $this->logger->info('Custom search executed. Final Executed Query: ' . $subject->getSelect()->__toString());
                 $this->logger->info('Result Count: ' . count($subject->getItems()));
 
-                // Prevent default search by skipping $proceed call
-                return $subject;
+                return $subject; // Return the modified collection
             }
         }
 
-        // Call the original load method if custom conditions are not met
         return $proceed($printQuery, $logQuery);
     }
 }
