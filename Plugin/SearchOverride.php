@@ -35,7 +35,7 @@ class SearchOverride
         $this->cookieManager = $cookieManager;
         $this->httpClient = $httpClient;
         $this->logger = $logger;
-        $this->fetchedProductIds = null; // Initialize the fetched product IDs to null
+        $this->fetchedProductIds = null;
     }
 
     public function aroundLoad(
@@ -44,71 +44,35 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        $currentUrl = $this->request->getUriString();
-
-        $searchQuery = $this->request->getParam('q'); // Get the search query parameter
-        $isEnabled = $this->scopeConfig->getValue(
-            'gopersonal/general/gopersonal_has_search',
-            ScopeInterface::SCOPE_STORE
-        );
-        $token = $this->cookieManager->getCookie('gopersonal_jwt'); // Get the token from the cookie
-
-        if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
-            $filters = $this->request->getParams(); // Get all request parameters (including filters)
-            unset($filters['q']); // Remove the search query from filters to prevent the default search
-
-            if ($this->fetchedProductIds === null) { // Check if the product IDs have already been fetched
-                $this->fetchedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
-            }
-
-            if (!empty($this->fetchedProductIds)) {
-                // Reset the existing search query conditions
-                $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-                // Add the new condition with the fetched product IDs
-                $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
-            }
-            $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
-
-            // Log the result count
-            $this->logger->info('Result Count in afterLoad: ' . count($subject->getItems()) . ' URL: ' . $currentUrl);
-        }
-
-        // Call the original load method to proceed with the modified or original query
-        $result = $proceed($printQuery, $logQuery);
-
-        return $result; // Return the result of the original load method
-    }
-
-    private function getProductIds($query, $token, $filters)
-    {
-        return [1556]; // This is for testing purposes, replace with actual logic
-
         try {
-            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-            $url = 'https://discover.gopersonal.ai/item/search?adapter=magento';
+            $searchQuery = $this->request->getParam('q');
+            $isEnabled = $this->scopeConfig->getValue(
+                'gopersonal/general/gopersonal_has_search',
+                ScopeInterface::SCOPE_STORE
+            );
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
-            if (strpos($clientId, 'D-') === 0) {
-                $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
+            if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
+                $filters = $this->request->getParams();
+                unset($filters['q']);
+
+                if ($this->fetchedProductIds === null) {
+                    $this->fetchedProductIds = [1556]; // Static ID for testing
+                }
+
+                if (!empty($this->fetchedProductIds)) {
+                    $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+                    $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
+                }
+
+                $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString());
+                $this->logger->info('Result Count in afterLoad: ' . count($subject->getItems()));
             }
 
-            $url .= '&query=' . urlencode($query);
-            $url .= '&filter=' . urlencode(json_encode($filters)); // Add the filters as a JSON-encoded parameter
-
-            $this->httpClient->addHeader("Authorization", "Bearer " . $token);
-            $this->httpClient->get($url);
-            $response = $this->httpClient->getBody();
-
-            $productIds = json_decode($response, true);
-
-            if (json_last_error() === JSON_ERROR_NONE && is_array($productIds)) {
-                return $productIds;
-            } else {
-                $this->logger->error('Invalid JSON response: ' . json_last_error_msg());
-                return [];
-            }
+            return $proceed($printQuery, $logQuery);
         } catch (\Exception $e) {
-            $this->logger->error('Error fetching product IDs: ' . $e->getMessage());
-            return [];
+            $this->logger->error('Error in aroundLoad: ' . $e->getMessage());
+            return $proceed($printQuery, $logQuery);
         }
     }
 }
