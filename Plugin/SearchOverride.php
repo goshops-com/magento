@@ -7,12 +7,14 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Psr\Log\LoggerInterface;
 
 class SearchOverride
 {
     protected $resourceConnection;
     protected $request;
     protected $scopeConfig;
+    protected $logger;
 
     public function __construct(
         ResourceConnection $resourceConnection,
@@ -22,6 +24,7 @@ class SearchOverride
         $this->resourceConnection = $resourceConnection;
         $this->request = $request;
         $this->scopeConfig = $scopeConfig;
+        $this->logger = $logger;
     }
 
     public function aroundLoad(
@@ -42,6 +45,7 @@ class SearchOverride
             if (!empty($fixedProductIds)) {
                 $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
                 $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
+                $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
             }
         }
 
