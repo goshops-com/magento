@@ -11,6 +11,9 @@ class SearchOverride
     protected $resourceConnection;
     protected $logger;
 
+    // Static counter to track plugin invocations
+    protected static $invocationCount = 0;
+
     public function __construct(ResourceConnection $resourceConnection, LoggerInterface $logger)
     {
         $this->resourceConnection = $resourceConnection;
@@ -23,6 +26,9 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
+        self::$invocationCount++;
+        $this->logger->info('Plugin Invocation Count: ' . self::$invocationCount);
+
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
         // Log the query before modification
@@ -34,8 +40,21 @@ class SearchOverride
             // Rebuild the WHERE clause to include only the fixed product IDs
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
 
-            // Ensure necessary columns are included only once
-            $subject->getSelect()->columns('e.*');
+            // Check if columns have already been set to avoid redundancy
+            $columns = $subject->getSelect()->getPart(\Zend_Db_Select::COLUMNS);
+            $columnsSet = false;
+            foreach ($columns as $column) {
+                if ($column[1] == 'e.*') {
+                    $columnsSet = true;
+                    break;
+                }
+            }
+
+            if (!$columnsSet) {
+                // Ensure necessary columns are included only once
+                $subject->getSelect()->reset(\Zend_Db_Select::COLUMNS);
+                $subject->getSelect()->columns('e.*');
+            }
 
             // Reset ordering and pagination if necessary
             $subject->getSelect()->reset(\Zend_Db_Select::ORDER); // Reset any ordering
