@@ -34,19 +34,34 @@ class SearchOverride
             // Rebuild the WHERE clause to include only the fixed product IDs
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
 
-            // Ensure necessary columns are included
-            $subject->getSelect()->columns('*');
+            // Ensure necessary columns are included only once
+            $subject->getSelect()->columns('e.*');
 
             // Reset ordering and pagination if necessary
             $subject->getSelect()->reset(\Zend_Db_Select::ORDER); // Reset any ordering
             $subject->setPageSize(false); // Remove any existing page size limit
             $subject->setCurPage(false);  // Remove any existing current page
+
+            // Log the modified query for debugging
+            $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString());
         }
 
-        // Log the query after modification
-        $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString());
-
         // Proceed with the original load method
-        return $proceed($printQuery, $logQuery);
+        $result = $proceed($printQuery, $logQuery);
+
+        // Log the final executed query
+        $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString());
+
+        // Log the result count
+        $this->logger->info('Result Count: ' . count($subject->getItems()));
+
+        // Log the product IDs in the result
+        $productIds = [];
+        foreach ($subject->getItems() as $item) {
+            $productIds[] = $item->getId();
+        }
+        $this->logger->info('Result Product IDs: ' . implode(', ', $productIds));
+
+        return $result;
     }
 }
