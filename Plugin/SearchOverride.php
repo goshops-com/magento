@@ -10,9 +10,7 @@ class SearchOverride
 {
     protected $resourceConnection;
     protected $logger;
-
-    // Static counter to track plugin invocations
-    protected static $invocationCount = 0;
+    protected static $isProcessing = false; // Prevent recursion
 
     public function __construct(ResourceConnection $resourceConnection, LoggerInterface $logger)
     {
@@ -26,8 +24,12 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        self::$invocationCount++;
-        $this->logger->info('Plugin Invocation Count: ' . self::$invocationCount);
+        if (self::$isProcessing) {
+            // Prevent recursion
+            return $proceed($printQuery, $logQuery);
+        }
+
+        self::$isProcessing = true;
 
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
@@ -40,7 +42,7 @@ class SearchOverride
             // Rebuild the WHERE clause to include only the fixed product IDs
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
 
-            // Check if columns have already been set to avoid redundancy
+            // Ensure necessary columns are included only once
             $columns = $subject->getSelect()->getPart(\Zend_Db_Select::COLUMNS);
             $columnsSet = false;
             foreach ($columns as $column) {
@@ -51,7 +53,6 @@ class SearchOverride
             }
 
             if (!$columnsSet) {
-                // Ensure necessary columns are included only once
                 $subject->getSelect()->reset(\Zend_Db_Select::COLUMNS);
                 $subject->getSelect()->columns('e.*');
             }
@@ -80,6 +81,8 @@ class SearchOverride
             $productIds[] = $item->getId();
         }
         $this->logger->info('Result Product IDs: ' . implode(', ', $productIds));
+
+        self::$isProcessing = false;
 
         return $result;
     }
