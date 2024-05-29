@@ -44,6 +44,8 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
+        $currentUrl = $this->request->getUriString();
+
         $searchQuery = $this->request->getParam('q'); // Get the search query parameter
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
@@ -65,13 +67,14 @@ class SearchOverride
                 // Add the new condition with the fetched product IDs
                 $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
             }
+            $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
+
+            // Log the result count
+            $this->logger->info('Result Count in afterLoad: ' . count($subject->getItems()) . ' URL: ' . $currentUrl);
         }
 
-        $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
-
-        // Log the result count
-        $this->logger->info('Result Count in afterLoad: ' . count($subject->getItems()) . ' URL: ' . $currentUrl);
         
+
         return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
     }
 
