@@ -3,6 +3,7 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
+use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\ResourceConnection;
 use Psr\Log\LoggerInterface;
 use Zend_Db_Select;
@@ -11,12 +12,17 @@ class SearchOverride
 {
     protected $resourceConnection;
     protected $logger;
-    protected static $isProcessing = false; // Prevent recursion
+    protected $request;
+    const FLAG_KEY = 'search_override_executed';
 
-    public function __construct(ResourceConnection $resourceConnection, LoggerInterface $logger)
-    {
+    public function __construct(
+        ResourceConnection $resourceConnection,
+        LoggerInterface $logger,
+        RequestInterface $request
+    ) {
         $this->resourceConnection = $resourceConnection;
         $this->logger = $logger;
+        $this->request = $request;
     }
 
     public function aroundLoad(
@@ -25,12 +31,13 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        if (self::$isProcessing) {
-            // Prevent recursion
+        if ($this->request->getParam(self::FLAG_KEY)) {
+            // Prevent multiple executions
             return $proceed($printQuery, $logQuery);
         }
 
-        self::$isProcessing = true;
+        // Set the flag to indicate the plugin has been executed
+        $this->request->setParam(self::FLAG_KEY, true);
 
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
@@ -84,8 +91,6 @@ class SearchOverride
             $productIds[] = $item->getId();
         }
         $this->logger->info('Result Product IDs: ' . implode(', ', $productIds));
-
-        self::$isProcessing = false;
 
         return $result;
     }
