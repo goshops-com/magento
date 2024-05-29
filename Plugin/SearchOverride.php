@@ -34,6 +34,12 @@ class SearchOverride
     {
         $currentUrl = $this->getCurrentUrl();
 
+        // Check if there is a search term
+        if (!$this->request->getParam('q')) {
+            $this->logger->info('AfterLoad Execution Skipped (No Search Term) URL: ' . $currentUrl);
+            return $subject;
+        }
+
         // Check if the flag is set to prevent multiple executions
         if ($this->request->getParam(self::FLAG_KEY)) {
             $this->logger->info('AfterLoad Execution Skipped (Already Executed) URL: ' . $currentUrl);
@@ -89,6 +95,9 @@ class SearchOverride
             $subject->getSelect()->setPart(Zend_Db_Select::WHERE, $whereParts);
         }
 
+        // Proceed with loading the items
+        $subject->load();
+
         // Log the final executed query
         $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
 
@@ -101,6 +110,11 @@ class SearchOverride
             $productIds[] = $item->getId();
         }
         $this->logger->info('Result Product IDs in afterLoad: ' . implode(', ', $productIds) . ' URL: ' . $currentUrl);
+
+        // Manually set the items to ensure they are not filtered out
+        $items = $subject->getItems();
+        $subject->clear();
+        $subject->setItems($items);
 
         return $subject;
     }
