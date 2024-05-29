@@ -20,19 +20,24 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
+        $fixedProductIds = [1556]; 
 
         if (!empty($fixedProductIds)) {
-            $connection = $this->resourceConnection->getConnection();
-            $select = $connection->select()
-                ->from(['e' => $subject->getMainTable()])
+            $select = $subject->getSelect();
+
+            // 1. Create a UNION query
+            $unionSelect = $this->resourceConnection->getConnection()
+                ->select()
+                ->from(['e' => $subject->getMainTable()], ['entity_id'])
                 ->where('e.entity_id IN (?)', $fixedProductIds);
-            
-            // Replace the original select with the new one
-            $subject->setSelect($select);
+
+            // 2. Join the original query and the UNION query
+            $select->union([$unionSelect], Select::SQL_UNION_ALL);
+
+            // 3. Order the results to prioritize the fixed products
+            $select->order('e.entity_id = 1556 DESC'); // Prioritize the fixed product
         }
 
-        // Proceed with the original load method
         return $proceed($printQuery, $logQuery);
     }
 }
