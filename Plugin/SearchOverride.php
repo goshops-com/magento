@@ -20,6 +20,7 @@ class SearchOverride
     protected $httpClient;
     protected $logger;
     protected $fetchedProductIds;
+    protected static $processed = false;
 
     public function __construct(
         ResourceConnection $resourceConnection,
@@ -44,6 +45,12 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
+        if (self::$processed) {
+            return; // Do nothing if already processed
+        }
+
+        self::$processed = true;
+
         try {
             $searchQuery = $this->request->getParam('q');
             $isEnabled = $this->scopeConfig->getValue(
@@ -69,11 +76,9 @@ class SearchOverride
                 $this->logger->info('Result Count in aroundLoad: ' . count($subject->getItems()));
             }
 
-            // Ensure the original load method is called
             return $proceed($printQuery, $logQuery);
         } catch (\Exception $e) {
             $this->logger->error('Error in aroundLoad: ' . $e->getMessage());
-            // Ensure the original load method is called even in case of error
             return $proceed($printQuery, $logQuery);
         }
     }
