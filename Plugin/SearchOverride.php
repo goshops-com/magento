@@ -62,8 +62,11 @@ class SearchOverride
             $subject->setPageSize(false); // Remove any existing page size limit
             $subject->setCurPage(false);  // Remove any existing current page
 
-            // Log the modified query for debugging
+            // Log detailed query parts for debugging
             $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString());
+            $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(\Zend_Db_Select::FROM), true));
+            $this->logger->info('JOIN Part: ' . print_r($subject->getSelect()->getPart(\Zend_Db_Select::JOIN), true));
+            $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(\Zend_Db_Select::WHERE), true));
         }
 
         // Proceed with the original load method
