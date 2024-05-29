@@ -23,27 +23,24 @@ class SearchOverride
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
         if (!empty($fixedProductIds)) {
-            // Reset the query parts
+            // Reset the WHERE clause of the query
             $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-            $subject->getSelect()->reset(\Zend_Db_Select::FROM);
-            $subject->getSelect()->reset(\Zend_Db_Select::COLUMNS);
-            $subject->getSelect()->reset(\Zend_Db_Select::ORDER);
-            $subject->getSelect()->reset(\Zend_Db_Select::LIMIT_COUNT);
-            $subject->getSelect()->reset(\Zend_Db_Select::LIMIT_OFFSET);
+            // Rebuild the WHERE clause to include only the fixed product IDs
+            $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
 
-            // Rebuild the query with only your fixed product IDs
-            $subject->getSelect()->from(['e' => $subject->getMainTable()])
-                ->where('e.entity_id IN (?)', $fixedProductIds);
+            // Ensure necessary columns are included
+            $subject->getSelect()->columns('e.*');
 
             // Optionally, reset other parts of the query if needed
+            $subject->getSelect()->reset(\Zend_Db_Select::ORDER); // Reset any ordering
             $subject->setPageSize(false); // Remove any existing page size limit
             $subject->setCurPage(false);  // Remove any existing current page
 
-            // Proceed with the modified query
-            return $proceed($printQuery, $logQuery);
+            // Clear previous filters and sorts that might have been applied
+            $subject->clear();
         }
 
-        // If no fixed product IDs, proceed with the original query
+        // Let the original load method proceed with the modified query
         return $proceed($printQuery, $logQuery);
     }
 }
