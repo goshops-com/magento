@@ -38,6 +38,7 @@ class SearchOverride
         $logQuery = false
     ) {
         if (self::$alreadyProcessed) {
+            $this->logger->info('alreadyProcessed: ' . $subject->getSelect()->__toString());
             return $subject; // Avoid recursion by returning the collection as-is
         }
 
