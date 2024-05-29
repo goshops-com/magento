@@ -59,12 +59,15 @@ class SearchOverride
                 $this->fetchedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
             }
 
-            if (!empty($this->fetchedProductIds)) {
-                // Reset the existing search query conditions
-                $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-                // Add the new condition with the fetched product IDs
-                $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
-            }
+            $subject->getSelect()->where('e.entity_id IN (?)', [190]);
+
+            // if (!empty($this->fetchedProductIds)) {
+            //     // Reset the existing search query conditions
+            //     $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+            //     // Add the new condition with the fetched product IDs
+            //     $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
+                
+            // }
         }
 
         return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
