@@ -63,12 +63,17 @@ class SearchOverride
                 $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
 
                 $this->logger->info('Custom search executed. Final Executed Query: ' . $subject->getSelect()->__toString());
+
+                // Force the collection to reload with the modified query
+                $subject->clear()->load();
+
                 $this->logger->info('Result Count: ' . count($subject->getItems()));
 
                 return $subject; // Return the modified collection
             }
         }
 
+        // Call the original load method if custom conditions are not met
         return $proceed($printQuery, $logQuery);
     }
 }
