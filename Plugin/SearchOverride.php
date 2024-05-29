@@ -4,6 +4,7 @@ namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Select;
 
 class SearchOverride
 {
@@ -23,18 +24,20 @@ class SearchOverride
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
         if (!empty($fixedProductIds)) {
-            // Reset the WHERE clause of the query
-            $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-            // Rebuild the WHERE clause to include only the fixed product IDs
-            $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
+            // Resetting the where clause and joins to ensure only the fixed products are returned
+            $select = $subject->getSelect();
 
-            // Ensure necessary columns are included
-            $subject->getSelect()->columns('*');
+            // Clear WHERE clause
+            $wherePart = $select->getPart(Select::WHERE);
+            foreach ($wherePart as $key => $condition) {
+                if (strpos($condition, 'e.entity_id') === false) {
+                    unset($wherePart[$key]);
+                }
+            }
+            $select->setPart(Select::WHERE, $wherePart);
 
-            // Reset ordering and pagination if necessary
-            $subject->getSelect()->reset(\Zend_Db_Select::ORDER); // Reset any ordering
-            $subject->setPageSize(false); // Remove any existing page size limit
-            $subject->setCurPage(false);  // Remove any existing current page
+            // Apply new condition
+            $select->where('e.entity_id IN (?)', $fixedProductIds);
         }
 
         // Proceed with the original load method
