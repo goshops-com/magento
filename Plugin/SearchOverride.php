@@ -51,7 +51,7 @@ class SearchOverride
         );
         $token = $this->cookieManager->getCookie('gopersonal_jwt'); // Get the token from the cookie
 
-        if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
+        // if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
             //$filters = $this->request->getParams(); // Get all request parameters (including filters)
             //unset($filters['q']); // Remove the search query from filters to prevent the default search
 
@@ -69,7 +69,7 @@ class SearchOverride
             //     $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
                 
             // }
-        }
+        // }
 
         return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
     }
