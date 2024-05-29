@@ -59,6 +59,7 @@ class SearchOverride
                 $this->fetchedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
             }
 
+            $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
             $subject->getSelect()->where('e.entity_id IN (?)', [190]);
 
             // if (!empty($this->fetchedProductIds)) {
