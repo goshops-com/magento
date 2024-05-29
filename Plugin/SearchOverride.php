@@ -49,48 +49,17 @@ class SearchOverride
 
             if (!empty($fixedProductIds)) {
                 $select = $subject->getSelect();
-                $originalSelect = clone $select;
+                $this->logger->info('Original query: ' . $select->__toString());
+
+                // Modify the query to only include the fixed product IDs
+                $select->reset(\Zend_Db_Select::WHERE);
+                $select->reset(\Zend_Db_Select::ORDER);
+                $select->reset(\Zend_Db_Select::LIMIT_COUNT);
+                $select->reset(\Zend_Db_Select::LIMIT_OFFSET);
+
+                $select->where('e.entity_id IN (?)', $fixedProductIds);
                 
-                $this->logger->info('Original query: ' . $originalSelect->__toString());
-
-                // Create a fixed product select
-                $fixedProductSelect = $this->resourceConnection->getConnection()->select()
-                    ->from(['e' => $subject->getMainTable()], [
-                        'entity_id',
-                        'attribute_set_id',
-                        'type_id',
-                        'sku',
-                        'has_options',
-                        'required_options',
-                        'created_at',
-                        'updated_at'
-                    ])
-                    ->where('e.entity_id IN (?)', $fixedProductIds);
-                
-                $this->logger->info('Fixed product query: ' . $fixedProductSelect->__toString());
-
-                // Create a union select
-                $unionSelect = $this->resourceConnection->getConnection()->select()->union([
-                    $originalSelect->reset(\Zend_Db_Select::COLUMNS)->columns([
-                        'entity_id',
-                        'attribute_set_id',
-                        'type_id',
-                        'sku',
-                        'has_options',
-                        'required_options',
-                        'created_at',
-                        'updated_at'
-                    ]),
-                    $fixedProductSelect
-                ]);
-
-                $this->logger->info('Union query: ' . $unionSelect->__toString());
-
-                // Set the union select as the main select
-                $subject->getSelect()->reset();
-                $subject->getSelect()->from(['main_table' => new \Zend_Db_Expr('(' . $unionSelect . ')')]);
-
-                $this->logger->info('Final executed query: ' . $subject->getSelect()->__toString() . ' URL: ' . $this->request->getUriString());
+                $this->logger->info('Modified query: ' . $select->__toString());
             }
         }
 
