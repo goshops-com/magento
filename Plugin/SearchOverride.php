@@ -87,6 +87,15 @@ class SearchOverride
             $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
             $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::FROM), true) . ' URL: ' . $currentUrl);
             $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::WHERE), true) . ' URL: ' . $currentUrl);
+
+            // Check for NULL condition and remove it
+            $whereParts = $subject->getSelect()->getPart(Zend_Db_Select::WHERE);
+            foreach ($whereParts as $key => $wherePart) {
+                if (strpos($wherePart, '(NULL)') !== false) {
+                    unset($whereParts[$key]);
+                }
+            }
+            $subject->getSelect()->setPart(Zend_Db_Select::WHERE, $whereParts);
         }
 
         // Proceed with the original load method
