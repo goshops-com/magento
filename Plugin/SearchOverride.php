@@ -4,14 +4,19 @@ namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 
 class SearchOverride
 {
     protected $resourceConnection;
+    protected $productCollectionFactory;
 
-    public function __construct(ResourceConnection $resourceConnection)
-    {
+    public function __construct(
+        ResourceConnection $resourceConnection,
+        ProductCollectionFactory $productCollectionFactory
+    ) {
         $this->resourceConnection = $resourceConnection;
+        $this->productCollectionFactory = $productCollectionFactory;
     }
 
     public function aroundLoad(
@@ -20,24 +25,27 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        $fixedProductIds = [1556]; 
+        $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
-        if (!empty($fixedProductIds)) {
-            $select = $subject->getSelect();
+        // Call the original load method
+        $result = $proceed($printQuery, $logQuery);
 
-            // 1. Create a UNION query
-            $unionSelect = $this->resourceConnection->getConnection()
-                ->select()
-                ->from(['e' => $subject->getMainTable()], ['entity_id'])
-                ->where('e.entity_id IN (?)', $fixedProductIds);
+        // Check if the fixed product is already in the collection
+        $existingProductIds = $subject->getColumnValues('entity_id');
+        $missingProductIds = array_diff($fixedProductIds, $existingProductIds);
 
-            // 2. Join the original query and the UNION query
-            $select->union([$unionSelect], Select::SQL_UNION_ALL);
+        if (!empty($missingProductIds)) {
+            // Load the missing fixed products
+            $productCollection = $this->productCollectionFactory->create();
+            $productCollection->addAttributeToSelect('*')
+                ->addFieldToFilter('entity_id', ['in' => $missingProductIds]);
 
-            // 3. Order the results to prioritize the fixed products
-            $select->order('e.entity_id = 1556 DESC'); // Prioritize the fixed product
+            // Add the missing fixed products to the search collection
+            foreach ($productCollection as $product) {
+                $subject->addItem($product);
+            }
         }
 
-        return $proceed($printQuery, $logQuery);
+        return $result;
     }
 }
