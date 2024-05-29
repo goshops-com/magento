@@ -55,14 +55,32 @@ class SearchOverride
 
                 // Create a fixed product select
                 $fixedProductSelect = $this->resourceConnection->getConnection()->select()
-                    ->from(['e' => $subject->getMainTable()], '*')
+                    ->from(['e' => $subject->getMainTable()], [
+                        'entity_id',
+                        'attribute_set_id',
+                        'type_id',
+                        'sku',
+                        'has_options',
+                        'required_options',
+                        'created_at',
+                        'updated_at'
+                    ])
                     ->where('e.entity_id IN (?)', $fixedProductIds);
                 
                 $this->logger->info('Fixed product query: ' . $fixedProductSelect->__toString());
 
                 // Create a union select
                 $unionSelect = $this->resourceConnection->getConnection()->select()->union([
-                    $originalSelect,
+                    $originalSelect->reset(\Zend_Db_Select::COLUMNS)->columns([
+                        'entity_id',
+                        'attribute_set_id',
+                        'type_id',
+                        'sku',
+                        'has_options',
+                        'required_options',
+                        'created_at',
+                        'updated_at'
+                    ]),
                     $fixedProductSelect
                 ]);
 
