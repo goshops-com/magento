@@ -23,7 +23,16 @@ class SearchOverride
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
         if (!empty($fixedProductIds)) {
+            // Reset the select query to include only the fixed product IDs
             $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+            $subject->getSelect()->reset(\Zend_Db_Select::ORDER);
+            $subject->getSelect()->reset(\Zend_Db_Select::LIMIT_COUNT);
+            $subject->getSelect()->reset(\Zend_Db_Select::LIMIT_OFFSET);
+            $subject->getSelect()->reset(\Zend_Db_Select::FROM);
+            $subject->getSelect()->from(
+                ['e' => $subject->getTable('catalog_product_entity')],
+                ['entity_id']
+            );
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
         }
 
