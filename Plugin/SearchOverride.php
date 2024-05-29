@@ -25,24 +25,37 @@ class SearchOverride
         $this->request = $request;
     }
 
+    protected function getCurrentUrl()
+    {
+        return $this->request->getUriString();
+    }
+
     public function aroundLoad(
         SearchCollection $subject,
         \Closure $proceed,
         $printQuery = false,
         $logQuery = false
     ) {
+        $currentUrl = $this->getCurrentUrl();
+
         if ($this->request->getParam(self::FLAG_KEY)) {
             // Prevent multiple executions
+            $this->logger->info('Plugin Execution Skipped (Already Executed) URL: ' . $currentUrl);
             return $proceed($printQuery, $logQuery);
         }
 
         // Set the flag to indicate the plugin has been executed
         $this->request->setParam(self::FLAG_KEY, true);
 
+        // Remove the 'q' parameter to prevent Magento's search logic from interfering
+        $params = $this->request->getParams();
+        unset($params['q']);
+        $this->request->setParams($params);
+
         $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
         // Log the query before modification
-        $this->logger->info('Original Query: ' . $subject->getSelect()->__toString());
+        $this->logger->info('Original Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
 
         if (!empty($fixedProductIds)) {
             // Reset the WHERE clause of the query
@@ -71,26 +84,26 @@ class SearchOverride
             $subject->setCurPage(false);  // Remove any existing current page
 
             // Log detailed query parts for debugging
-            $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString());
-            $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::FROM), true));
-            $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::WHERE), true));
+            $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
+            $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::FROM), true) . ' URL: ' . $currentUrl);
+            $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::WHERE), true) . ' URL: ' . $currentUrl);
         }
 
         // Proceed with the original load method
         $result = $proceed($printQuery, $logQuery);
 
         // Log the final executed query
-        $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString());
+        $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
 
         // Log the result count
-        $this->logger->info('Result Count: ' . count($subject->getItems()));
+        $this->logger->info('Result Count: ' . count($subject->getItems()) . ' URL: ' . $currentUrl);
 
         // Log the product IDs in the result
         $productIds = [];
         foreach ($subject->getItems() as $item) {
             $productIds[] = $item->getId();
         }
-        $this->logger->info('Result Product IDs: ' . implode(', ', $productIds));
+        $this->logger->info('Result Product IDs: ' . implode(', ', $productIds) . ' URL: ' . $currentUrl);
 
         return $result;
     }
