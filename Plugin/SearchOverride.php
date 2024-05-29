@@ -73,14 +73,15 @@ class SearchOverride
             $this->logger->info('Result Count in afterLoad: ' . count($subject->getItems()) . ' URL: ' . $currentUrl);
         }
 
-        
+        // Call the original load method to proceed with the modified or original query
+        $result = $proceed($printQuery, $logQuery);
 
-        return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
+        return $result; // Return the result of the original load method
     }
 
     private function getProductIds($query, $token, $filters)
     {
-        return [1556];
+        return [1556]; // This is for testing purposes, replace with actual logic
 
         try {
             $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
