@@ -48,18 +48,19 @@ class SearchOverride
             $this->logger->info('Fixed product IDs: ' . implode(',', $fixedProductIds));
 
             if (!empty($fixedProductIds)) {
-                $select = $subject->getSelect();
-                $this->logger->info('Original query: ' . $select->__toString());
+                // Get the new select statement
+                $select = $subject->getConnection()->select()
+                    ->from(['e' => $subject->getMainTable()])
+                    ->where('e.entity_id IN (?)', $fixedProductIds);
 
-                // Modify the query to only include the fixed product IDs
-                $select->reset(\Zend_Db_Select::WHERE);
-                $select->reset(\Zend_Db_Select::ORDER);
-                $select->reset(\Zend_Db_Select::LIMIT_COUNT);
-                $select->reset(\Zend_Db_Select::LIMIT_OFFSET);
+                $this->logger->info('New select query: ' . $select->__toString());
 
-                $select->where('e.entity_id IN (?)', $fixedProductIds);
+                // Replace the collection's select with the new select
+                $subject->getSelect()->reset();
+                $subject->getSelect()->from(['e' => $subject->getMainTable()]);
+                $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
                 
-                $this->logger->info('Modified query: ' . $select->__toString());
+                $this->logger->info('Modified query: ' . $subject->getSelect()->__toString());
             }
         }
 
