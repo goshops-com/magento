@@ -3,32 +3,25 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
-use Magento\Framework\Stdlib\CookieManagerInterface;
-use Psr\Log\LoggerInterface;
 
 class SearchOverride
 {
+    protected $resourceConnection;
     protected $request;
     protected $scopeConfig;
-    protected $cookieManager;
-    protected $logger;
-    protected $fetchedProductIds;
-    protected static $alreadyProcessed = false;
 
     public function __construct(
+        ResourceConnection $resourceConnection,
         Http $request,
-        ScopeConfigInterface $scopeConfig,
-        CookieManagerInterface $cookieManager,
-        LoggerInterface $logger
+        ScopeConfigInterface $scopeConfig
     ) {
+        $this->resourceConnection = $resourceConnection;
         $this->request = $request;
         $this->scopeConfig = $scopeConfig;
-        $this->cookieManager = $cookieManager;
-        $this->logger = $logger;
-        $this->fetchedProductIds = null;
     }
 
     public function aroundLoad(
@@ -37,44 +30,21 @@ class SearchOverride
         $printQuery = false,
         $logQuery = false
     ) {
-        if (self::$alreadyProcessed) {
-            $this->logger->info('alreadyProcessed: ' . $subject->getSelect()->__toString());
-            return $subject; // Avoid recursion by returning the collection as-is
-        }
-
-        $searchQuery = $this->request->getParam('q');
+        $searchQuery = $this->request->getParam('q'); // Get the search query parameter
         $isEnabled = $this->scopeConfig->getValue(
             'gopersonal/general/gopersonal_has_search',
             ScopeInterface::SCOPE_STORE
         );
-        $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
-        if ($searchQuery && $isEnabled) {
-            $filters = $this->request->getParams();
-            unset($filters['q']);
+        if ($searchQuery && $isEnabled === 'YES') {
+            $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
-            if ($this->fetchedProductIds === null) {
-                $this->fetchedProductIds = [1556]; // Static ID for testing
-            }
-
-            if (!empty($this->fetchedProductIds)) {
-                self::$alreadyProcessed = true; // Set the flag to true to prevent recursion
-
+            if (!empty($fixedProductIds)) {
                 $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-                $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
-
-                $this->logger->info('Custom search executed. Final Executed Query: ' . $subject->getSelect()->__toString());
-
-                // Force the collection to reload with the modified query
-                $subject->clear()->load();
-
-                $this->logger->info('Result Count: ' . count($subject->getItems()));
-
-                return $subject; // Return the modified collection
+                $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
             }
         }
 
-        // Call the original load method if custom conditions are not met
-        return $proceed($printQuery, $logQuery);
+        return $proceed($printQuery, $logQuery); // Let the original load method proceed with the modified query
     }
 }
