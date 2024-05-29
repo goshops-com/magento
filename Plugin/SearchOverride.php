@@ -19,7 +19,8 @@ class SearchOverride
     public function __construct(
         ResourceConnection $resourceConnection,
         Http $request,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        LoggerInterface $logger
     ) {
         $this->resourceConnection = $resourceConnection;
         $this->request = $request;
@@ -43,9 +44,24 @@ class SearchOverride
             $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
 
             if (!empty($fixedProductIds)) {
-                $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
-                $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
-                $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
+                $select = $subject->getSelect();
+                $originalSelect = clone $select;
+
+                // Create a union of the original query and the fixed product IDs
+                $fixedProductSelect = $this->resourceConnection->getConnection()->select()
+                    ->from(['e' => $subject->getMainTable()], '*')
+                    ->where('e.entity_id IN (?)', $fixedProductIds);
+
+                $unionSelect = $this->resourceConnection->getConnection()->select()->union([
+                    $originalSelect,
+                    $fixedProductSelect
+                ]);
+
+                // Replace the original select with the union select
+                $select->reset();
+                $select->columns(['e.*'])->from(['e' => new \Zend_Db_Expr('(' . $unionSelect . ')')]);
+
+                $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $this->request->getUriString());
             }
         }
 
