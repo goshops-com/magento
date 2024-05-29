@@ -95,9 +95,6 @@ class SearchOverride
             $subject->getSelect()->setPart(Zend_Db_Select::WHERE, $whereParts);
         }
 
-        // Proceed with loading the items
-        $subject->load();
-
         // Log the final executed query
         $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString() . ' URL: ' . $currentUrl);
 
@@ -110,11 +107,6 @@ class SearchOverride
             $productIds[] = $item->getId();
         }
         $this->logger->info('Result Product IDs in afterLoad: ' . implode(', ', $productIds) . ' URL: ' . $currentUrl);
-
-        // Manually set the items to ensure they are not filtered out
-        $items = $subject->getItems();
-        $subject->clear();
-        $subject->setItems($items);
 
         return $subject;
     }
