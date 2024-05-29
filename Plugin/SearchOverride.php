@@ -117,4 +117,17 @@ class SearchOverride
 
         return $result;
     }
+
+    public function afterGetSearchCriteria(Layer $subject, SearchCriteriaInterface $result)
+    {
+        // Remove all filter groups
+        $result->setFilterGroups([]); 
+
+        // Alternatively, if you want to keep some specific filters, you can add them back here
+        // For example:
+        // $filterGroup = $subject->getProductCollection()->getSearchCriteria()->getFilterGroups()[0]; 
+        // $result->setFilterGroups([$filterGroup]);  
+
+        return $result;
+    }
 }
