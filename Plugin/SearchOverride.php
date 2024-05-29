@@ -70,11 +70,14 @@ class SearchOverride
                 if (!empty($this->fetchedProductIds)) {
                     $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
                     $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
+                    
+                    // Ensure the collection reloads with the modified query
+                    $reflection = new \ReflectionClass($subject);
+                    $isCollectionLoadedProperty = $reflection->getProperty('_isCollectionLoaded');
+                    $isCollectionLoadedProperty->setAccessible(true);
+                    $isCollectionLoadedProperty->setValue($subject, false);
                 }
 
-                // Clear the previously loaded data and force reload
-                // $subject->clear();
-                $subject->load();
                 $this->logger->info('Final Executed Query in aroundLoad: ' . $subject->getSelect()->__toString());
                 $this->logger->info('Result Count in aroundLoad: ' . count($subject->getItems()));
             }
