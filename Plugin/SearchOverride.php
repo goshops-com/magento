@@ -66,8 +66,6 @@ class SearchOverride
             // Log detailed query parts for debugging
             $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString());
             $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::FROM), true));
-            $this->logger->info('INNER JOIN Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::INNER_JOIN), true));
-            $this->logger->info('LEFT JOIN Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::LEFT_JOIN), true));
             $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::WHERE), true));
         }
 
