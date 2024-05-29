@@ -40,28 +40,39 @@ class SearchOverride
             ScopeInterface::SCOPE_STORE
         );
 
+        $this->logger->info('Search query: ' . $searchQuery);
+        $this->logger->info('Plugin enabled: ' . ($isEnabled === 'YES' ? 'YES' : 'NO'));
+
         if ($searchQuery && $isEnabled === 'YES') {
             $fixedProductIds = [1556]; // Your array of fixed product IDs (or fetch dynamically)
+            $this->logger->info('Fixed product IDs: ' . implode(',', $fixedProductIds));
 
             if (!empty($fixedProductIds)) {
                 $select = $subject->getSelect();
                 $originalSelect = clone $select;
+                
+                $this->logger->info('Original query: ' . $originalSelect->__toString());
 
-                // Create a union of the original query and the fixed product IDs
+                // Create a fixed product select
                 $fixedProductSelect = $this->resourceConnection->getConnection()->select()
                     ->from(['e' => $subject->getMainTable()], '*')
                     ->where('e.entity_id IN (?)', $fixedProductIds);
+                
+                $this->logger->info('Fixed product query: ' . $fixedProductSelect->__toString());
 
+                // Create a union select
                 $unionSelect = $this->resourceConnection->getConnection()->select()->union([
                     $originalSelect,
                     $fixedProductSelect
                 ]);
 
-                // Replace the original select with the union select
-                $select->reset();
-                $select->columns(['e.*'])->from(['e' => new \Zend_Db_Expr('(' . $unionSelect . ')')]);
+                $this->logger->info('Union query: ' . $unionSelect->__toString());
 
-                $this->logger->info('Final Executed Query: ' . $subject->getSelect()->__toString() . ' URL: ' . $this->request->getUriString());
+                // Set the union select as the main select
+                $subject->getSelect()->reset();
+                $subject->getSelect()->from(['main_table' => new \Zend_Db_Expr('(' . $unionSelect . ')')]);
+
+                $this->logger->info('Final executed query: ' . $subject->getSelect()->__toString() . ' URL: ' . $this->request->getUriString());
             }
         }
 
