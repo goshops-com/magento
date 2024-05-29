@@ -52,12 +52,12 @@ class SearchOverride
         $token = $this->cookieManager->getCookie('gopersonal_jwt'); // Get the token from the cookie
 
         if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
-            $filters = $this->request->getParams(); // Get all request parameters (including filters)
-            unset($filters['q']); // Remove the search query from filters to prevent the default search
+            //$filters = $this->request->getParams(); // Get all request parameters (including filters)
+            //unset($filters['q']); // Remove the search query from filters to prevent the default search
 
-            if ($this->fetchedProductIds === null) { // Check if the product IDs have already been fetched
-                $this->fetchedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
-            }
+            // if ($this->fetchedProductIds === null) { // Check if the product IDs have already been fetched
+            //     $this->fetchedProductIds = $this->getProductIds($searchQuery, $token, $filters); // Fetch product IDs dynamically
+            // }
 
             $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
             $subject->getSelect()->where('e.entity_id IN (?)', [190]);
