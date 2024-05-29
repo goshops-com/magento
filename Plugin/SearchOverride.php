@@ -52,7 +52,7 @@ class SearchOverride
             );
             $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
-            if ($searchQuery && $isEnabled === 'YES' && $token !== null) {
+            if ($searchQuery && $isEnabled) {
                 $filters = $this->request->getParams();
                 unset($filters['q']);
 
@@ -65,13 +65,15 @@ class SearchOverride
                     $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
                 }
 
-                $this->logger->info('Final Executed Query in afterLoad: ' . $subject->getSelect()->__toString());
-                $this->logger->info('Result Count in afterLoad: ' . count($subject->getItems()));
+                $this->logger->info('Final Executed Query in aroundLoad: ' . $subject->getSelect()->__toString());
+                $this->logger->info('Result Count in aroundLoad: ' . count($subject->getItems()));
             }
 
+            // Ensure the original load method is called
             return $proceed($printQuery, $logQuery);
         } catch (\Exception $e) {
             $this->logger->error('Error in aroundLoad: ' . $e->getMessage());
+            // Ensure the original load method is called even in case of error
             return $proceed($printQuery, $logQuery);
         }
     }
