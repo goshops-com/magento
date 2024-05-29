@@ -5,6 +5,7 @@ namespace Gopersonal\Magento\Plugin;
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as SearchCollection;
 use Magento\Framework\App\ResourceConnection;
 use Psr\Log\LoggerInterface;
+use Zend_Db_Select;
 
 class SearchOverride
 {
@@ -38,12 +39,12 @@ class SearchOverride
 
         if (!empty($fixedProductIds)) {
             // Reset the WHERE clause of the query
-            $subject->getSelect()->reset(\Zend_Db_Select::WHERE);
+            $subject->getSelect()->reset(Zend_Db_Select::WHERE);
             // Rebuild the WHERE clause to include only the fixed product IDs
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
 
             // Ensure necessary columns are included only once
-            $columns = $subject->getSelect()->getPart(\Zend_Db_Select::COLUMNS);
+            $columns = $subject->getSelect()->getPart(Zend_Db_Select::COLUMNS);
             $columnsSet = false;
             foreach ($columns as $column) {
                 if ($column[1] == 'e.*') {
@@ -53,20 +54,21 @@ class SearchOverride
             }
 
             if (!$columnsSet) {
-                $subject->getSelect()->reset(\Zend_Db_Select::COLUMNS);
+                $subject->getSelect()->reset(Zend_Db_Select::COLUMNS);
                 $subject->getSelect()->columns('e.*');
             }
 
             // Reset ordering and pagination if necessary
-            $subject->getSelect()->reset(\Zend_Db_Select::ORDER); // Reset any ordering
+            $subject->getSelect()->reset(Zend_Db_Select::ORDER); // Reset any ordering
             $subject->setPageSize(false); // Remove any existing page size limit
             $subject->setCurPage(false);  // Remove any existing current page
 
             // Log detailed query parts for debugging
             $this->logger->info('Modified Query: ' . $subject->getSelect()->__toString());
-            $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(\Zend_Db_Select::FROM), true));
-            $this->logger->info('JOIN Part: ' . print_r($subject->getSelect()->getPart(\Zend_Db_Select::JOIN), true));
-            $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(\Zend_Db_Select::WHERE), true));
+            $this->logger->info('FROM Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::FROM), true));
+            $this->logger->info('INNER JOIN Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::INNER_JOIN), true));
+            $this->logger->info('LEFT JOIN Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::LEFT_JOIN), true));
+            $this->logger->info('WHERE Part: ' . print_r($subject->getSelect()->getPart(Zend_Db_Select::WHERE), true));
         }
 
         // Proceed with the original load method
