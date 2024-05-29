@@ -29,18 +29,15 @@ class SearchOverride
             $subject->getSelect()->where('e.entity_id IN (?)', $fixedProductIds);
 
             // Ensure necessary columns are included
-            $subject->getSelect()->columns('e.*');
+            $subject->getSelect()->columns('*');
 
-            // Optionally, reset other parts of the query if needed
+            // Reset ordering and pagination if necessary
             $subject->getSelect()->reset(\Zend_Db_Select::ORDER); // Reset any ordering
             $subject->setPageSize(false); // Remove any existing page size limit
             $subject->setCurPage(false);  // Remove any existing current page
-
-            // Clear previous filters and sorts that might have been applied
-            $subject->clear();
         }
 
-        // Let the original load method proceed with the modified query
+        // Proceed with the original load method
         return $proceed($printQuery, $logQuery);
     }
 }
