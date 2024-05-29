@@ -72,6 +72,9 @@ class SearchOverride
                     $subject->getSelect()->where('e.entity_id IN (?)', $this->fetchedProductIds);
                 }
 
+                // Clear the previously loaded data and force reload
+                // $subject->clear();
+                $subject->load();
                 $this->logger->info('Final Executed Query in aroundLoad: ' . $subject->getSelect()->__toString());
                 $this->logger->info('Result Count in aroundLoad: ' . count($subject->getItems()));
             }
