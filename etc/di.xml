@@ -1,6 +1,7 @@
-<config>
-    <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
-        <plugin name="gopersonal_search_override" 
-                type="Gopersonal\Magento\Plugin\SearchOverride" />
+<!-- app/code/Gopersonal/Magento/etc/di.xml -->
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="Magento\Search\Api\SearchInterface">
+        <plugin name="fixed_search_plugin" type="Gopersonal\Magento\Plugin\Search"/>
     </type>
 </config>
