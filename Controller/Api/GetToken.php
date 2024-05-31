@@ -7,27 +7,23 @@ use Magento\Framework\App\Action\Context;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Stdlib\CookieManagerInterface;
-use Magento\Framework\Module\ModuleListInterface;
 
 class GetToken extends Action
 {
     protected $customerSession;
     protected $resultJsonFactory;
     protected $cookieManager;
-    protected $moduleList;
 
     public function __construct(
         Context $context,
         CustomerSession $customerSession,
         JsonFactory $resultJsonFactory,
         CookieManagerInterface $cookieManager,
-        ModuleListInterface $moduleList
     ) {
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->cookieManager = $cookieManager;
-        $this->moduleList = $moduleList;
     }
 
     public function execute()
@@ -54,11 +50,8 @@ class GetToken extends Action
             $data['customer_email'] = null;
         }
 
-        // Retrieve module version
-        $moduleVersion = $this->moduleList->getOne('Gopersonal_Magento')['setup_version'];
-
         // Set the module version in the header
-        $result->getHeaders()->addHeaderLine('X-Gopersonal-Version', $moduleVersion);
+        $result->getHeaders()->addHeaderLine('X-Gopersonal-Version', '1.0.7');
 
         return $result->setData($data);
     }
