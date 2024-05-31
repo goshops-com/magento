@@ -1,37 +1,30 @@
 <?php
 /**
  * @package   Gopersonal_Magento
- * author    Shahid Taj
+ * @author    Shahid Taj
  */
 namespace Gopersonal\Magento\Model;
 
-use Gopersonal\Magento\Helper\Data;
+use Magento\Framework\App\ObjectManager;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
-    protected $dataHelper;
-
-    public function __construct(
-        \Magento\Framework\App\ObjectManager $objectManager,
-        Data $dataHelper
-    ) {
-        $this->dataHelper = $dataHelper;
-        parent::__construct($objectManager);
-    }
-
-    public function getProductCollection()
-    {
-        $collection = parent::getProductCollection();
-        // Add custom filter
-        $idArray = $this->getProductsIds();
-        if (!empty($idArray)) {
-            $collection->addAttributeToFilter('entity_id', ["in" => $idArray]);
+	public function getProductCollection()
+	{
+		$collection = parent::getProductCollection();
+		//add custom filter
+		$idArray = $this->getProductsIds();
+		if (!empty($idArray)) {
+            $collection->addAttributeToFilter('entity_id', ["in"=>$idArray]);
         }
-        return $collection;
-    }
+		return $collection;
+	}
 
-    public function getProductsIds()
-    {
-        return $this->dataHelper->getProductsIds('layer');
-    }
+	public function getProductsIds()
+	{
+		 $objectManager = ObjectManager::getInstance();
+		$helper = $objectManager->get(\Gopersonal\Search\Helper\Data::class);
+
+		return $helper->getProductsIds('layer');
+	}
 }
