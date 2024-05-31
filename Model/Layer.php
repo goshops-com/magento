@@ -5,10 +5,20 @@
  */
 namespace Gopersonal\Magento\Model;
 
-use Magento\Framework\App\ObjectManager;
+use Gopersonal\Magento\Helper\Data;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
+    protected $dataHelper;
+
+    public function __construct(
+        \Magento\Framework\App\ObjectManager $objectManager,
+        Data $dataHelper
+    ) {
+        $this->dataHelper = $dataHelper;
+        parent::__construct($objectManager);
+    }
+
     public function getProductCollection()
     {
         $collection = parent::getProductCollection();
@@ -22,9 +32,6 @@ class Layer extends \Magento\Catalog\Model\Layer
 
     public function getProductsIds()
     {
-        $objectManager = ObjectManager::getInstance();
-        $helper = $objectManager->get(\Gopersonal\Magento\Helper\Data::class);
-
-        return $helper->getProductsIds('layer');
+        return $this->dataHelper->getProductsIds('layer');
     }
 }
