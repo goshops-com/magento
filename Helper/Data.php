@@ -10,8 +10,6 @@ class Data extends AbstractHelper
 {
     protected $request;
     protected $logger;
-    protected $productIds;
-    protected static $isGenerating = [];
 
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
@@ -20,45 +18,36 @@ class Data extends AbstractHelper
     ) {
         $this->request = $request;
         $this->logger = $logger;
-        $this->productIds = null;
         parent::__construct($context);
     }
 
-    public function getProductsIds()
+    public function getProductsIds($flag = null)
     {
-        $requestHash = spl_object_hash($this->request);
-
-        // Check if the product IDs have already been generated
-        if ($this->productIds !== null) {
-            $this->logger->info('Product IDs retrieved from cache:', ['productIds' => $this->productIds]);
-            return $this->productIds;
+        // Check if the product IDs are already stored in the request
+        if ($this->request->getParam('product_ids') !== null) {
+            $productIds = $this->request->getParam('product_ids');
+            $this->logger->info('Product IDs retrieved from request:', ['productIds' => $productIds, 'flag' => $flag]);
+            return $productIds;
         }
 
-        // Check if another process is already generating the product IDs
-        if (isset(self::$isGenerating[$requestHash])) {
-            // Wait until the product IDs have been generated
-            while (isset(self::$isGenerating[$requestHash])) {
-                usleep(10000); // Sleep for 10 milliseconds
-            }
-            $this->logger->info('Product IDs retrieved from cache after waiting:', ['productIds' => $this->productIds]);
-            return $this->productIds;
-        }
-
-        // Set the semaphore to indicate that generation is in progress
-        self::$isGenerating[$requestHash] = true;
+        // Set a temporary flag in the request to indicate that generation is in progress
+        $this->request->setParam('product_ids_generation_in_progress', true);
 
         try {
             $q = $this->request->getParam('q', '');
             if ($q) {
-                $this->logger->info('Search query parameter:', ['q' => $q]);
+                $this->logger->info('Search query parameter:', ['q' => $q, 'flag' => $flag]);
             }
-            $this->productIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-            $this->logger->info('Product IDs generated:', ['productIds' => $this->productIds]);
+            $productIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+            $this->logger->info('Product IDs generated:', ['productIds' => $productIds, 'flag' => $flag]);
+
+            // Store the generated product IDs in the request
+            $this->request->setParam('product_ids', $productIds);
         } finally {
-            // Release the semaphore
-            unset(self::$isGenerating[$requestHash]);
+            // Remove the temporary flag
+            $this->request->setParam('product_ids_generation_in_progress', null);
         }
 
-        return $this->productIds;
+        return $productIds;
     }
 }
