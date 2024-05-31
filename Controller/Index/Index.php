@@ -1,40 +1,50 @@
 <?php
-namespace Gopersonal\Magento\Controller\Index; // Adjusted namespace
+namespace Gopersonal\Magento\Controller\Index;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
-use Magento\Framework\View\Asset\Repository;
+use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\View\Result\PageFactory;
 
 class Index extends Action
 {
     protected $resultRawFactory;
-    protected $assetRepository;
-    protected $directoryList; // Add this line
+    protected $directoryList;
+    protected $pageFactory;
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
-        Repository $assetRepository,
-        \Magento\Framework\App\Filesystem\DirectoryList $directoryList // Add this line
+        DirectoryList $directoryList,
+        PageFactory $pageFactory
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
-        $this->assetRepository = $assetRepository;
-        $this->directoryList = $directoryList; // Add this line
+        $this->directoryList = $directoryList;
+        $this->pageFactory = $pageFactory;
     }
 
     public function execute()
     {
-        $resultRaw = $this->resultRawFactory->create();
+        // Get the front name from the request
+        $frontName = $this->getRequest()->getFrontName();
 
-        $moduleDir = $this->directoryList->getPath('app');
-        $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
+        // Custom logic for specific front names
+        if ($frontName === 'gp-firebase') {
+            $resultRaw = $this->resultRawFactory->create();
 
-        $jsContent = file_get_contents($filePath);
+            $moduleDir = $this->directoryList->getPath('app');
+            $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
 
-        $resultRaw->setContents($jsContent);
-        $resultRaw->setHeader('Content-Type', 'text/javascript'); 
-        return $resultRaw;
+            $jsContent = file_get_contents($filePath);
+
+            $resultRaw->setContents($jsContent);
+            $resultRaw->setHeader('Content-Type', 'text/javascript'); 
+            return $resultRaw;
+        }
+
+        // Default behavior for other front names or general case
+        return $this->pageFactory->create();
     }
 }

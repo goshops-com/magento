@@ -5,16 +5,26 @@
  */
 namespace Gopersonal\Search\Model;
 
+use Magento\Framework\App\ObjectManager;
+
 class Layer extends \Magento\Catalog\Model\Layer
 {
 	public function getProductCollection()
 	{
 		$collection = parent::getProductCollection();
 		//add custom filter
-		$idArray = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+		$idArray = $this->getProductsIds();
 		if (!empty($idArray)) {
             $collection->addAttributeToFilter('entity_id', ["in"=>$idArray]);
         }
 		return $collection;
+	}
+
+	public function getProductsIds()
+	{
+		 $objectManager = ObjectManager::getInstance();
+		$helper = $objectManager->get(\Gopersonal\Search\Helper\Data::class);
+
+		return $helper->getProductsIds();
 	}
 }
