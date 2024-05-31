@@ -23,7 +23,7 @@ class Layer extends \Magento\Catalog\Model\Layer
 	public function getProductsIds()
 	{
 		 $objectManager = ObjectManager::getInstance();
-		$helper = $objectManager->get(\Gopersonal\Search\Helper\Data::class);
+		$helper = $objectManager->get(\Gopersonal\Magento\Helper\Data::class);
 
 		return $helper->getProductsIds('layer');
 	}
