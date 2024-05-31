@@ -14,6 +14,7 @@
 	<preference for="Magento\Catalog\Model\Layer\FilterableAttributeListInterface" type="Magento\Catalog\Model\Layer\Category\FilterableAttributeList" />
 	<preference for="Magento\Catalog\Model\Layer\AvailabilityFlagInterface" type="Magento\Catalog\Model\Layer\Category\AvailabilityFlag" />
     	<preference for="Magento\Catalog\Model\ResourceModel\Layer\Filter\Price" type="Gopersonal\Magento\Model\ResourceModel\Layer\Filter\PriceFilter" />
+    <preference for="Gopersonal\Magento\Helper\Data" type="Gopersonal\Magento\Helper\Data" />
 
-
+	
 </config>
