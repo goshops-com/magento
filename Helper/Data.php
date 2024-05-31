@@ -19,10 +19,10 @@ class Data extends AbstractHelper
         LoggerInterface $logger,
         Registry $registry
     ) {
+        parent::__construct($context);
         $this->request = $request;
         $this->logger = $logger;
         $this->registry = $registry;
-        parent::__construct($context);
     }
 
     public function getProductsIds($flag = null)
