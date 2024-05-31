@@ -12,6 +12,7 @@ use Magento\Framework\App\Response\RedirectInterface;
 use Magento\Framework\UrlInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface;
 
 class RedirectSearch implements ObserverInterface
 {
@@ -19,17 +20,20 @@ class RedirectSearch implements ObserverInterface
     protected $redirect;
     protected $url;
     protected $scopeConfig;
+    protected $cookieManager;
 
     public function __construct(
         ActionFlag $actionFlag,
         RedirectInterface $redirect,
         UrlInterface $url,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        CookieManagerInterface $cookieManager
     ) {
         $this->actionFlag = $actionFlag;
         $this->redirect = $redirect;
         $this->url = $url;
         $this->scopeConfig = $scopeConfig;
+        $this->cookieManager = $cookieManager;
     }
 
     public function execute(Observer $observer)
@@ -42,6 +46,13 @@ class RedirectSearch implements ObserverInterface
 
         if ($isEnabled !== 'YES') {
             // Skip the redirect if the feature is not enabled
+            return;
+        }
+
+        // Check if the JWT token is present
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
+        if (!$token) {
+            // Skip the redirect if the token is not present
             return;
         }
 

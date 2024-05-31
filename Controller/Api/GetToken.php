@@ -7,23 +7,27 @@ use Magento\Framework\App\Action\Context;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Framework\Module\ModuleListInterface;
 
 class GetToken extends Action
 {
     protected $customerSession;
     protected $resultJsonFactory;
     protected $cookieManager;
+    protected $moduleList;
 
     public function __construct(
         Context $context,
         CustomerSession $customerSession,
         JsonFactory $resultJsonFactory,
-        CookieManagerInterface $cookieManager
+        CookieManagerInterface $cookieManager,
+        ModuleListInterface $moduleList
     ) {
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->cookieManager = $cookieManager;
+        $this->moduleList = $moduleList;
     }
 
     public function execute()
@@ -33,7 +37,6 @@ class GetToken extends Action
         $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
 
         // Retrieve the JWT token based on the presence of the query parameter
-        // $token = $readFromCookie ? $this->cookieManager->getCookie('gopersonal_jwt') : $this->customerSession->getData('gopersonal_jwt');
         $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
         // Prepare data to return
@@ -50,6 +53,12 @@ class GetToken extends Action
             $data['customer_id'] = null;
             $data['customer_email'] = null;
         }
+
+        // Retrieve module version
+        $moduleVersion = $this->moduleList->getOne('Gopersonal_Magento')['setup_version'];
+
+        // Set the module version in the header
+        $result->getHeaders()->addHeaderLine('X-Gopersonal-Version', $moduleVersion);
 
         return $result->setData($data);
     }
