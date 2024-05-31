@@ -1,5 +1,4 @@
 <?php
-// app/code/Gopersonal/Search/Helper/Data.php
 
 namespace Gopersonal\Magento\Helper;
 

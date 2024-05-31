@@ -1,6 +1,6 @@
 <?php
 /**
- * @package   Gopersonal_Search
+ * @package   Gopersonal_Magento
  * @author    Shahid Taj
  */
 namespace Gopersonal\Magento\Model\ResourceModel\Layer\Filter;
@@ -13,7 +13,7 @@ class Price extends \Magento\Catalog\Model\ResourceModel\Layer\Filter\Price
      * @param \Magento\Catalog\Model\Layer\Resolver $layerResolver
      * @param \Magento\Customer\Model\Session $session
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
-     * @param \Gopersonal\Search\Model\Layer $layer
+     * @param \Gopersonal\Magento\Model\Layer $layer
      * @param null $connectionName
      */
     public function __construct(

@@ -1,6 +1,6 @@
 <?php
 /**
- * @package   Gopersonal_Search
+ * @package   Gopersonal_Magento
  * @author    Shahid Taj
  */
 namespace Gopersonal\Magento\Block;
