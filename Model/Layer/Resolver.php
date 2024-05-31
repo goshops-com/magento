@@ -1,6 +1,6 @@
 <?php
 /**
- * @package   Gopersonal_Magento
+ * @package   Gopersonal_Search
  * @author    Shahid Taj
  */
 namespace Gopersonal\Magento\Model\Layer;
