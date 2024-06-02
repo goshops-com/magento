@@ -25,12 +25,23 @@ class FrontControllerPlugin
         \Closure $proceed,
         RequestInterface $request
     ) {
+        $this->logger->info('FrontControllerPlugin aroundDispatch called.', [
+            'path' => $request->getPathInfo(),
+            'executed' => self::$executed,
+            'method' => $request->getMethod(),
+            'params' => $request->getParams()
+        ]);
+
         // Check if the code has already been executed and if the URL is /search
         if (!self::$executed && $request->getPathInfo() === '/search') {
             self::$executed = true;
 
             // Log the execution
-            $this->logger->info('FrontControllerPlugin executed.');
+            $this->logger->info('FrontControllerPlugin executed.', [
+                'path' => $request->getPathInfo(),
+                'method' => $request->getMethod(),
+                'params' => $request->getParams()
+            ]);
 
             // Your custom code here
             // This code will run only once per request

@@ -12,7 +12,7 @@
     <event name="checkout_onepage_controller_success_action">
         <observer name="gopersonal_order_place_after" instance="Gopersonal\Magento\Observer\AfterOrderPlace" />
     </event>
-    <event name="controller_action_predispatch_catalogsearch_result_index">
+    <!-- <event name="controller_action_predispatch_catalogsearch_result_index">
         <observer name="custom_search_controller_redirect" instance="Gopersonal\Magento\Observer\RedirectSearch"/>
-    </event>
+    </event> -->
 </config>
