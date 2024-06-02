@@ -6,45 +6,33 @@ use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\View\Result\PageFactory;
-use Psr\Log\LoggerInterface;
-use Magento\Framework\Session\SessionManagerInterface;
+use Psr\Log\LoggerInterface; // Add the LoggerInterface
 
 class Index extends Action
 {
     protected $resultRawFactory;
     protected $directoryList;
     protected $pageFactory;
-    protected $logger;
-    protected $session;
+    protected $logger; // Add the logger property
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
         DirectoryList $directoryList,
         PageFactory $pageFactory,
-        LoggerInterface $logger,
-        SessionManagerInterface $session
+        LoggerInterface $logger // Inject the logger
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
         $this->directoryList = $directoryList;
         $this->pageFactory = $pageFactory;
-        $this->logger = $logger;
-        $this->session = $session;
+        $this->logger = $logger; // Assign the logger
     }
 
     public function execute()
     {
         // Log entry into the execute method
-        $this->logger->info('Entered2 execute method');
-
-        // Check if the method is being executed more than once per request
-        if ($this->session->getData('executed_once')) {
-            $this->logger->info('Execute method already run, skipping.');
-            return;
-        } else {
-            $this->session->setData('executed_once', true);
-        }
+        $this->logger->info('Entered3 execute method');
 
         // Get the front name from the request
         $frontName = $this->getRequest()->getFrontName();
@@ -68,7 +56,7 @@ class Index extends Action
         }
 
         // Default behavior for other front names or general case
-        $this->logger->info('Returning default page factory');
+        $this->logger->info('Returning3 default page factory');
         return $this->pageFactory->create();
     }
 }
