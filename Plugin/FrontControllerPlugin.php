@@ -37,7 +37,7 @@ class FrontControllerPlugin
             self::$executed = true;
 
             // Log the execution
-            $this->logger->info('FrontControllerPlugin executed.', [
+            $this->logger->info('FrontControllerPlugin2 executed.', [
                 'path' => $request->getPathInfo(),
                 'method' => $request->getMethod(),
                 'params' => $request->getParams()
