@@ -6,33 +6,45 @@ use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\View\Result\PageFactory;
-use Psr\Log\LoggerInterface; // Add the LoggerInterface
+use Psr\Log\LoggerInterface;
+use Magento\Framework\Session\SessionManagerInterface;
 
 class Index extends Action
 {
     protected $resultRawFactory;
     protected $directoryList;
     protected $pageFactory;
-    protected $logger; // Add the logger property
+    protected $logger;
+    protected $session;
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
         DirectoryList $directoryList,
         PageFactory $pageFactory,
-        LoggerInterface $logger // Inject the logger
+        LoggerInterface $logger,
+        SessionManagerInterface $session
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
         $this->directoryList = $directoryList;
         $this->pageFactory = $pageFactory;
-        $this->logger = $logger; // Assign the logger
+        $this->logger = $logger;
+        $this->session = $session;
     }
 
     public function execute()
     {
         // Log entry into the execute method
-        $this->logger->info('Entered execute method');
+        $this->logger->info('Entered2 execute method');
+
+        // Check if the method is being executed more than once per request
+        if ($this->session->getData('executed_once')) {
+            $this->logger->info('Execute method already run, skipping.');
+            return;
+        } else {
+            $this->session->setData('executed_once', true);
+        }
 
         // Get the front name from the request
         $frontName = $this->getRequest()->getFrontName();
