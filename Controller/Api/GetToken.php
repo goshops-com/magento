@@ -7,27 +7,34 @@ use Magento\Framework\App\Action\Context;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Stdlib\CookieManagerInterface;
+use Psr\Log\LoggerInterface;
 
 class GetToken extends Action
 {
     protected $customerSession;
     protected $resultJsonFactory;
     protected $cookieManager;
+    protected $logger;
 
     public function __construct(
         Context $context,
         CustomerSession $customerSession,
         JsonFactory $resultJsonFactory,
         CookieManagerInterface $cookieManager,
+        LoggerInterface $logger // Add LoggerInterface to the constructor
     ) {
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->cookieManager = $cookieManager;
+        $this->logger = $logger; // Assign logger to a class property
     }
 
     public function execute()
     {
+        // Log when the method is called
+        $this->logger->info('GetToken execute method called.');
+
         $result = $this->resultJsonFactory->create();
         // Check if 'readFromCookie' parameter is set to true
         $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
