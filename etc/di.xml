@@ -14,8 +14,9 @@
 	<preference for="Magento\Catalog\Model\Layer\FilterableAttributeListInterface" type="Magento\Catalog\Model\Layer\Category\FilterableAttributeList" />
 	<preference for="Magento\Catalog\Model\Layer\AvailabilityFlagInterface" type="Magento\Catalog\Model\Layer\Category\AvailabilityFlag" />
     	<preference for="Magento\Catalog\Model\ResourceModel\Layer\Filter\Price" type="Gopersonal\Magento\Model\ResourceModel\Layer\Filter\PriceFilter" />
-	<!-- <type name="Magento\Framework\App\FrontControllerInterface">
-        <plugin name="gopersonal_magento_frontcontroller_plugin"
-                type="Gopersonal\Magento\Plugin\FrontControllerPlugin" />
-    </type> -->
+	<type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
+        <arguments>
+            <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>
+        </arguments>
+    </type>
 </config>
