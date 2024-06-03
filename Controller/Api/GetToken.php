@@ -21,22 +21,21 @@ class GetToken extends Action
         CustomerSession $customerSession,
         JsonFactory $resultJsonFactory,
         CookieManagerInterface $cookieManager,
-        LoggerInterface $logger // Add LoggerInterface to the constructor
+        LoggerInterface $logger
     ) {
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->cookieManager = $cookieManager;
-        $this->logger = $logger; // Assign logger to a class property
+        $this->logger = $logger;
     }
 
     public function execute()
     {
-        // Log when the method is called
-        $this->logger->info('GetToken execute method called.');
+        $requestId = uniqid('request_', true);
+        $this->logger->info('GetToken execute method called.', ['request_id' => $requestId]);
 
         $result = $this->resultJsonFactory->create();
-        // Check if 'readFromCookie' parameter is set to true
         $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
 
         // Retrieve the JWT token based on the presence of the query parameter
@@ -46,21 +45,34 @@ class GetToken extends Action
         $data = [
             'token' => $token ? $token : 'No token is stored.',
             'readFrom' => $readFromCookie ? 'cookie' : 'session',
-            'version': "1.0.6"
+            'version' => '1.0.6'
         ];
 
         // Check if the customer is logged in
         if ($this->customerSession->isLoggedIn()) {
             $data['customer_id'] = $this->customerSession->getCustomer()->getId();
             $data['customer_email'] = $this->customerSession->getCustomer()->getEmail();
+            $this->logger->info('Customer is logged in', [
+                'request_id' => $requestId,
+                'customer_id' => $data['customer_id'],
+                'customer_email' => $data['customer_email'],
+                'stack_trace' => $this->getStackTrace()
+            ]);
         } else {
             $data['customer_id'] = null;
             $data['customer_email'] = null;
+            $this->logger->info('Customer is not logged in', [
+                'request_id' => $requestId,
+                'stack_trace' => $this->getStackTrace()
+            ]);
         }
 
-        // Set the module version in the header
-        // $result->getHeaders()->addHeaderLine('X-Gopersonal-Version', '1.0.7');
-
         return $result->setData($data);
+    }
+
+    private function getStackTrace()
+    {
+        $e = new \Exception();
+        return $e->getTraceAsString();
     }
 }
