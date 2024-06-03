@@ -45,7 +45,8 @@ class GetToken extends Action
         // Prepare data to return
         $data = [
             'token' => $token ? $token : 'No token is stored.',
-            'readFrom' => $readFromCookie ? 'cookie' : 'session'
+            'readFrom' => $readFromCookie ? 'cookie' : 'session',
+            'version': "1.0.6"
         ];
 
         // Check if the customer is logged in
@@ -58,7 +59,7 @@ class GetToken extends Action
         }
 
         // Set the module version in the header
-        $result->getHeaders()->addHeaderLine('X-Gopersonal-Version', '1.0.7');
+        // $result->getHeaders()->addHeaderLine('X-Gopersonal-Version', '1.0.7');
 
         return $result->setData($data);
     }
