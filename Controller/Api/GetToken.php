@@ -33,8 +33,7 @@ class GetToken extends Action
     public function execute()
     {
         $requestId = uniqid('request_', true);
-        $this->logger->info('GetToken execute method called.', ['request_id' => $requestId]);
-
+        
         $result = $this->resultJsonFactory->create();
         $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
 
@@ -52,19 +51,9 @@ class GetToken extends Action
         if ($this->customerSession->isLoggedIn()) {
             $data['customer_id'] = $this->customerSession->getCustomer()->getId();
             $data['customer_email'] = $this->customerSession->getCustomer()->getEmail();
-            $this->logger->info('Customer is logged in', [
-                'request_id' => $requestId,
-                'customer_id' => $data['customer_id'],
-                'customer_email' => $data['customer_email'],
-                'stack_trace' => $this->getStackTrace()
-            ]);
         } else {
             $data['customer_id'] = null;
             $data['customer_email'] = null;
-            $this->logger->info('Customer is not logged in', [
-                'request_id' => $requestId,
-                'stack_trace' => $this->getStackTrace()
-            ]);
         }
 
         return $result->setData($data);

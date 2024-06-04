@@ -85,7 +85,6 @@ class PriceFilter extends \Magento\Catalog\Model\ResourceModel\Layer\Filter\Pric
         $collection = $this->layer->getProductCollection();
         //add custom filter
 
-        usleep(10000);
 		$idArray = $this->helper->getProductsIds('price');
 		if (!empty($idArray)) {
             $collection->addAttributeToFilter('entity_id', ["in"=>$idArray]);
