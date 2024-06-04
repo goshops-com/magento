@@ -52,15 +52,25 @@ class BeforeSearchRequest implements ObserverInterface
             $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
         }
 
-        // Append query parameters to the URL
-        $queryParamString = http_build_query($queryParams);
-        $url .= '&' . $queryParamString;
+        // Extract the 'q' parameter and append it to the URL
+        $searchTerm = isset($queryParams['q']) ? $queryParams['q'] : '';
+        $queryParam = $searchTerm ? '&query=' . urlencode($searchTerm) : '';
+
+        // Append other query parameters as filters
+        $filtersParam = '';
+        if (!empty($queryParams)) {
+            unset($queryParams['q']); // Remove 'q' parameter if already added separately
+            $filtersParam = '&' . http_build_query($queryParams);
+        }
+
+        $url .= $queryParam . $filtersParam;
 
         // Add authorization header and make the request
         $this->httpClient->addHeader("Authorization", "Bearer " . $token);
         $this->httpClient->get($url);
         $response = $this->httpClient->getBody();
 
+        // Log the request URL
         $this->logger->info('Request', ['url' => $url]);
 
         // Log the response
@@ -69,8 +79,14 @@ class BeforeSearchRequest implements ObserverInterface
         // Decode the response to get the product IDs
         $productIds = json_decode($response, true);
 
-        // Log the product IDs
-        $this->logger->info("Product IDs: " . implode(',', $productIds));
+        // Check if product IDs are an array
+        if (is_array($productIds)) {
+            // Log the product IDs
+            $this->logger->info("Product IDs: " . implode(',', $productIds));
+        } else {
+            // Log the error if product IDs are not an array
+            $this->logger->error("Product IDs are not an array", ['product_ids' => $productIds]);
+        }
 
         // Set the product IDs into the request
         $this->request->setParam('product_ids', $productIds);
