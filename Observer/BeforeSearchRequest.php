@@ -61,6 +61,8 @@ class BeforeSearchRequest implements ObserverInterface
         $this->httpClient->get($url);
         $response = $this->httpClient->getBody();
 
+        $this->logger->info('Request', ['url' => $url]);
+
         // Log the response
         $this->logger->info('Response from API', ['response' => $response]);
 
