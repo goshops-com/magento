@@ -1,5 +1,3 @@
-Here's the formatted code:
-
 <?php
 namespace Gopersonal\Magento\Observer;
 
