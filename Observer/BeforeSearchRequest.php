@@ -34,7 +34,7 @@ class BeforeSearchRequest implements ObserverInterface
 
     public function execute(Observer $observer)
     {   
-        $pathInfo = $this->$request->getPathInfo();
+        $pathInfo = $this->request->getPathInfo();
 
         // Read all query parameters from the request
         $queryParams = $this->request->getParams();
