@@ -56,6 +56,9 @@ class BeforeSearchRequest implements ObserverInterface
 
         // Build filters parameter (this example assumes $searchCriteria is obtained or constructed somehow)
         $filtersJson = [];
+        // Note: You need to get $searchCriteria from somewhere, this is just a placeholder
+        $searchCriteria = $observer->getEvent()->getData('search_criteria');
+        
         foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
             foreach ($filterGroup->getFilters() as $filter) {
                 $field = $filter->getField();
@@ -82,6 +85,9 @@ class BeforeSearchRequest implements ObserverInterface
 
         // Log the product IDs
         $this->logger->info("Product IDs: " . implode(',', $productIds));
+
+        // Set the product IDs into the request
+        $this->request->setParam('product_ids', $productIds);
 
         return $this;
     }
