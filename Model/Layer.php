@@ -6,6 +6,7 @@
 namespace Gopersonal\Magento\Model;
 
 use Magento\Framework\App\ObjectManager;
+// use Magento\Catalog\Model\ResourceModel\Product\Collection;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
@@ -15,7 +16,12 @@ class Layer extends \Magento\Catalog\Model\Layer
 		//add custom filter
 		$idArray = $this->getProductsIds();
 		if (!empty($idArray)) {
-            $collection->addAttributeToFilter('entity_id', ["in"=>$idArray]);
+            $collection->addAttributeToFilter('entity_id', ['in' => $idArray]);
+
+            // Custom sorting based on array order (only for filtered products)
+            $collection->getSelect()->order(
+                new \Zend_Db_Expr('FIELD(e.entity_id, ' . implode(',', $idArray) . ')')
+            );
         }
 		return $collection;
 	}
