@@ -5,7 +5,6 @@ use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\App\RequestInterface;
 use Psr\Log\LoggerInterface;
-use Magento\Framework\App\ObjectManager;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
@@ -35,12 +34,11 @@ class BeforeSearchRequest implements ObserverInterface
 
     public function execute(Observer $observer)
     {
-        // Read the 'q' and '_gsSearchId' parameters from the URL
-        $queryParam = $this->request->getParam('q');
-        $gsSearchIdParam = $this->request->getParam('_gsSearchId');
+        // Read all query parameters from the request
+        $queryParams = $this->request->getParams();
 
-        // Log the parameters
-        $this->logger->info("Query Param: $queryParam, GS Search ID Param: $gsSearchIdParam");
+        // Log the query parameters
+        $this->logger->info("Query Params: " . json_encode($queryParams));
 
         // Obtain the token from the cookie
         $token = $this->cookieManager->getCookie('gopersonal_jwt');
@@ -54,23 +52,9 @@ class BeforeSearchRequest implements ObserverInterface
             $url = 'https://go-discover-dev.goshops.ai/item/search?adapter=magento';
         }
 
-        // Build filters parameter (this example assumes $searchCriteria is obtained or constructed somehow)
-        $filtersJson = [];
-        // Note: You need to get $searchCriteria from somewhere, this is just a placeholder
-        $searchCriteria = $observer->getEvent()->getData('search_criteria');
-        
-        foreach ($searchCriteria->getFilterGroups() as $filterGroup) {
-            foreach ($filterGroup->getFilters() as $filter) {
-                $field = $filter->getField();
-                $value = $filter->getValue();
-                if (!isset($filtersJson[$field])) {
-                    $filtersJson[$field] = [];
-                }
-                $filtersJson[$field][] = $value;
-            }
-        }
-        $filtersParam = !empty($filtersJson) ? '&filters=' . urlencode(json_encode($filtersJson)) : '';
-        $url .= $filtersParam;
+        // Append query parameters to the URL
+        $queryParamString = http_build_query($queryParams);
+        $url .= '&' . $queryParamString;
 
         // Add authorization header and make the request
         $this->httpClient->addHeader("Authorization", "Bearer " . $token);
