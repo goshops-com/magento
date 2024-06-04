@@ -8,6 +8,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Store\Model\ScopeInterface;
 
 class Data extends AbstractHelper
 {
@@ -53,7 +54,7 @@ class Data extends AbstractHelper
             $token = $this->cookieManager->getCookie('gopersonal_jwt');
 
             // Obtain the client ID from the configuration
-            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeConfigInterface::SCOPE_STORE);
+            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
 
             // Determine the base URL based on the client ID
             $url = 'https://discover.gopersonal.ai/item/search?adapter=magento';
@@ -80,6 +81,9 @@ class Data extends AbstractHelper
             $this->httpClient->addHeader("Authorization", "Bearer " . $token);
             $this->httpClient->get($url);
             $response = $this->httpClient->getBody();
+
+            // Log the response
+            $this->logger->info('Response from API', ['response' => $response]);
 
             // Decode the response to get the product IDs
             $productIds = json_decode($response);
