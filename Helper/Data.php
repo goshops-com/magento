@@ -38,9 +38,6 @@ class Data extends AbstractHelper
 
     public function getProductsIds($flag = null)
     {
-        // Log the request ID
-        $this->logger->info('Processing request', ['request_id' => $this->requestId]);
-
         // Check if the product IDs are already stored in the request
         if ($this->request->getParam('product_ids') !== null) {
             $productIds = $this->request->getParam('product_ids');

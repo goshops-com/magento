@@ -16,6 +16,6 @@
         <observer name="custom_search_controller_redirect" instance="Gopersonal\Magento\Observer\RedirectSearch"/>
     </event>
     <event name="controller_action_predispatch_search_index_index">
-        <observer name="gopersonal_magento_before_search_request" instance="Gopersonal\Magento\Observer\BeforeSearchRequest" />
+        <observer name="controller_action_predispatch" instance="Gopersonal\Magento\Observer\BeforeSearchRequest" />
     </event>
 </config>

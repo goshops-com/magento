@@ -31,12 +31,8 @@ class Index extends Action
 
     public function execute()
     {
-        // Log entry into the execute method
-        $this->logger->info('Entered3 execute method');
-
         // Get the front name from the request
         $frontName = $this->getRequest()->getFrontName();
-        $this->logger->info('Front name: ' . $frontName);
 
         // Custom logic for specific front names
         if ($frontName === 'gp-firebase') {
@@ -44,19 +40,14 @@ class Index extends Action
 
             $moduleDir = $this->directoryList->getPath('app');
             $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
-            $this->logger->info('File path: ' . $filePath);
-
+            
             $jsContent = file_get_contents($filePath);
-            $this->logger->info('JS Content: ' . substr($jsContent, 0, 100) . '...'); // Log the beginning of the content
-
+            
             $resultRaw->setContents($jsContent);
             $resultRaw->setHeader('Content-Type', 'text/javascript');
-            $this->logger->info('Returning JS content');
             return $resultRaw;
         }
 
-        // Default behavior for other front names or general case
-        $this->logger->info('Returning3 default page factory');
         return $this->pageFactory->create();
     }
 }

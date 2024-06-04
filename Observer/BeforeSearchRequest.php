@@ -1,3 +1,5 @@
+Here's the formatted code:
+
 <?php
 namespace Gopersonal\Magento\Observer;
 
@@ -33,15 +35,28 @@ class BeforeSearchRequest implements ObserverInterface
     }
 
     public function execute(Observer $observer)
-    {
+    {   
+        $pathInfo = $this->$request->getPathInfo();
+
         // Read all query parameters from the request
         $queryParams = $this->request->getParams();
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
+        
+        // Log the incoming URL
+        $this->logger->info("Incoming URL: " . $this->request->getUriString());
+
+        // Check if the 'q' parameter exists
+        if ($pathInfo !== '/search' || !isset($queryParams['q'])) {
+            // Log the ignored request
+            $this->logger->info("Ignoring request. URL path is not /search or 'q' parameter is missing.");
+            return $this;
+        }
 
         // Log the query parameters
         $this->logger->info("Query Params: " . json_encode($queryParams));
 
         // Obtain the token from the cookie
-        $token = $this->cookieManager->getCookie('gopersonal_jwt');
+        
 
         // Obtain the client ID from the configuration
         $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
@@ -53,14 +68,14 @@ class BeforeSearchRequest implements ObserverInterface
         }
 
         // Extract the 'q' parameter and append it to the URL
-        $searchTerm = isset($queryParams['q']) ? $queryParams['q'] : '';
-        $queryParam = $searchTerm ? '&query=' . urlencode($searchTerm) : '';
+        $searchTerm = $queryParams['q'];
+        $queryParam = '&query=' . urlencode($searchTerm);
 
         // Append other query parameters as filters
         $filtersParam = '';
         if (!empty($queryParams)) {
             unset($queryParams['q']); // Remove 'q' parameter if already added separately
-            $filtersParam = '&' . http_build_query($queryParams);
+            $filtersParam = '&filters=' . urlencode(json_encode($queryParams));
         }
 
         $url .= $queryParam . $filtersParam;
