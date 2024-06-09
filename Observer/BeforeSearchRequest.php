@@ -171,6 +171,8 @@ class BeforeSearchRequest implements ObserverInterface
                     ['attribute' => 'description', 'like' => '%' . $searchTerm . '%']
                 ]
             );
+            // Add sorting by relevance or other criteria
+            $productCollection->setOrder('relevance', 'DESC');
 
             $productIds = $productCollection->getAllIds();
 
