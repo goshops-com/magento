@@ -10,7 +10,7 @@ use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Session\SessionManagerInterface;
-use Magento\CatalogSearch\Model\ResourceModel\Fulltext\CollectionFactory as SearchCollectionFactory;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use Exception;
 
 class BeforeSearchRequest implements ObserverInterface
@@ -21,7 +21,7 @@ class BeforeSearchRequest implements ObserverInterface
     protected $httpClient;
     protected $cookieManager;
     protected $sessionManager;
-    protected $searchCollectionFactory;
+    protected $productCollectionFactory;
 
     public function __construct(
         RequestInterface $request,
@@ -30,7 +30,7 @@ class BeforeSearchRequest implements ObserverInterface
         ClientInterface $httpClient,
         CookieManagerInterface $cookieManager,
         SessionManagerInterface $sessionManager,
-        SearchCollectionFactory $searchCollectionFactory
+        ProductCollectionFactory $productCollectionFactory
     ) {
         $this->request = $request;
         $this->logger = $logger;
@@ -38,7 +38,7 @@ class BeforeSearchRequest implements ObserverInterface
         $this->httpClient = $httpClient;
         $this->cookieManager = $cookieManager;
         $this->sessionManager = $sessionManager;
-        $this->searchCollectionFactory = $searchCollectionFactory;
+        $this->productCollectionFactory = $productCollectionFactory;
     }
 
     public function execute(Observer $observer)
@@ -163,10 +163,16 @@ class BeforeSearchRequest implements ObserverInterface
     {
         try {
             // Perform Magento native search
-            $searchCollection = $this->searchCollectionFactory->create();
-            $searchCollection->addSearchFilter($searchTerm);
+            $productCollection = $this->productCollectionFactory->create();
+            $productCollection->addAttributeToSelect('*');
+            $productCollection->addAttributeToFilter(
+                [
+                    ['attribute' => 'name', 'like' => '%' . $searchTerm . '%'],
+                    ['attribute' => 'description', 'like' => '%' . $searchTerm . '%']
+                ]
+            );
 
-            $productIds = $searchCollection->getAllIds();
+            $productIds = $productCollection->getAllIds();
 
             // Log the native search results
             $this->logger->info("Native Search Product IDs: " . implode(',', $productIds));
