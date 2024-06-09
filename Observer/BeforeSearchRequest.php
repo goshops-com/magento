@@ -102,6 +102,7 @@ class BeforeSearchRequest implements ObserverInterface
         }
 
         // Set the product IDs into the request
+        //$productIds = [1,2,3];
         $this->request->setParam('product_ids', $productIds);
 
         return $this;
