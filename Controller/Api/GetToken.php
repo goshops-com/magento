@@ -44,7 +44,7 @@ class GetToken extends Action
         $data = [
             'token' => $token ? $token : 'No token is stored.',
             'readFrom' => $readFromCookie ? 'cookie' : 'session',
-            'version' => '1.0.7'
+            'version' => '1.0.8'
         ];
 
         // Check if the customer is logged in
