@@ -58,7 +58,7 @@ class ConsoleLog extends Template
     }
 
     public function isSearchResultsPage() {
-        return $this->_request->getFullActionName() == 'catalogsearch_result_index';
+        return $this->_request->getFullActionName() == 'catalogsearch_result_index' || $this->_request->getFullActionName() == 'search_index_index';
     }
 
     public function getCurrentProductId() {
