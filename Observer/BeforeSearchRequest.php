@@ -9,6 +9,8 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Session\SessionManagerInterface;
+use Exception;
 
 class BeforeSearchRequest implements ObserverInterface
 {
@@ -17,29 +19,32 @@ class BeforeSearchRequest implements ObserverInterface
     protected $scopeConfig;
     protected $httpClient;
     protected $cookieManager;
+    protected $sessionManager;
 
     public function __construct(
         RequestInterface $request,
         LoggerInterface $logger,
         ScopeConfigInterface $scopeConfig,
         ClientInterface $httpClient,
-        CookieManagerInterface $cookieManager
+        CookieManagerInterface $cookieManager,
+        SessionManagerInterface $sessionManager
     ) {
         $this->request = $request;
         $this->logger = $logger;
         $this->scopeConfig = $scopeConfig;
         $this->httpClient = $httpClient;
         $this->cookieManager = $cookieManager;
+        $this->sessionManager = $sessionManager;
     }
 
     public function execute(Observer $observer)
-    {   
+    {
         $pathInfo = $this->request->getPathInfo();
 
         // Read all query parameters from the request
         $queryParams = $this->request->getParams();
         $token = $this->cookieManager->getCookie('gopersonal_jwt');
-        
+
         // Log the incoming URL
         $this->logger->info("Incoming URL: " . $this->request->getUriString());
 
@@ -52,9 +57,6 @@ class BeforeSearchRequest implements ObserverInterface
 
         // Log the query parameters
         $this->logger->info("Query Params: " . json_encode($queryParams));
-
-        // Obtain the token from the cookie
-        
 
         // Obtain the client ID from the configuration
         $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
@@ -76,34 +78,56 @@ class BeforeSearchRequest implements ObserverInterface
             $filtersParam = '&filters=' . urlencode(json_encode($queryParams));
         }
 
-        $url .= $queryParam . $filtersParam;
+        // Get the session ID
+        $sessionId = $this->sessionManager->getSessionId();
+        $sessionParam = '&externalSessionId=' . urlencode($sessionId);
 
-        // Add authorization header and make the request
-        $this->httpClient->addHeader("Authorization", "Bearer " . $token);
-        $this->httpClient->get($url);
-        $response = $this->httpClient->getBody();
+        // Append the client ID parameter
+        $clientIdParam = '&clientId=' . urlencode($clientId);
 
-        // Log the request URL
-        $this->logger->info('Request', ['url' => $url]);
+        $url .= $queryParam . $filtersParam . $sessionParam . $clientIdParam;
 
-        // Log the response
-        $this->logger->info('Response from API', ['response' => $response]);
+        $attempts = 0;
+        $maxAttempts = 3;
+        $success = false;
 
-        // Decode the response to get the product IDs
-        $productIds = json_decode($response, true);
+        while ($attempts < $maxAttempts && !$success) {
+            try {
+                // Add authorization header and make the request
+                $this->httpClient->addHeader("Authorization", "Bearer " . $token);
+                $this->httpClient->get($url);
+                $response = $this->httpClient->getBody();
+                
+                // Log the request URL
+                $this->logger->info('Request', ['url' => $url]);
 
-        // Check if product IDs are an array
-        if (is_array($productIds)) {
-            // Log the product IDs
-            $this->logger->info("Product IDs: " . implode(',', $productIds));
-        } else {
-            // Log the error if product IDs are not an array
-            $this->logger->error("Product IDs are not an array", ['product_ids' => $productIds]);
+                // Log the response
+                $this->logger->info('Response from API', ['response' => $response]);
+
+                // Decode the response to get the product IDs
+                $productIds = json_decode($response, true);
+
+                // Check if product IDs are an array
+                if (is_array($productIds)) {
+                    // Log the product IDs
+                    $this->logger->info("Product IDs: " . implode(',', $productIds));
+                } else {
+                    // Log the error if product IDs are not an array
+                    $this->logger->error("Product IDs are not an array", ['product_ids' => $productIds]);
+                }
+
+                // Set the product IDs into the request
+                $this->request->setParam('product_ids', $productIds);
+
+                $success = true;
+            } catch (Exception $e) {
+                $attempts++;
+                $this->logger->error("Request attempt $attempts failed: " . $e->getMessage());
+                if ($attempts >= $maxAttempts) {
+                    throw new \Exception("All attempts to request the API have failed.");
+                }
+            }
         }
-
-        // Set the product IDs into the request
-        //$productIds = [1,2,3];
-        $this->request->setParam('product_ids', $productIds);
 
         return $this;
     }
