@@ -10,6 +10,7 @@ use Magento\Framework\HTTP\ClientInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Session\SessionManagerInterface;
+use Magento\CatalogSearch\Model\ResourceModel\Fulltext\CollectionFactory as SearchCollectionFactory;
 use Exception;
 
 class BeforeSearchRequest implements ObserverInterface
@@ -20,6 +21,7 @@ class BeforeSearchRequest implements ObserverInterface
     protected $httpClient;
     protected $cookieManager;
     protected $sessionManager;
+    protected $searchCollectionFactory;
 
     public function __construct(
         RequestInterface $request,
@@ -27,7 +29,8 @@ class BeforeSearchRequest implements ObserverInterface
         ScopeConfigInterface $scopeConfig,
         ClientInterface $httpClient,
         CookieManagerInterface $cookieManager,
-        SessionManagerInterface $sessionManager
+        SessionManagerInterface $sessionManager,
+        SearchCollectionFactory $searchCollectionFactory
     ) {
         $this->request = $request;
         $this->logger = $logger;
@@ -35,6 +38,7 @@ class BeforeSearchRequest implements ObserverInterface
         $this->httpClient = $httpClient;
         $this->cookieManager = $cookieManager;
         $this->sessionManager = $sessionManager;
+        $this->searchCollectionFactory = $searchCollectionFactory;
     }
 
     public function execute(Observer $observer)
@@ -128,24 +132,49 @@ class BeforeSearchRequest implements ObserverInterface
                 if (is_array($productIds)) {
                     // Log the product IDs
                     $this->logger->info("Product IDs: " . implode(',', $productIds));
+
+                    // Set the product IDs into the request
+                    $this->request->setParam('product_ids', $productIds);
                 } else {
                     // Log the error if product IDs are not an array
                     $this->logger->error("Product IDs are not an array", ['product_ids' => $productIds]);
-                }
 
-                // Set the product IDs into the request
-                $this->request->setParam('product_ids', $productIds);
+                    // Perform native Magento search as fallback
+                    $this->performNativeSearch($searchTerm);
+                }
 
                 $success = true;
             } catch (Exception $e) {
                 $attempts++;
                 $this->logger->error("Request attempt $attempts failed: " . $e->getMessage());
+
                 if ($attempts >= $maxAttempts) {
-                    throw new \Exception("All attempts to request the API have failed.");
+                    // Perform native Magento search as fallback
+                    $this->performNativeSearch($searchTerm);
+                    break;
                 }
             }
         }
 
         return $this;
+    }
+
+    protected function performNativeSearch($searchTerm)
+    {
+        try {
+            // Perform Magento native search
+            $searchCollection = $this->searchCollectionFactory->create();
+            $searchCollection->addSearchFilter($searchTerm);
+
+            $productIds = $searchCollection->getAllIds();
+
+            // Log the native search results
+            $this->logger->info("Native Search Product IDs: " . implode(',', $productIds));
+
+            // Set the product IDs into the request
+            $this->request->setParam('product_ids', $productIds);
+        } catch (Exception $e) {
+            $this->logger->error("Native search failed: " . $e->getMessage());
+        }
     }
 }
