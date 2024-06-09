@@ -78,14 +78,7 @@ class BeforeSearchRequest implements ObserverInterface
             $filtersParam = '&filters=' . urlencode(json_encode($queryParams));
         }
 
-        // Get the session ID
-        $sessionId = $this->sessionManager->getSessionId();
-        $sessionParam = '&externalSessionId=' . urlencode($sessionId);
-
-        // Append the client ID parameter
-        $clientIdParam = '&clientId=' . urlencode($clientId);
-
-        $url .= $queryParam . $filtersParam . $sessionParam . $clientIdParam;
+        $url .= $queryParam . $filtersParam;
 
         $attempts = 0;
         $maxAttempts = 3;
@@ -97,9 +90,33 @@ class BeforeSearchRequest implements ObserverInterface
                 $this->httpClient->addHeader("Authorization", "Bearer " . $token);
                 $this->httpClient->get($url);
                 $response = $this->httpClient->getBody();
-                
+                $statusCode = $this->httpClient->getStatus();
+
                 // Log the request URL
                 $this->logger->info('Request', ['url' => $url]);
+
+                if ($statusCode == 401) {
+                    // Get the session ID
+                    $sessionId = $this->sessionManager->getSessionId();
+                    $sessionParam = '&externalSessionId=' . urlencode($sessionId);
+
+                    // Append the client ID parameter
+                    $clientIdParam = '&clientId=' . urlencode($clientId);
+
+                    // Add session fallback parameter
+                    $sessionFallbackParam = '&sessionFallback=true';
+
+                    // Retry with additional parameters
+                    $url .= $sessionParam . $clientIdParam . $sessionFallbackParam;
+
+                    // Retry the request
+                    $this->httpClient->get($url);
+                    $response = $this->httpClient->getBody();
+                    $statusCode = $this->httpClient->getStatus();
+
+                    // Log the retry request URL
+                    $this->logger->info('Retry Request', ['url' => $url]);
+                }
 
                 // Log the response
                 $this->logger->info('Response from API', ['response' => $response]);
