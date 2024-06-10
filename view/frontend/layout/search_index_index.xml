@@ -28,7 +28,7 @@
 			</block>
 		</referenceContainer>
 		<referenceContainer name="sidebar.main">
-		<block class="Gopersonal\Magento\Block\Navigation" name="catalog.leftnav" as="navigation" before="-" template="Magento_LayeredNavigation::layer/view-gopersonal.phtml">
+		<block class="Gopersonal\Magento\Block\Navigation" name="catalog.leftnav" as="navigation" before="-" template="Gopersonal_Magento::layer/view-gopersonal.phtml">
 				<block class="Gopersonal\Magento\Block\Navigation\State" name="catalog.navigation.state" as="state" template="Magento_LayeredNavigation::layer/state.phtml" />
 				<block class="Gopersonal\Magento\Block\Navigation\FilterRenderer" name="catalog.navigation.renderer" as="renderer" template="Magento_LayeredNavigation::layer/filter.phtml">
 					<arguments>
