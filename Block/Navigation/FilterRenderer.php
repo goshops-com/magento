@@ -25,4 +25,11 @@ class FilterRenderer extends \Magento\LayeredNavigation\Block\Navigation\FilterR
         $this->assign('filterItems', []);
         return $html;
     }
+
+    public function getVersion()
+    {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
+        return $productMetadata->getVersion();
+    }
 }
