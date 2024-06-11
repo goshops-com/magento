@@ -14,7 +14,8 @@ $viewModel = $block->getData('product_layer_view_model');
 $mageVersion = $block->getVersion();
 ?>
 
-<?php if (version_compare($mageVersion, "2.4.5", '>')): ?>
+<?php if (version_compare($mageVersion, "2.4.5", '>') || $mageVersion == "2.4.6-p2" ): ?>
+
     <ol class="items">
         <?php foreach ($filterItems as $filterItem): ?>
             <li class="item">
