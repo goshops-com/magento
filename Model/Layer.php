@@ -41,30 +41,46 @@ class Layer extends \Magento\Catalog\Model\Layer
 
 	private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
 	{
-    $filterCounts = [];
-    $logger = ObjectManager::getInstance()->get(\Psr\Log\LoggerInterface::class);
+		$filterCounts = [];
+		$logger = ObjectManager::getInstance()->get(\Psr\Log\LoggerInterface::class);
 
-    $logger->info('Starting filter count calculation'); 
+		$logger->info('Starting filter count calculation');
 
-    foreach ($this->getState()->getFilters() as $filter) {
-        $attribute = $filter->getFilter()->getAttributeModel();
-        $attributeCode = $attribute->getAttributeCode();
-        $logger->debug('Calculating counts for attribute: ' . $attributeCode); 
+		// Get all filterable attributes for layered navigation
+		$filterableAttributes = $this->getLayerConfiguration()->getFilterableAttributes(); 
+		$logger->debug('Filterable attributes:', array_keys($filterableAttributes->getAttributes())); // Log filterable attributes
 
-        $filterItems = $filter->getFilter()->getItems() ?: []; // Default to empty array if null
+		// Iterate over filterable attributes 
+		foreach ($filterableAttributes as $attribute) {
+			$attributeCode = $attribute->getAttributeCode();
+			$filterCounts[$attributeCode] = [];
 
-        foreach ($filterItems as $filterItem) {
-            $value = $filterItem->getValue();
-            $count = $collection->addFieldToFilter($attributeCode, $value)->getSize();
-            $filterCounts[$attributeCode][$value] = $count;
-            $logger->debug('Filter item "' . $filterItem->getLabel() . '" (' . $value . ') has count: ' . $count);
-        }
+			// Get all possible options for the attribute
+			$attributeOptions = $attribute->getSource()->getAllOptions();
 
-    }
+			// Filter collection to include only products with attribute values
+			$collection->addAttributeToFilter($attributeCode, ['notnull' => true]);
 
-    $logger->info('Finished filter count calculation');
+			// Iterate through each product to collect filter data
+			foreach ($collection as $product) {
+				$productAttributeValue = $product->getData($attributeCode);
 
-    return $filterCounts;
+				// Find the matching filter option label and ensure it's counted
+				foreach ($attributeOptions as $option) {
+					if ($option['value'] == $productAttributeValue) {
+						if (!isset($filterCounts[$attributeCode][$option['value']])) {
+							$filterCounts[$attributeCode][$option['value']] = 0;
+						}
+						$filterCounts[$attributeCode][$option['value']]++;
+						$logger->debug('Filter item "' . $option['label'] . '" (' . $option['value'] . ') has count: ' . $filterCounts[$attributeCode][$option['value']]);
+					}
+				}
+			}
+		}
+
+		$logger->info('Finished filter count calculation');
+
+		return $filterCounts;
 	}
 
 }
