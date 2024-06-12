@@ -1,11 +1,8 @@
 <?php
-/**
- * @package   Gopersonal_Magento
- * @author    Shahid Taj
- */
 namespace Gopersonal\Magento\Model\ResourceModel\Layer\Filter;
 
-use \Gopersonal\Magento\Helper\Data;
+use Gopersonal\Magento\Helper\Data;
+use Magento\Catalog\Model\Layer\Resolver as LayerResolver;
 
 class PriceFilter extends \Magento\Catalog\Model\ResourceModel\Layer\Filter\Price
 {
@@ -24,122 +21,88 @@ class PriceFilter extends \Magento\Catalog\Model\ResourceModel\Layer\Filter\Pric
      */
     private $storeManager;
 
-     protected $helper;
-
+    protected $helper;
 
     /**
      * @param \Magento\Framework\Model\ResourceModel\Db\Context $context
      * @param \Magento\Framework\Event\ManagerInterface $eventManager
-     * @param \Magento\Catalog\Model\Layer\Resolver $layerResolver
+     * @param LayerResolver $layerResolver
      * @param \Magento\Customer\Model\Session $session
+     * @param Data $helper
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
-     * @param \Gopersonal\Magento\Model\Layer $layer
      * @param null $connectionName
      */
     public function __construct(
         \Magento\Framework\Model\ResourceModel\Db\Context $context,
         \Magento\Framework\Event\ManagerInterface $eventManager,
-        \Magento\Catalog\Model\Layer\Resolver $layerResolver,
+        LayerResolver $layerResolver,
         \Magento\Customer\Model\Session $session,
         Data $helper,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         $connectionName = null
-        ) {
-            $this->layer        = $layerResolver->get();
-            $this->session      = $session;
-            $this->helper = $helper;
-            $this->storeManager = $storeManager;
-            parent::__construct(
-                $context,
-                $eventManager,
-                $layerResolver,
-                $session,
-                $storeManager,
-                $connectionName
-            );
+    ) {
+        $this->layer = $layerResolver->get(); // Resolve the custom layer
+        $this->session = $session;
+        $this->helper = $helper;
+        $this->storeManager = $storeManager;
+        parent::__construct(
+            $context,
+            $eventManager,
+            $layerResolver, // Correctly pass LayerResolver
+            $session,
+            $storeManager,
+            $connectionName
+        );
     }
-    
+
+    /**
+     * Get count for price range
+     *
+     * @param float $range
+     * @return array
+     */
     public function getCount($range)
     {
-        $select = $this->getSelect();
-        $priceExpression = $this->_getFullPriceExpression($select);
-
-        /**
-         * Check and set correct variable values to prevent SQL-injections
-         */
-        $range = floatval($range);
-        if ($range == 0) {
-            $range = 1;
-        }
-        $countExpr = new \Zend_Db_Expr('COUNT(*)');
-        $rangeExpr = new \Zend_Db_Expr("FLOOR(({$priceExpression}) / {$range}) + 1");
-
-        $select->columns(['range' => $rangeExpr, 'count' => $countExpr]);
-        $select->group($rangeExpr)->order(new \Zend_Db_Expr("({$rangeExpr}) ASC"));
-        
-        return $this->getConnection()->fetchPairs($select);
+        $productCollection = $this->layer->getProductCollection();
+        $priceCounts = $this->_buildPriceCounts($productCollection, $range);
+        return $priceCounts;
     }
-    
+
+    /**
+     * Build price counts manually
+     *
+     * @param \Magento\Catalog\Model\ResourceModel\Product\Collection $productCollection
+     * @param float $range
+     * @return array
+     */
+    protected function _buildPriceCounts($productCollection, $range)
+    {
+        $priceCounts = [];
+        foreach ($productCollection as $product) {
+            $price = $product->getFinalPrice();
+            $rangeIndex = floor($price / $range) + 1;
+            if (!isset($priceCounts[$rangeIndex])) {
+                $priceCounts[$rangeIndex] = 0;
+            }
+            $priceCounts[$rangeIndex]++;
+        }
+        return $priceCounts;
+    }
+
     public function getSelect()
     {
         $collection = $this->layer->getProductCollection();
-        //add custom filter
+        // add custom filter
 
-		$idArray = $this->helper->getProductsIds('price');
-		if (!empty($idArray)) {
+        $idArray = $this->helper->getProductsIds('price');
+        if (!empty($idArray)) {
             $collection->addAttributeToFilter('entity_id', ["in"=>$idArray]);
         }
         $collection->addPriceData(
             $this->session->getCustomerGroupId(),
             $this->storeManager->getStore()->getWebsiteId()
         );
-        
-        $select = clone $collection->getSelect();
-        // reset columns, order and limitation conditions
-        $select->reset(\Magento\Framework\DB\Select::COLUMNS);
-        $select->reset(\Magento\Framework\DB\Select::ORDER);
-        $select->reset(\Magento\Framework\DB\Select::LIMIT_COUNT);
-        $select->reset(\Magento\Framework\DB\Select::LIMIT_OFFSET);
-        
-        // remove join with main table
-        $fromPart = $select->getPart(\Magento\Framework\DB\Select::FROM);
-        if (!isset(
-            $fromPart[\Magento\Catalog\Model\ResourceModel\Product\Collection::INDEX_TABLE_ALIAS]
-        ) || !isset(
-            $fromPart[\Magento\Catalog\Model\ResourceModel\Product\Collection::MAIN_TABLE_ALIAS]
-            )
-        ) {
-            return $select;
-        }
-        
-        // processing FROM part
-        $priceIndexJoinPart = $fromPart[\Magento\Catalog\Model\ResourceModel\Product\Collection::INDEX_TABLE_ALIAS];
-        $priceIndexJoinConditions = explode('AND', $priceIndexJoinPart['joinCondition']);
-        $priceIndexJoinPart['joinType'] = \Magento\Framework\DB\Select::FROM;
-        $priceIndexJoinPart['joinCondition'] = null;
-        $fromPart[\Magento\Catalog\Model\ResourceModel\Product\Collection::MAIN_TABLE_ALIAS] = $priceIndexJoinPart;
-        unset($fromPart[\Magento\Catalog\Model\ResourceModel\Product\Collection::INDEX_TABLE_ALIAS]);
-        $select->setPart(\Magento\Framework\DB\Select::FROM, $fromPart);
-        foreach ($fromPart as $key => $fromJoinItem) {
-            $fromPart[$key]['joinCondition'] = $this->_replaceTableAlias($fromJoinItem['joinCondition']);
-        }
-        $select->setPart(\Magento\Framework\DB\Select::FROM, $fromPart);
-        
-        // processing WHERE part
-        $wherePart = $select->getPart(\Magento\Framework\DB\Select::WHERE);
-        foreach ($wherePart as $key => $wherePartItem) {
-            $wherePart[$key] = $this->_replaceTableAlias($wherePartItem);
-        }
-        $select->setPart(\Magento\Framework\DB\Select::WHERE, $wherePart);
-        $excludeJoinPart = \Magento\Catalog\Model\ResourceModel\Product\Collection::MAIN_TABLE_ALIAS . '.entity_id';
-        foreach ($priceIndexJoinConditions as $condition) {
-            if (strpos($condition, $excludeJoinPart) !== false) {
-                continue;
-            }
-            $select->where($this->_replaceTableAlias($condition));
-        }
-        $select->where($this->_getPriceExpression($select) . ' IS NOT NULL');
-        
-        return $select;
+
+        return $collection->getSelect();
     }
 }
