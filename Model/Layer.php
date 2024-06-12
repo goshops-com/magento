@@ -40,26 +40,25 @@ class Layer extends \Magento\Catalog\Model\Layer
 	}
 
 	private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
-	{
-		$filterCounts = [];
+    {
+        $filterCounts = [];
 
-		// Iterate through filters in the current layer
-		foreach ($this->getState()->getFilters() as $filter) {
-			$attributeCode = $filter->getFilter()->getAttributeModel()->getAttributeCode();
-			$filterCounts[$attributeCode] = [];
+        // Iterate through filters in the current layer
+        foreach ($this->getState()->getFilters() as $filter) {
+            $attribute = $filter->getFilter()->getAttributeModel(); 
+            $attributeCode = $attribute->getAttributeCode();
+            $filterCounts[$attributeCode] = [];
+            
+            // Modify how you get the filter items
+            $filterItems = $filter->getFilter()->getItems();
+            foreach($filterItems as $filterItem){
+                $value = $filterItem->getValue();
+                // Use the filtered collection to count products with this value
+                $filterCounts[$attributeCode][$value] = $collection->addFieldToFilter($attributeCode, $value)->getSize();
+            }
+        }
 
-			// Get unique attribute values from the filtered collection
-			$valueCounts = $collection->getResource()->getAttributeValueCountByRange(
-				$attributeCode,
-				$collection->getSelect()
-			);
-
-			foreach ($valueCounts as $value => $count) {
-				$filterCounts[$attributeCode][$value] = $count;
-			}
-		}
-
-		return $filterCounts;
-	}
+        return $filterCounts;
+    }
 
 }
