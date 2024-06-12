@@ -9,7 +9,7 @@ use Magento\LayeredNavigation\ViewModel\Layer\Filter;
 
 /** @var \Magento\LayeredNavigation\Block\Navigation\FilterRenderer $block */
 /** @var Escaper $escaper */
-/** @var Filter $viewModel */ 
+/** @var Filter $viewModel */
 
 $viewModel = $block->getData('product_layer_view_model');
 $mageVersion = $block->getVersion();
@@ -22,12 +22,13 @@ if (version_compare($mageVersion, "2.4.5", '>')) {
 }
 
 ?>
+
 <ol class="items">
     <?php foreach ($filterItems as $filterItem): ?>
         <?php
         $filterCount = 0;
-        if (isset($filterCounts[$filter->getRequestVar()][$filterItem->getValue()])) {
-            $filterCount = $filterCounts[$filter->getRequestVar()][$filterItem->getValue()];
+        if (isset($filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()])) { // Get current filter
+            $filterCount = $filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()];
         }
         ?>
         <li class="item">
