@@ -40,25 +40,49 @@ class Layer extends \Magento\Catalog\Model\Layer
 	}
 
 	private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
-    {
-        $filterCounts = [];
+	{
+		$filterCounts = [];
+		$logger = \Magento\Framework\App\ObjectManager::getInstance()->get(\Psr\Log\LoggerInterface::class);
 
-        // Iterate through filters in the current layer
-        foreach ($this->getState()->getFilters() as $filter) {
-            $attribute = $filter->getFilter()->getAttributeModel(); 
-            $attributeCode = $attribute->getAttributeCode();
-            $filterCounts[$attributeCode] = [];
-            
-            // Modify how you get the filter items
-            $filterItems = $filter->getFilter()->getItems();
-            foreach($filterItems as $filterItem){
-                $value = $filterItem->getValue();
-                // Use the filtered collection to count products with this value
-                $filterCounts[$attributeCode][$value] = $collection->addFieldToFilter($attributeCode, $value)->getSize();
-            }
-        }
+		$logger->info('Starting filter count calculation'); 
+		
+		foreach ($this->getState()->getFilters() as $filter) {
+			$attribute = $filter->getFilter()->getAttributeModel();
+			$attributeCode = $attribute->getAttributeCode();
+			$logger->debug('Calculating counts for attribute: ' . $attributeCode); 
 
-        return $filterCounts;
-    }
+			$filterCounts[$attributeCode] = [];
+
+			// Get all possible filter options (not just applied ones)
+			$allFilterOptions = $attribute->getSource()->getAllOptions();
+			
+			// Initialize counts for all options
+			foreach ($allFilterOptions as $option) {
+				$filterCounts[$attributeCode][$option['value']] = 0; 
+			}
+
+			// Iterate over filter items and update counts from filtered collection
+			$filterItems = $filter->getFilter()->getItems() ?: []; // Default to empty array if null
+
+			foreach ($filterItems as $filterItem) {
+				$value = $filterItem->getValue();
+				$count = $collection->addFieldToFilter($attributeCode, $value)->getSize();
+				$filterCounts[$attributeCode][$value] = $count;
+				$logger->debug('Filter item "' . $filterItem->getLabel() . '" (' . $value . ') has count: ' . $count);
+			}
+
+			// If an option doesn't have a product, we remove it from filterCounts
+			foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
+			if ($optionValue == 0){
+				unset($filterCounts[$attributeCode][$optionKey]);
+				$logger->debug('Removing filter item with no products: ' . $optionKey);
+			}
+			}
+		}
+
+		$logger->info('Finished filter count calculation');
+
+		return $filterCounts;
+	}
 
 }
