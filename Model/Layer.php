@@ -39,47 +39,62 @@ class Layer extends \Magento\Catalog\Model\Layer
 	}
 
 	private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
-{
-    $filterCounts = [];
-    $logger = ObjectManager::getInstance()->get(\Psr\Log\LoggerInterface::class);
+	{
+		$filterCounts = [];
+		$logger = ObjectManager::getInstance()->get(\Psr\Log\LoggerInterface::class);
 
-    $logger->info('Starting filter count calculation');
+		$logger->info('Starting filter count calculation');
 
-    // Define the attributes you want to use as filters (category and brand in this example)
-    $filterableAttributes = ['category_id']; // Add your actual brand attribute code
-    $logger->debug('Filterable attributes:', $filterableAttributes); 
+		// Fetch filterable attributes dynamically (replace this with DI if possible)
+		$filterableAttributes = ObjectManager::getInstance()
+			->create(\Magento\Catalog\Model\Layer\Category\FilterableAttributeList::class)
+			->getList();
 
-    // Iterate over your manually specified filterable attributes
-    foreach ($filterableAttributes as $attributeCode) {
-        $filterCounts[$attributeCode] = [];
+		// Convert filterable attributes to attribute codes
+		$filterableAttributeCodes = array_map(function($attribute) {
+			return $attribute->getAttributeCode();
+		}, $filterableAttributes);
 
-        // Get all possible options for the attribute
-        $attribute = $collection->getResource()->getAttribute($attributeCode); // Get the attribute model
-        $attributeOptions = $attribute->getSource()->getAllOptions();
+		$logger->debug('Filterable attributes:', $filterableAttributeCodes);
 
-        // Filter collection to include only products with attribute values
-        $collection->addAttributeToFilter($attributeCode, ['notnull' => true]);
+		// Iterate over filterable attributes 
+		foreach ($filterableAttributeCodes as $attributeCode) {
+			$filterCounts[$attributeCode] = [];
 
-        // Iterate through each product to collect filter data
-        foreach ($collection as $product) {
-            $productAttributeValue = $product->getData($attributeCode);
+			// Get the attribute model (if it exists)
+			$attribute = $collection->getResource()->getAttribute($attributeCode);
 
-            // Find the matching filter option label and ensure it's counted
-            foreach ($attributeOptions as $option) {
-                if ($option['value'] == $productAttributeValue) {
-                    if (!isset($filterCounts[$attributeCode][$option['value']])) {
-                        $filterCounts[$attributeCode][$option['value']] = 0;
-                    }
-                    $filterCounts[$attributeCode][$option['value']]++;
-                    $logger->debug('Filter item "' . $option['label'] . '" (' . $option['value'] . ') has count: ' . $filterCounts[$attributeCode][$option['value']]);
-                }
-            }
-        }
-    }
+			// Check if the attribute exists and is filterable
+			if ($attribute && $attribute->usesSource()) {
+				// Get all possible options for the attribute
+				$attributeOptions = $attribute->getSource()->getAllOptions();
 
-    $logger->info('Finished filter count calculation');
+				// Filter collection to include only products with attribute values
+				$collection->addAttributeToFilter($attributeCode, ['notnull' => true]);
 
-    return $filterCounts;
-}
+				// Iterate through each product to collect filter data
+				foreach ($collection as $product) {
+					$productAttributeValue = $product->getData($attributeCode);
+
+					// Find the matching filter option label and ensure it's counted
+					foreach ($attributeOptions as $option) {
+						if ($option['value'] == $productAttributeValue) {
+							if (!isset($filterCounts[$attributeCode][$option['value']])) {
+								$filterCounts[$attributeCode][$option['value']] = 0;
+							}
+							$filterCounts[$attributeCode][$option['value']]++;
+							$logger->debug('Filter item "' . $option['label'] . '" (' . $option['value'] . ') has count: ' . $filterCounts[$attributeCode][$option['value']]);
+						}
+					}
+				}
+			} else {
+				$logger->warning("Attribute '$attributeCode' not found or doesn't use a source model");
+			}
+		}
+
+		$logger->info('Finished filter count calculation');
+
+		return $filterCounts;
+	}
 
 }
