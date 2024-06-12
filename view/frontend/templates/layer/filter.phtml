@@ -14,6 +14,7 @@ use Magento\LayeredNavigation\ViewModel\Layer\Filter;
 $viewModel = $block->getData('product_layer_view_model');
 $mageVersion = $block->getVersion();
 $filterCounts = $block->getData('filter_counts'); // Get custom filter counts
+$filter = $block->getData('filter');
 
 // Initialize locale formatter if needed (Magento 2.4.5+)
 $localeFormatter = null;
