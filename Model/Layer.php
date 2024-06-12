@@ -6,102 +6,115 @@
 namespace Gopersonal\Magento\Model;
 
 use Magento\Framework\App\ObjectManager;
-// use Magento\Catalog\Model\ResourceModel\Product\Collection;
+use Psr\Log\LoggerInterface;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
-	public function getProductCollection()
-	{
-		$collection = parent::getProductCollection();
+    protected $logger;
+    protected $filterableAttributeList;
 
-		$idArray = $this->getProductsIds();
-		if (!empty($idArray)) {
-			$collection->addAttributeToFilter('entity_id', ['in' => $idArray]);
+    public function __construct(
+        \Magento\Framework\ObjectManagerInterface $objectManager,
+        \Magento\Catalog\Model\Layer\ContextInterface $context,
+        LoggerInterface $logger,
+        \Magento\Catalog\Model\Layer\Category\FilterableAttributeList $filterableAttributeList,
+        array $data = []
+    ) {
+        $this->logger = $logger;
+        $this->filterableAttributeList = $filterableAttributeList;
+        parent::__construct($context, $data);
+    }
 
-			// Custom sorting based on array order 
-			$collection->getSelect()->order(
-				new \Zend_Db_Expr('FIELD(e.entity_id, ' . implode(',', $idArray) . ')')
-			);
-		}
+    public function getProductCollection()
+    {
+        $this->logger->info('Starting getProductCollection method');
+        
+        $collection = parent::getProductCollection();
+        $idArray = $this->getProductsIds();
 
-		$filterCounts = $this->calculateFilterCounts($collection);
-		$this->setData('filter_counts', $filterCounts);
+        if (!empty($idArray)) {
+            $this->logger->info('Filtering collection by product IDs: ' . implode(',', $idArray));
+            $collection->addAttributeToFilter('entity_id', ['in' => $idArray]);
 
-		return $collection;
-	}
+            // Custom sorting based on array order 
+            $collection->getSelect()->order(
+                new \Zend_Db_Expr('FIELD(e.entity_id, ' . implode(',', $idArray) . ')')
+            );
+        }
 
-	public function getProductsIds()
-	{
-		 $objectManager = ObjectManager::getInstance();
-		$helper = $objectManager->get(\Gopersonal\Magento\Helper\Data::class);
+        $this->logger->info('Finished getProductCollection method');
 
-		return $helper->getProductsIds('layer');
-	}
+        // Calculate filter counts after getting the product collection
+        $filterCounts = $this->calculateFilterCounts($collection);
+        $this->setData('filter_counts', $filterCounts);
 
-	private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
-	{
-		$filterCounts = [];
-		$logger = ObjectManager::getInstance()->get(\Psr\Log\LoggerInterface::class);
+        return $collection;
+    }
 
-		$logger->info('Starting filter count calculation');
+    public function getProductsIds()
+    {
+        $objectManager = ObjectManager::getInstance();
+        $helper = $objectManager->get(\Gopersonal\Magento\Helper\Data::class);
 
-		// Fetch filterable attributes dynamically
-		$filterableAttributes = ObjectManager::getInstance()
-			->create(\Magento\Catalog\Model\Layer\Category\FilterableAttributeList::class)
-			->getList();
+        return $helper->getProductsIds('layer');
+    }
 
-		// Iterate over filterable attributes 
-		foreach ($filterableAttributes as $attribute) {
-			$attributeCode = $attribute->getAttributeCode();
+    private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
+    {
+        $filterCounts = [];
+        $this->logger->info('Starting filter count calculation');
 
-			// Skip the price attribute
-			if ($attributeCode == 'price') {
-				continue; // Move to the next attribute
-			}
+        // Fetch filterable attributes dynamically
+        $filterableAttributes = $this->filterableAttributeList->getList();
 
-			$filterCounts[$attributeCode] = [];
+        // Iterate over filterable attributes 
+        foreach ($filterableAttributes as $attribute) {
+            $attributeCode = $attribute->getAttributeCode();
 
-			// Get the attribute model (if it exists)
-			$attribute = $collection->getResource()->getAttribute($attributeCode);
+            // Skip the price attribute
+            if ($attributeCode == 'price') {
+                continue;
+            }
 
-			// Check if the attribute exists and has options
-			if ($attribute && $attribute->usesSource()) {
-				// Get all possible options for the attribute
-				$attributeOptions = $attribute->getSource()->getAllOptions();
+            $filterCounts[$attributeCode] = [];
 
-				// Filter collection to include only products with attribute values
-				$collection->addAttributeToFilter($attributeCode, ['notnull' => true]);
+            // Get the attribute model (if it exists)
+            $attribute = $collection->getResource()->getAttribute($attributeCode);
 
-				// Iterate through each product to collect filter data
-				foreach ($collection as $product) {
-					$productAttributeValue = $product->getData($attributeCode);
+            // Check if the attribute exists and has options
+            if ($attribute && $attribute->usesSource()) {
+                // Get all possible options for the attribute
+                $attributeOptions = $attribute->getSource()->getAllOptions();
 
-					// Find the matching filter option label and ensure it's counted
-					foreach ($attributeOptions as $option) {
-						if ($option['value'] == $productAttributeValue) {
-							if (!isset($filterCounts[$attributeCode][$option['value']])) {
-								$filterCounts[$attributeCode][$option['value']] = 0;
-							}
-							$filterCounts[$attributeCode][$option['value']]++;
-							$logger->debug('Filter item "' . $option['label'] . '" (' . $option['value'] . ') has count: ' . $filterCounts[$attributeCode][$option['value']]);
-						}
-					}
-				}
+                // Iterate through each product to collect filter data
+                foreach ($collection as $product) {
+                    $productAttributeValue = $product->getData($attributeCode);
 
-				// Remove filter options with zero count
-				foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
-					if ($optionValue == 0) {
-						unset($filterCounts[$attributeCode][$optionKey]);
-					}
-				}
-			} else {
-				$logger->warning("Attribute '$attributeCode' not found or doesn't use a source model");
-			}
-		}
+                    // Find the matching filter option label and ensure it's counted
+                    foreach ($attributeOptions as $option) {
+                        if ($option['value'] == $productAttributeValue) {
+                            if (!isset($filterCounts[$attributeCode][$option['value']])) {
+                                $filterCounts[$attributeCode][$option['value']] = 0;
+                            }
+                            $filterCounts[$attributeCode][$option['value']]++;
+                            $this->logger->debug('Filter item "' . $option['label'] . '" (' . $option['value'] . ') has count: ' . $filterCounts[$attributeCode][$option['value']]);
+                        }
+                    }
+                }
 
-		$logger->info('Finished filter count calculation');
+                // Remove filter options with zero count
+                foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
+                    if ($optionValue == 0) {
+                        unset($filterCounts[$attributeCode][$optionKey]);
+                    }
+                }
+            } else {
+                $this->logger->warning("Attribute '$attributeCode' not found or doesn't use a source model");
+            }
+        }
 
-		return $filterCounts;
-	}
+        $this->logger->info('Finished filter count calculation');
 
+        return $filterCounts;
+    }
 }
