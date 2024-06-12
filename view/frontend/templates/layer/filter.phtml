@@ -4,83 +4,64 @@
  * See COPYING.txt for license details.
  */
 
-?>
-<?php
+use Magento\Framework\Escaper;
+use Magento\LayeredNavigation\ViewModel\Layer\Filter;
+
 /** @var \Magento\LayeredNavigation\Block\Navigation\FilterRenderer $block */
-/** @var \Magento\Framework\Escaper $escaper */
-/** @var \Magento\LayeredNavigation\ViewModel\Layer\Filter $viewModel */
+/** @var Escaper $escaper */
+/** @var Filter $viewModel */ 
+
 $viewModel = $block->getData('product_layer_view_model');
-
 $mageVersion = $block->getVersion();
+$filterCounts = $block->getData('filter_counts'); // Get custom filter counts
+
+// Initialize locale formatter if needed (Magento 2.4.5+)
+$localeFormatter = null;
+if (version_compare($mageVersion, "2.4.5", '>')) {
+    $localeFormatter = $block->getLocaleFormatter();
+}
+
 ?>
-
-<?php if (version_compare($mageVersion, "2.4.5", '>') || $mageVersion == "2.4.6-p2" ): ?>
-
-    <ol class="items">
-        <?php foreach ($filterItems as $filterItem): ?>
-            <li class="item">
-                <?php if ($filterItem->getCount() > 0): ?>
-                    <a
-                        href="<?= $escaper->escapeUrl($filterItem->getUrl()) ?>"
-                        rel="nofollow"
-                    ><?= /* @noEscape */ $filterItem->getLabel() ?><?php
-                    if ($viewModel->shouldDisplayProductCountOnLayer()): ?><span
-                            class="count">
-                                <?= /* @noEscape */ $localeFormatter->formatNumber((int) $filterItem->getCount()) ?><span
-                                class="filter-count-label"><?php
-                                if ($filterItem->getCount() == 1): ?>
-                                    <?= $escaper->escapeHtml(__('item')) ?><?php
-                                else:
-                                    ?><?= $escaper->escapeHtml(__('item')) ?><?php
-                                endif;?></span></span>
-                        <?php endif; ?></a>
-                <?php else: ?>
-                    <?= /* @noEscape */ $filterItem->getLabel() ?><?php
-                    if ($viewModel->shouldDisplayProductCountOnLayer()): ?><span
-                            class="count">
-                                <?= /* @noEscape */ $localeFormatter->formatNumber((int) $filterItem->getCount()) ?><span
-                                class="filter-count-label"><?php
-                                if ($filterItem->getCount() == 1): ?>
-                                    <?= $escaper->escapeHtml(__('items')) ?><?php
-                                else:
-                                    ?><?= $escaper->escapeHtml(__('items')) ?><?php
-                                endif;?></span></span>
+<ol class="items">
+    <?php foreach ($filterItems as $filterItem): ?>
+        <?php
+        $filterCount = 0;
+        if (isset($filterCounts[$filter->getRequestVar()][$filterItem->getValue()])) {
+            $filterCount = $filterCounts[$filter->getRequestVar()][$filterItem->getValue()];
+        }
+        ?>
+        <li class="item">
+            <?php if ($filterCount > 0): ?>
+                <a href="<?= $escaper->escapeUrl($filterItem->getUrl()) ?>" rel="nofollow">
+                    <?= /* @noEscape */ $filterItem->getLabel() ?>
+                    <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
+                        <span class="count">
+                            <?php if ($localeFormatter): ?>
+                                <?= $escaper->escapeHtml($localeFormatter->formatNumber($filterCount)) ?>
+                            <?php else: ?>
+                                <?= $escaper->escapeHtml($filterCount) ?>
+                            <?php endif; ?>
+                            <span class="filter-count-label">
+                                <?= $escaper->escapeHtml(__($filterCount == 1 ? 'item' : 'items')) ?>
+                            </span>
+                        </span>
                     <?php endif; ?>
+                </a>
+            <?php else: ?>
+                <span class="item-label"><?= /* @noEscape */ $filterItem->getLabel() ?></span> 
+                <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
+                    <span class="count">
+                        <?php if ($localeFormatter): ?>
+                            <?= $escaper->escapeHtml($localeFormatter->formatNumber($filterCount)) ?>
+                        <?php else: ?>
+                            <?= $escaper->escapeHtml($filterCount) ?>
+                        <?php endif; ?>
+                        <span class="filter-count-label">
+                            <?= $escaper->escapeHtml(__('items')) ?>
+                        </span>
+                    </span>
                 <?php endif; ?>
-            </li>
-        <?php endforeach ?>
-    </ol>
-<?php else: ?>
-    <ol class="items">
-        <?php foreach ($filterItems as $filterItem): ?>
-            <li class="item">
-                <?php if ($filterItem->getCount() > 0): ?>
-                    <a
-                        href="<?= $escaper->escapeUrl($filterItem->getUrl()) ?>"
-                        rel="nofollow"
-                    ><?= /* @noEscape */ $filterItem->getLabel() ?><?php
-                    if ($viewModel->shouldDisplayProductCountOnLayer()): ?><span
-                            class="count"><?= /* @noEscape */ (int) $filterItem->getCount() ?><span
-                                class="filter-count-label"><?php
-                                if ($filterItem->getCount() == 1): ?>
-                                    <?= $escaper->escapeHtml(__('item')) ?><?php
-                                else:
-                                    ?><?= $escaper->escapeHtml(__('item')) ?><?php
-                                endif;?></span></span>
-                        <?php endif; ?></a>
-                <?php else: ?>
-                    <?= /* @noEscape */ $filterItem->getLabel() ?><?php
-                    if ($viewModel->shouldDisplayProductCountOnLayer()): ?><span
-                            class="count"><?= /* @noEscape */ (int) $filterItem->getCount() ?><span
-                                class="filter-count-label"><?php
-                                if ($filterItem->getCount() == 1): ?>
-                                    <?= $escaper->escapeHtml(__('items')) ?><?php
-                                else:
-                                    ?><?= $escaper->escapeHtml(__('items')) ?><?php
-                                endif;?></span></span>
-                    <?php endif; ?>
-                <?php endif; ?>
-            </li>
-        <?php endforeach ?>
-    </ol>
-<?php endif ?>
+            <?php endif; ?>
+        </li>
+    <?php endforeach; ?>
+</ol>
