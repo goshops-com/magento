@@ -1,9 +1,4 @@
 <?php
-/**
- * Copyright © Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
- */
-
 use Magento\Framework\Escaper;
 use Magento\LayeredNavigation\ViewModel\Layer\Filter;
 
@@ -13,29 +8,29 @@ use Magento\LayeredNavigation\ViewModel\Layer\Filter;
 
 $viewModel = $block->getData('product_layer_view_model');
 $mageVersion = $block->getVersion();
-$filterCounts = $block->getData('filter_counts'); // Get custom filter counts
-$filter = $block->getData('filter'); // Get the filter object
+$filterCounts = $block->getData('filter_counts');
+$filter = $block->getData('filter'); 
 
 // Initialize locale formatter if needed (Magento 2.4.5+)
 $localeFormatter = null;
 if (version_compare($mageVersion, "2.4.5", '>')) {
     $localeFormatter = $block->getLocaleFormatter();
 }
-
 ?>
 
 <ol class="items">
     <?php foreach ($filterItems as $filterItem): ?>
         <?php
         $filterCount = 0;
-        if (isset($filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()])) { // Get current filter
+        if ($filter && isset($filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()])) { 
             $filterCount = $filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()];
         }
         ?>
+
         <li class="item">
             <?php if ($filterCount > 0): ?>
                 <a href="<?= $escaper->escapeUrl($filterItem->getUrl()) ?>" rel="nofollow">
-                    <?= /* @noEscape */ $filterItem->getLabel() ?>
+                    <?= $escaper->escapeHtml($filterItem->getLabel()) ?>
                     <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
                         <span class="count">
                             <?php if ($localeFormatter): ?>
@@ -50,7 +45,7 @@ if (version_compare($mageVersion, "2.4.5", '>')) {
                     <?php endif; ?>
                 </a>
             <?php else: ?>
-                <span class="item-label"><?= /* @noEscape */ $filterItem->getLabel() ?></span> 
+                <span class="item-label"><?= $escaper->escapeHtml($filterItem->getLabel()) ?></span> 
                 <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
                     <span class="count">
                         <?php if ($localeFormatter): ?>
