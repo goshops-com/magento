@@ -7,22 +7,31 @@ namespace Gopersonal\Magento\Model;
 
 use Magento\Framework\App\ObjectManager;
 use Psr\Log\LoggerInterface;
+use Magento\Catalog\Model\Layer\StateFactory;
+use Magento\Catalog\Model\Layer\ContextInterface;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
+use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
     protected $logger;
     protected $filterableAttributeList;
+    protected $stateFactory;
+    protected $collectionFactory;
 
     public function __construct(
-        \Magento\Framework\ObjectManagerInterface $objectManager,
-        \Magento\Catalog\Model\Layer\ContextInterface $context,
+        ContextInterface $context,
+        StateFactory $stateFactory,
+        CollectionFactory $collectionFactory,
+        FilterableAttributeList $filterableAttributeList,
         LoggerInterface $logger,
-        \Magento\Catalog\Model\Layer\Category\FilterableAttributeList $filterableAttributeList,
         array $data = []
     ) {
         $this->logger = $logger;
         $this->filterableAttributeList = $filterableAttributeList;
-        parent::__construct($context, $data);
+        $this->stateFactory = $stateFactory;
+        $this->collectionFactory = $collectionFactory;
+        parent::__construct($context, $stateFactory, $collectionFactory, $data);
     }
 
     public function getProductCollection()

@@ -13,6 +13,7 @@
     
     <!-- Here custom layer class extends the default Magento layer class.
          That class instantiates a number of interfaces. -->
+    <preference for="Magento\Catalog\Model\Layer" type="Gopersonal\Magento\Model\Layer" />
     <preference for="Magento\Catalog\Model\Layer\ContextInterface" type="Magento\Catalog\Model\Layer\Context" />
     <preference for="Magento\Catalog\Model\Layer\ItemCollectionProviderInterface" type="Magento\Catalog\Model\Layer\Category\ItemCollectionProvider" />
     <preference for="Magento\Catalog\Model\Layer\StateKeyInterface" type="Magento\Catalog\Model\Layer\Category\StateKey" />
