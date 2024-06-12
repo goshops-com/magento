@@ -21,6 +21,9 @@ class FilterRenderer extends \Magento\LayeredNavigation\Block\Navigation\FilterR
     public function render(FilterInterface $filter)
     {
         $filterItems = $this->_buildFilterItems($filter->getItems(), $filter);
+        if ($filterItems === null) {
+            $filterItems = [];
+        }
         $this->assign('filterItems', $filterItems);
         $html = $this->_toHtml();
         $this->assign('filterItems', []);
