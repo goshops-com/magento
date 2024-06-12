@@ -17,12 +17,16 @@ class FilterRenderer extends \Magento\LayeredNavigation\Block\Navigation\FilterR
      * @param FilterInterface $filter
      * @return string
      */
-    public function render(FilterInterface $filter)
+    public function render(FilterInterface $filter) // Access $filter here
     {
-        // Custom logic can be added here
+        // ... (your custom logic)
+
+        // Pass the entire $filter object to the template
         $this->assign('filterItems', $filter->getItems());
+        $this->assign('currentFilter', $filter); // Pass the filter object
         $html = $this->_toHtml();
         $this->assign('filterItems', []);
+        $this->assign('currentFilter', null); // Unset after rendering
         return $html;
     }
 
