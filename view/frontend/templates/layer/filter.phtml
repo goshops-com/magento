@@ -1,15 +1,4 @@
 <?php
-use Magento\Framework\Escaper;
-use Magento\LayeredNavigation\ViewModel\Layer\Filter;
-
-/** @var \Magento\LayeredNavigation\Block\Navigation\FilterRenderer $block */
-/** @var Escaper $escaper */
-/** @var Filter $viewModel */
-
-// Get the filter data from the block
-$filterData = $block->getFilterData();
-$filterCounts = $block->getFilterCounts();
-
 $logger = $block->getLogger();
 $logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
 $logger->info('Filter Data in Template: ' . json_encode($filterData));
@@ -19,7 +8,6 @@ $localeFormatter = null;
 if (version_compare($block->getVersion(), "2.4.5", '>')) {
     $localeFormatter = $block->getLocaleFormatter();
 }
-
 ?>
 
 <div class="sidebar sidebar-main">
@@ -30,55 +18,29 @@ if (version_compare($block->getVersion(), "2.4.5", '>')) {
         <div class="block-content filter-content">
             <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Shopping Options</strong>
             <dl class="filter-options" id="narrow-by-list">
-                <?php foreach ($filterData as $attributeCode => $options): ?>
-                    <?php if (!empty($options)): ?>
+                <?php 
+                foreach ($filterData as $attributeCode => $options): 
+                    $logger->info('Processing Attribute Code: ' . $attributeCode . ' with options: ' . json_encode($options));
+                    if (!empty($options)): ?>
                         <dt role="heading" aria-level="3" class="filter-options-title">
                             <?= $escaper->escapeHtml($attributeCode) ?>
                         </dt>
                         <dd class="filter-options-content">
                             <ol class="items">
-                                <?php foreach ($options as $optionId => $optionLabel): ?>
+                                <?php foreach ($options as $optionId => $optionLabel): 
+                                    $logger->info('Processing Option: ' . $optionLabel . ' for Attribute Code: ' . $attributeCode); ?>
                                     <li class="item">
-                                        <?php
-                                        $filterCount = isset($filterCounts[$attributeCode][$optionId]) ? $filterCounts[$attributeCode][$optionId] : 0;
-                                        ?>
-                                        <?php if ($filterCount > 0): ?>
-                                            <a href="#" rel="nofollow">
-                                                <?= $escaper->escapeHtml($optionLabel) ?>
-                                                <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
-                                                    <span class="count">
-                                                        <?php if ($localeFormatter): ?>
-                                                            <?= $escaper->escapeHtml($localeFormatter->formatNumber($filterCount)) ?>
-                                                        <?php else: ?>
-                                                            <?= $escaper->escapeHtml($filterCount) ?>
-                                                        <?php endif; ?>
-                                                        <span class="filter-count-label">
-                                                            <?= $escaper->escapeHtml(__($filterCount == 1 ? 'item' : 'items')) ?>
-                                                        </span>
-                                                    </span>
-                                                <?php endif; ?>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="item-label"><?= $escaper->escapeHtml($optionLabel) ?></span>
-                                            <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
-                                                <span class="count">
-                                                    <?php if ($localeFormatter): ?>
-                                                        <?= $escaper->escapeHtml($localeFormatter->formatNumber($filterCount)) ?>
-                                                    <?php else: ?>
-                                                        <?= $escaper->escapeHtml($filterCount) ?>
-                                                    <?php endif; ?>
-                                                    <span class="filter-count-label">
-                                                        <?= $escaper->escapeHtml(__('items')) ?>
-                                                    </span>
-                                                </span>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
+                                        <span class="item-label"><?= $escaper->escapeHtml($optionLabel) ?></span>
+                                        <span class="count">
+                                            <?= isset($filterCounts[$attributeCode][$optionId]) ? $escaper->escapeHtml($filterCounts[$attributeCode][$optionId]) : '0' ?>
+                                            <span class="filter-count-label">items</span>
+                                        </span>
                                     </li>
                                 <?php endforeach; ?>
                             </ol>
                         </dd>
-                    <?php endif; ?>
-                <?php endforeach; ?>
+                    <?php endif; 
+                endforeach; ?>
             </dl>
         </div>
     </div>
