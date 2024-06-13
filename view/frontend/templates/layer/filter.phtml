@@ -1,13 +1,40 @@
 <?php
-$filterCounts = $block->getFilterCounts();
 $filterData = $block->getFilterData();
-
+$filterCounts = $block->getFilterCounts();
 $logger = $block->getLogger();
-$logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
 $logger->info('Filter Data in Template: ' . json_encode($filterData));
+$logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
 ?>
 
-<!-- Display Filter Data JSON in a Div for Debugging -->
-<div id="filter-data-json">
-    <pre><?= json_encode($filterData, JSON_PRETTY_PRINT) ?></pre>
+<div class="sidebar sidebar-main">
+    <div class="block filter">
+        <div class="block-title filter-title">
+            <strong>Shop By</strong>
+        </div>
+        <div class="block-content filter-content">
+            <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Shopping Options</strong>
+            <dl class="filter-options" id="narrow-by-list">
+                <?php foreach ($filterData as $attributeCode => $options): ?>
+                    <?php if (!empty($options)): ?>
+                        <dt role="heading" aria-level="3" class="filter-options-title">
+                            <?= $escaper->escapeHtml($attributeCode) ?>
+                        </dt>
+                        <dd class="filter-options-content">
+                            <ol class="items">
+                                <?php foreach ($options as $optionId => $optionLabel): ?>
+                                    <li class="item">
+                                        <span class="item-label"><?= $escaper->escapeHtml($optionLabel) ?></span>
+                                        <span class="count">
+                                            <?= isset($filterCounts[$attributeCode][$optionId]) ? $filterCounts[$attributeCode][$optionId] : 0 ?>
+                                            <span class="filter-count-label"> items</span>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ol>
+                        </dd>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </dl>
+        </div>
+    </div>
 </div>
