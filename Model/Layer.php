@@ -78,22 +78,16 @@ class Layer extends \Magento\Catalog\Model\Layer
         $this->logger->info('Finished getProductCollection method');
 
         // Check if filters are already in the request
-        if ($this->request->getParam('filter_counts') !== null && $this->request->getParam('filter_data') !== null) {
+        if ($this->request->getParam('filter_data_combined') !== null) {
             $this->logger->info('Filters already set in the request');
             return $collection;
         }
 
-        // Calculate filter counts
-        $filterCounts = $this->calculateFilterCounts($collection);
-        $this->logger->info('Calculated filter counts: ' . json_encode($filterCounts));
-        $this->request->setParam('filter_counts', $filterCounts);
-        $this->logger->info('Stored filter counts in the request');
-
-        // Set filter data
-        $filterData = $this->getFilterData($collection);
-        $this->logger->info('Calculated filter data: ' . json_encode($filterData));
-        $this->request->setParam('filter_data', $filterData);
-        $this->logger->info('Stored filter data in the request');
+        // Calculate and set filter data
+        $filterDataCombined = $this->getCombinedFilterData($collection);
+        $this->logger->info('Calculated combined filter data: ' . json_encode($filterDataCombined));
+        $this->request->setParam('filter_data_combined', $filterDataCombined);
+        $this->logger->info('Stored combined filter data in the request');
 
         return $collection;
     }
@@ -106,22 +100,19 @@ class Layer extends \Magento\Catalog\Model\Layer
         return $helper->getProductsIds('layer');
     }
 
-    private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
+    private function getCombinedFilterData(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
     {
-        $filterCounts = [];
-        $this->logger->info('Starting filter count calculation');
+        $combinedFilterData = [];
+        $this->logger->info('Starting combined filter data calculation');
 
         $filterableAttributes = $this->filterableAttributeList->getList();
 
         foreach ($filterableAttributes as $attribute) {
             $attributeCode = $attribute->getAttributeCode();
-            $this->logger->info('Processing attribute: ' . $attributeCode);
 
             if ($attributeCode == 'price') {
                 continue;
             }
-
-            $filterCounts[$attributeCode] = [];
 
             $attribute = $collection->getResource()->getAttribute($attributeCode);
 
@@ -130,69 +121,30 @@ class Layer extends \Magento\Catalog\Model\Layer
 
                 $optionMap = [];
                 foreach ($attributeOptions as $option) {
-                    $optionMap[$option['value']] = $option['label'];
+                    $optionMap[$option['value']] = [
+                        'label' => $option['label'],
+                        'count' => 0
+                    ];
                 }
 
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
-                    $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
-                    $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
 
                     if ($productAttributeValue) {
                         $productAttributeValues = explode(',', $productAttributeValue);
                         foreach ($productAttributeValues as $value) {
                             if (isset($optionMap[$value])) {
-                                if (!isset($filterCounts[$attributeCode][$value])) {
-                                    $filterCounts[$attributeCode][$value] = 0;
-                                }
-                                $filterCounts[$attributeCode][$value]++;
-                                $this->logger->debug('Filter item "' . $optionMap[$value] . '" (' . $value . ') has count: ' . $filterCounts[$attributeCode][$value]);
-                            } else {
-                                $this->logger->warning('Attribute value "' . $value . '" for attribute ' . $attributeCode . ' not found in option map');
+                                $optionMap[$value]['count']++;
                             }
                         }
                     }
                 }
 
-                foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
-                    if ($optionValue == 0) {
-                        unset($filterCounts[$attributeCode][$optionKey]);
-                    }
-                }
-            } else {
-                $this->logger->warning("Attribute '$attributeCode' not found or doesn't use a source model");
+                $combinedFilterData[$attributeCode] = $optionMap;
             }
         }
 
-        $this->logger->info('Finished filter count calculation');
-
-        return $filterCounts;
-    }
-
-    private function getFilterData(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
-    {
-        $filterData = [];
-
-        $filterableAttributes = $this->filterableAttributeList->getList();
-
-        foreach ($filterableAttributes as $attribute) {
-            $attributeCode = $attribute->getAttributeCode();
-
-            if ($attributeCode == 'price') {
-                continue;
-            }
-
-            $attribute = $collection->getResource()->getAttribute($attributeCode);
-
-            if ($attribute && $attribute->usesSource()) {
-                $attributeOptions = $attribute->getSource()->getAllOptions(false);
-
-                foreach ($attributeOptions as $option) {
-                    $filterData[$attributeCode][$option['value']] = $option['label'];
-                }
-            }
-        }
-
-        return $filterData;
+        $this->logger->info('Finished combined filter data calculation');
+        return $combinedFilterData;
     }
 }
