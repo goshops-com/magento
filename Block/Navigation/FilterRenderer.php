@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 class FilterRenderer extends BaseFilterRenderer
 {
     protected $logger;
+    protected $request;
 
     public function __construct(
         Context $context,
@@ -16,6 +17,7 @@ class FilterRenderer extends BaseFilterRenderer
         array $data = []
     ) {
         $this->logger = $logger;
+        $this->request = $context->getRequest();
         parent::__construct($context, $data);
     }
 
@@ -26,14 +28,14 @@ class FilterRenderer extends BaseFilterRenderer
 
     public function getFilterCounts()
     {
-        $filterCounts = $this->getData('filter_counts');
+        $filterCounts = $this->request->getParam('filter_counts');
         $this->logger->info('Filter Counts: from Block ' . json_encode($filterCounts));
         return $filterCounts;
     }
 
     public function getFilterData()
     {
-        $filter = $this->getData('filter');
+        $filter = $this->request->getParam('filter_data');
         $this->logger->info('Filter Data: from Block ' . json_encode($filter));
         return $filter;
     }
