@@ -14,11 +14,14 @@ use Magento\Framework\Registry;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
+use Magento\Framework\App\CacheInterface;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
     protected $logger;
     protected $filterableAttributeList;
+    protected $cache;
+    protected $cacheKey = 'gopersonal_layer_filter_counts';
 
     public function __construct(
         ContextInterface $context,
@@ -30,10 +33,12 @@ class Layer extends \Magento\Catalog\Model\Layer
         CategoryRepositoryInterface $categoryRepository,
         FilterableAttributeList $filterableAttributeList,
         LoggerInterface $logger,
+        CacheInterface $cache,
         array $data = []
     ) {
         $this->logger = $logger;
         $this->filterableAttributeList = $filterableAttributeList;
+        $this->cache = $cache;
         parent::__construct(
             $context, 
             $stateFactory, 
@@ -65,8 +70,18 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         $this->logger->info('Finished getProductCollection method');
 
-        // Calculate filter counts after getting the product collection
-        $filterCounts = $this->calculateFilterCounts($collection);
+        // Check cache for filter counts
+        $filterCounts = $this->cache->load($this->cacheKey);
+        if ($filterCounts) {
+            $filterCounts = unserialize($filterCounts);
+            $this->logger->info('Loaded filter counts from cache');
+        } else {
+            // Calculate filter counts after getting the product collection
+            $filterCounts = $this->calculateFilterCounts($collection);
+            $this->cache->save(serialize($filterCounts), $this->cacheKey, [], 3600);
+            $this->logger->info('Calculated and cached filter counts');
+        }
+
         $this->setData('filter_counts', $filterCounts);
 
         return $collection;
@@ -116,7 +131,7 @@ class Layer extends \Magento\Catalog\Model\Layer
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
-                    $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value ' . $productAttributeValue);
+                    $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
 
                     // Ensure the product attribute value is in the map
                     if (isset($optionMap[$productAttributeValue])) {
@@ -126,7 +141,7 @@ class Layer extends \Magento\Catalog\Model\Layer
                         $filterCounts[$attributeCode][$productAttributeValue]++;
                         $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
                     } else {
-                        $this->logger->warning('Attribute value ' . $productAttributeValue . ' for attribute ' . $attributeCode . ' not found in option map');
+                        $this->logger->warning('Attribute value "' . $productAttributeValue . '" for attribute ' . $attributeCode . ' not found in option map');
                     }
                 }
 
