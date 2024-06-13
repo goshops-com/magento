@@ -19,8 +19,8 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
 
 // Logging filter data and filter counts
 $logger = $block->getLogger();
-$logger->info('Filter Counts: from filter ' . json_encode($filterCounts));
-$logger->info('Filter Data: from filter ' . json_encode($filterData));
+$logger->info('Filter Counts: ' . json_encode($filterCounts));
+$logger->info('Filter Data: ' . json_encode($filterData));
 
 ?>
 

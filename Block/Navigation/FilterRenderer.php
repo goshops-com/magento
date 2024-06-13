@@ -1,47 +1,40 @@
 <?php
+
 namespace Gopersonal\Magento\Block\Navigation;
 
-use Magento\Framework\View\Element\Template;
+use Magento\LayeredNavigation\Block\Navigation\FilterRenderer as BaseFilterRenderer;
 use Psr\Log\LoggerInterface;
-use Magento\Framework\App\RequestInterface;
 
-class FilterRenderer extends \Magento\LayeredNavigation\Block\Navigation\FilterRenderer
+class FilterRenderer extends BaseFilterRenderer
 {
     protected $logger;
-    protected $request;
 
     public function __construct(
-        Template\Context $context,
+        \Magento\Framework\View\Element\Template\Context $context,
+        \Magento\Framework\View\Element\Html\LinkFactory $linkFactory,
         LoggerInterface $logger,
-        RequestInterface $request,
         array $data = []
     ) {
         $this->logger = $logger;
-        $this->request = $request;
-        parent::__construct($context, $data);
+        parent::__construct($context, $linkFactory, $data);
+    }
+
+    public function getLogger()
+    {
+        return $this->logger;
     }
 
     public function getFilterCounts()
     {
-        $filterCounts = $this->request->getParam('filter_counts');
-        $this->logger->info('Filter Counts: from Render ' . json_encode($filterCounts));
+        $filterCounts = $this->getData('filter_counts');
+        $this->logger->info('Filter Counts: from Block ' . json_encode($filterCounts));
         return $filterCounts;
     }
 
     public function getFilterData()
     {
-        $filter = $this->request->getParam('filter_data');
-        $this->logger->info('Filter Data: from Render ' . json_encode($filter));
+        $filter = $this->getData('filter');
+        $this->logger->info('Filter Data: from Block ' . json_encode($filter));
         return $filter;
-    }
-
-    public function logFilterItem($filterItem, $filterCount)
-    {
-        $this->logger->info('Filter Item: ' . json_encode([
-            'label' => $filterItem->getLabel(),
-            'value' => $filterItem->getValue(),
-            'url' => $filterItem->getUrl(),
-            'count' => $filterCount
-        ]));
     }
 }
