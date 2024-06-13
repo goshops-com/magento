@@ -68,6 +68,13 @@ class Layer extends \Magento\Catalog\Model\Layer
             );
         }
 
+        // Ensure the collection loads the filterable attributes
+        $filterableAttributes = $this->filterableAttributeList->getList();
+        foreach ($filterableAttributes as $attribute) {
+            $collection->addAttributeToSelect($attribute->getAttributeCode());
+        }
+        $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
+
         $this->logger->info('Finished getProductCollection method');
 
         // Check if filters are already in the request
@@ -108,6 +115,7 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         foreach ($filterableAttributes as $attribute) {
             $attributeCode = $attribute->getAttributeCode();
+            $this->logger->info('Processing attribute: ' . $attributeCode);
 
             if ($attributeCode == 'price') {
                 continue;

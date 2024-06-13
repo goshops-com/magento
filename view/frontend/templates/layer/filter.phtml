@@ -26,7 +26,7 @@ $logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
                                         <span class="item-label"><?= $escaper->escapeHtml($optionLabel) ?></span>
                                         <span class="count">
                                             <?= isset($filterCounts[$attributeCode][$optionId]) ? $filterCounts[$attributeCode][$optionId] : 0 ?>
-                                            <span class="filter-count-label"> items</span>
+                                            <span class="filter-count-label">items</span>
                                         </span>
                                     </li>
                                 <?php endforeach; ?>
