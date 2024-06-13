@@ -22,14 +22,14 @@ if (version_compare($mageVersion, "2.4.5", '>')) {
 ?>
 
 <ol class="items">
-    <?php foreach ($filterItems as $filterItem): ?>
+    <?php foreach ($filter->getItems() as $filterItem): ?>
         <?php
 
         echo "<script>console.log('Filter Value:', " . $filterItem->getValue() . ");</script>";
 
         $filterCount = 0;
-        if ($filter && isset($filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()])) { 
-            $filterCount = $filterCounts[$block->escapeHtml($filter->getRequestVar())][$filterItem->getValue()];
+        if ($filter && isset($filterCounts[$filter->getRequestVar()][$filterItem->getValue()])) { 
+            $filterCount = $filterCounts[$filter->getRequestVar()][$filterItem->getValue()];
         }
         ?>
 

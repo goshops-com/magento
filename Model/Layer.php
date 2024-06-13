@@ -105,21 +105,25 @@ class Layer extends \Magento\Catalog\Model\Layer
             // Check if the attribute exists and has options
             if ($attribute && $attribute->usesSource()) {
                 // Get all possible options for the attribute
-                $attributeOptions = $attribute->getSource()->getAllOptions();
+                $attributeOptions = $attribute->getSource()->getAllOptions(false);
+
+                // Create a map of option values to labels
+                $optionMap = [];
+                foreach ($attributeOptions as $option) {
+                    $optionMap[$option['value']] = $option['label'];
+                }
 
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
 
-                    // Find the matching filter option label and ensure it's counted
-                    foreach ($attributeOptions as $option) {
-                        if ($option['value'] == $productAttributeValue) {
-                            if (!isset($filterCounts[$attributeCode][$option['value']])) {
-                                $filterCounts[$attributeCode][$option['value']] = 0;
-                            }
-                            $filterCounts[$attributeCode][$option['value']]++;
-                            $this->logger->debug('Filter item "' . $option['label'] . '" (' . $option['value'] . ') has count: ' . $filterCounts[$attributeCode][$option['value']]);
+                    // Ensure the product attribute value is in the map
+                    if (isset($optionMap[$productAttributeValue])) {
+                        if (!isset($filterCounts[$attributeCode][$productAttributeValue])) {
+                            $filterCounts[$attributeCode][$productAttributeValue] = 0;
                         }
+                        $filterCounts[$attributeCode][$productAttributeValue]++;
+                        $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
                     }
                 }
 
