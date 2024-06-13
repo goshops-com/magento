@@ -16,6 +16,12 @@ $localeFormatter = null;
 if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
     $localeFormatter = $block->getLocaleFormatter();
 }
+
+// Logging filter data and filter counts
+$logger = $block->getLogger();
+$logger->info('Filter Counts: from filter ' . json_encode($filterCounts));
+$logger->info('Filter Data: from filter ' . json_encode($filterData));
+
 ?>
 
 <div class="sidebar sidebar-main">
@@ -28,6 +34,11 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
             <dl class="filter-options" id="narrow-by-list">
                 <?php if ($filterData && $filterCounts): ?>
                     <?php foreach ($filterData as $attributeCode => $options): ?>
+                        <?php
+                        // Log each attribute code and options
+                        $logger->info('Attribute Code: ' . $attributeCode);
+                        $logger->info('Options: ' . json_encode($options));
+                        ?>
                         <dt role="heading" aria-level="3" class="filter-options-title">
                             <?= $escaper->escapeHtml(ucwords(str_replace('_', ' ', $attributeCode))) ?>
                         </dt>
@@ -36,6 +47,8 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
                                 <?php foreach ($options as $value => $label): ?>
                                     <?php
                                     $filterCount = isset($filterCounts[$attributeCode][$value]) ? $filterCounts[$attributeCode][$value] : 0;
+                                    // Log each filter item and its count
+                                    $logger->info('Filter Item: ' . $label . ' (' . $value . ') has count: ' . $filterCount);
                                     ?>
                                     <li class="item">
                                         <?php if ($filterCount > 0): ?>
