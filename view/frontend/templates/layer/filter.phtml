@@ -11,16 +11,24 @@ $mageVersion = $block->getVersion();
 $filterCounts = $block->getData('filter_counts');
 $filter = $block->getData('filter'); 
 
-echo "<pre>";
-var_dump($filterCounts);
-var_dump($filter);
-echo "</pre>";
+// Log the filter counts and filter data for debugging
+$block->getLogger()->info('Filter Counts: ' . json_encode($filterCounts));
+$block->getLogger()->info('Filter Data: ' . json_encode($filter));
 
-// Initialize locale formatter if needed (Magento 2.4.5+)
-$localeFormatter = null;
-if (version_compare($mageVersion, "2.4.5", '>')) {
-    $localeFormatter = $block->getLocaleFormatter();
+// Log each filter item
+if ($filter && $filterItems = $filter->getItems()) {
+    foreach ($filterItems as $filterItem) {
+        $block->getLogger()->info('Filter Item: ' . json_encode([
+            'label' => $filterItem->getLabel(),
+            'value' => $filterItem->getValue(),
+            'url' => $filterItem->getUrl(),
+            'count' => isset($filterCounts[$filter->getRequestVar()][$filterItem->getValue()]) 
+                        ? $filterCounts[$filter->getRequestVar()][$filterItem->getValue()] 
+                        : 0
+        ]));
+    }
 }
+
 ?>
 
 <div class="sidebar sidebar-main">
