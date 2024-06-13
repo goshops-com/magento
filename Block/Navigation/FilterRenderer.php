@@ -2,6 +2,7 @@
 
 namespace Gopersonal\Magento\Block\Navigation;
 
+use Magento\Framework\View\Element\Template\Context;
 use Magento\LayeredNavigation\Block\Navigation\FilterRenderer as BaseFilterRenderer;
 use Psr\Log\LoggerInterface;
 
@@ -10,13 +11,12 @@ class FilterRenderer extends BaseFilterRenderer
     protected $logger;
 
     public function __construct(
-        \Magento\Framework\View\Element\Template\Context $context,
-        \Magento\Framework\View\Element\Html\LinkFactory $linkFactory,
+        Context $context,
         LoggerInterface $logger,
         array $data = []
     ) {
         $this->logger = $logger;
-        parent::__construct($context, $linkFactory, $data);
+        parent::__construct($context, $data);
     }
 
     public function getLogger()
