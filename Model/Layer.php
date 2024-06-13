@@ -124,11 +124,14 @@ class Layer extends \Magento\Catalog\Model\Layer
                     $optionMap[$option['value']] = $option['label'];
                 }
 
+                // Log the option map for the current attribute
+                $this->logger->info("Option map for attribute '$attributeCode': " . json_encode($optionMap));
+
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
-                    // $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
-                    // $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
+                    $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
+                    $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
 
                     // Ensure the product attribute value is in the map
                     if (isset($optionMap[$productAttributeValue])) {
@@ -136,9 +139,9 @@ class Layer extends \Magento\Catalog\Model\Layer
                             $filterCounts[$attributeCode][$productAttributeValue] = 0;
                         }
                         $filterCounts[$attributeCode][$productAttributeValue]++;
-                        // $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
+                        $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
                     } else {
-                        // $this->logger->warning('Attribute value "' . $productAttributeValue . '" for attribute ' . $attributeCode . ' not found in option map');
+                        $this->logger->warning('Attribute value "' . $productAttributeValue . '" for attribute ' . $attributeCode . ' not found in option map');
                     }
                 }
 
@@ -153,7 +156,7 @@ class Layer extends \Magento\Catalog\Model\Layer
             }
         }
 
-        // $this->logger->info('Finished filter count calculation');
+        $this->logger->info('Finished filter count calculation');
 
         // Log the filter counts as JSON
         $this->logger->info('Filter Counts: ' . json_encode($filterCounts, JSON_PRETTY_PRINT));
