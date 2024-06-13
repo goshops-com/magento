@@ -2,25 +2,24 @@
 use Magento\Framework\Escaper;
 use Magento\LayeredNavigation\ViewModel\Layer\Filter;
 
-/** @var \Gopersonal\Magento\Block\Navigation\FilterRenderer $block */
+/** @var \Magento\LayeredNavigation\Block\Navigation\FilterRenderer $block */
 /** @var Escaper $escaper */
 /** @var Filter $viewModel */
 
-$viewModel = $block->getData('product_layer_view_model');
-$mageVersion = $block->getVersion();
-$filterCounts = $block->getFilterCounts();
+// Get the filter data from the block
 $filterData = $block->getFilterData();
+$filterCounts = $block->getFilterCounts();
+
+$logger = $block->getLogger();
+$logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
+$logger->info('Filter Data in Template: ' . json_encode($filterData));
 
 // Initialize locale formatter if needed (Magento 2.4.5+)
 $localeFormatter = null;
-if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
+if (version_compare($block->getVersion(), "2.4.5", '>')) {
     $localeFormatter = $block->getLocaleFormatter();
 }
 
-// Log filter data and filter counts
-$logger = $block->getLogger();
-$logger->info('Filter Counts: filter ' . json_encode($filterCounts));
-$logger->info('Filter Data: filter ' . json_encode($filterData));
 ?>
 
 <div class="sidebar sidebar-main">
@@ -31,21 +30,21 @@ $logger->info('Filter Data: filter ' . json_encode($filterData));
         <div class="block-content filter-content">
             <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Shopping Options</strong>
             <dl class="filter-options" id="narrow-by-list">
-                <?php if ($filterData && $filterCounts): ?>
-                    <?php foreach ($filterData as $attributeCode => $options): ?>
+                <?php foreach ($filterData as $attributeCode => $options): ?>
+                    <?php if (!empty($options)): ?>
                         <dt role="heading" aria-level="3" class="filter-options-title">
-                            <?= $escaper->escapeHtml(ucwords(str_replace('_', ' ', $attributeCode))) ?>
+                            <?= $escaper->escapeHtml($attributeCode) ?>
                         </dt>
                         <dd class="filter-options-content">
                             <ol class="items">
-                                <?php foreach ($options as $value => $label): ?>
-                                    <?php
-                                    $filterCount = isset($filterCounts[$attributeCode][$value]) ? $filterCounts[$attributeCode][$value] : 0;
-                                    ?>
+                                <?php foreach ($options as $optionId => $optionLabel): ?>
                                     <li class="item">
+                                        <?php
+                                        $filterCount = isset($filterCounts[$attributeCode][$optionId]) ? $filterCounts[$attributeCode][$optionId] : 0;
+                                        ?>
                                         <?php if ($filterCount > 0): ?>
                                             <a href="#" rel="nofollow">
-                                                <?= $escaper->escapeHtml($label) ?>
+                                                <?= $escaper->escapeHtml($optionLabel) ?>
                                                 <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
                                                     <span class="count">
                                                         <?php if ($localeFormatter): ?>
@@ -60,7 +59,7 @@ $logger->info('Filter Data: filter ' . json_encode($filterData));
                                                 <?php endif; ?>
                                             </a>
                                         <?php else: ?>
-                                            <span class="item-label"><?= $escaper->escapeHtml($label) ?></span>
+                                            <span class="item-label"><?= $escaper->escapeHtml($optionLabel) ?></span>
                                             <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
                                                 <span class="count">
                                                     <?php if ($localeFormatter): ?>
@@ -78,10 +77,8 @@ $logger->info('Filter Data: filter ' . json_encode($filterData));
                                 <?php endforeach; ?>
                             </ol>
                         </dd>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p>No filter options available.</p>
-                <?php endif; ?>
+                    <?php endif; ?>
+                <?php endforeach; ?>
             </dl>
         </div>
     </div>
