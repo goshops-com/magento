@@ -78,13 +78,15 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         // Calculate filter counts
         $filterCounts = $this->calculateFilterCounts($collection);
+        $this->logger->info('Calculated filter counts: ' . json_encode($filterCounts));
         $this->request->setParam('filter_counts', $filterCounts);
-        $this->logger->info('Calculated and set filter counts in the request');
+        $this->logger->info('Stored filter counts in the request');
 
         // Set filter data
         $filterData = $this->getFilterData($collection);
+        $this->logger->info('Calculated filter data: ' . json_encode($filterData));
         $this->request->setParam('filter_data', $filterData);
-        $this->logger->info('Set filter data in the request');
+        $this->logger->info('Stored filter data in the request');
 
         return $collection;
     }
