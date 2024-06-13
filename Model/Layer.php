@@ -1,7 +1,7 @@
 <?php
 /**
  * @package   Gopersonal_Magento
- * @author    Shahid Taj
+ * author    Shahid Taj
  */
 namespace Gopersonal\Magento\Model;
 
@@ -116,6 +116,7 @@ class Layer extends \Magento\Catalog\Model\Layer
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
+                    $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value ' . $productAttributeValue);
 
                     // Ensure the product attribute value is in the map
                     if (isset($optionMap[$productAttributeValue])) {
@@ -124,6 +125,8 @@ class Layer extends \Magento\Catalog\Model\Layer
                         }
                         $filterCounts[$attributeCode][$productAttributeValue]++;
                         $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
+                    } else {
+                        $this->logger->warning('Attribute value ' . $productAttributeValue . ' for attribute ' . $attributeCode . ' not found in option map');
                     }
                 }
 
