@@ -28,15 +28,8 @@
 			</block>
 		</referenceContainer>
 		<referenceContainer name="sidebar.main">
-		<block class="Gopersonal\Magento\Block\Navigation" name="catalog.leftnav" as="navigation" before="-" template="Gopersonal_Magento::layer/view-gopersonal.phtml">
-				<block class="Gopersonal\Magento\Block\Navigation\State" name="catalog.navigation.state" as="state" template="Gopersonal_Magento::layer/state.phtml" />
-				<block class="Gopersonal\Magento\Block\Navigation\FilterRenderer" name="catalog.navigation.renderer" as="renderer" template="Gopersonal_Magento::layer/filter.phtml">
-					<arguments>
-						<argument name="product_layer_view_model" xsi:type="object">Magento\LayeredNavigation\ViewModel\Layer\Filter</argument>
-					</arguments>
-				</block>
-			</block>
-		</referenceContainer>
+            <block class="Gopersonal\Magento\Block\Navigation\FilterRenderer" name="catalog.leftnav" as="navigation" before="-" template="Gopersonal_Magento::layer/filter.phtml" />
+        </referenceContainer>
 		<referenceBlock name="search_index_index">
 			<arguments>
 				<argument name="viewModel" xsi:type="object">Magento\Catalog\ViewModel\Product\OptionsData</argument>
