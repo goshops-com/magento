@@ -21,11 +21,13 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
                             <ol class="items">
                                 <?php foreach ($options as $optionId => $optionData): ?>
                                     <li class="item">
-                                        <span class="item-label"><?= $escaper->escapeHtml($optionData['label']) ?></span>
-                                        <span class="count">
-                                            <?= $optionData['count'] ?>
-                                            <span class="filter-count-label">items</span>
-                                        </span>
+                                        <a href="<?= $block->getUrl('*/*/*', ['_current' => true, '_use_rewrite' => true, $attributeCode => $optionId]) ?>" class="filter-option">
+                                            <span class="item-label"><?= $escaper->escapeHtml($optionData['label']) ?></span>
+                                            <span class="count">
+                                                <?= $optionData['count'] ?>
+                                                <span class="filter-count-label">items</span>
+                                            </span>
+                                        </a>
                                     </li>
                                 <?php endforeach; ?>
                             </ol>

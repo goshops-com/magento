@@ -1,4 +1,5 @@
 <?php
+
 namespace Gopersonal\Magento\Model;
 
 use Magento\Catalog\Model\Layer\ContextInterface;
@@ -77,17 +78,16 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         $this->logger->info('Finished getProductCollection method');
 
-        // Check if filters are already in the request
-        if ($this->request->getParam('filter_data_combined') !== null) {
-            $this->logger->info('Filters already set in the request');
-            return $collection;
-        }
+        // Apply URL filters to the collection
+        $this->applyUrlFilters($collection);
 
-        // Calculate and set filter data
-        $filterDataCombined = $this->getCombinedFilterData($collection);
-        $this->logger->info('Calculated combined filter data: ' . json_encode($filterDataCombined));
-        $this->request->setParam('filter_data_combined', $filterDataCombined);
-        $this->logger->info('Stored combined filter data in the request');
+        // Calculate and set filter data if not already in the request
+        if ($this->request->getParam('filter_data_combined') === null) {
+            $filterDataCombined = $this->getCombinedFilterData($collection);
+            $this->logger->info('Calculated combined filter data: ' . json_encode($filterDataCombined));
+            $this->request->setParam('filter_data_combined', $filterDataCombined);
+            $this->logger->info('Stored combined filter data in the request');
+        }
 
         return $collection;
     }
@@ -153,5 +153,21 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         $this->logger->info('Finished combined filter data calculation');
         return $combinedFilterData;
+    }
+
+    private function applyUrlFilters($collection)
+    {
+        $this->logger->info('Applying URL filters');
+        $filterableAttributes = $this->filterableAttributeList->getList();
+
+        foreach ($filterableAttributes as $attribute) {
+            $attributeCode = $attribute->getAttributeCode();
+            $filterValue = $this->request->getParam($attributeCode);
+
+            if ($filterValue) {
+                $this->logger->info("Applying filter: $attributeCode = $filterValue");
+                $collection->addAttributeToFilter($attributeCode, ['eq' => $filterValue]);
+            }
+        }
     }
 }
