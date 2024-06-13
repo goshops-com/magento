@@ -54,13 +54,21 @@ class Layer extends \Magento\Catalog\Model\Layer
     public function getProductCollection()
     {
         $this->logger->info('Starting getProductCollection method');
-        
+
         $collection = parent::getProductCollection();
         $idArray = $this->getProductsIds();
 
         if (!empty($idArray)) {
             $this->logger->info('Filtering collection by product IDs: ' . implode(',', $idArray));
             $collection->addAttributeToFilter('entity_id', ['in' => $idArray]);
+
+            // Dynamically load filterable attributes
+            $filterableAttributes = $this->filterableAttributeList->getList();
+            $attributesToLoad = [];
+            foreach ($filterableAttributes as $attribute) {
+                $attributesToLoad[] = $attribute->getAttributeCode();
+            }
+            $collection->addAttributeToSelect($attributesToLoad);
 
             // Custom sorting based on array order 
             $collection->getSelect()->order(
@@ -72,7 +80,9 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         // Check cache for filter counts
         $filterCounts = $this->calculateFilterCounts($collection);
-        
+        $this->cache->save(serialize($filterCounts), $this->cacheKey, [], 3600);
+        $this->logger->info('Calculated and cached filter counts');
+
         $this->setData('filter_counts', $filterCounts);
 
         return $collection;
