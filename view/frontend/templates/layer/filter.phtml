@@ -1,4 +1,7 @@
 <?php
+$filterCounts = $block->getFilterCounts();
+$filterData = $block->getFilterData();
+
 $logger = $block->getLogger();
 $logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
 $logger->info('Filter Data in Template: ' . json_encode($filterData));
