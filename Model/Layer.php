@@ -10,6 +10,7 @@ use Magento\Catalog\Model\Layer\StateFactory;
 use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as AttributeCollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Product;
 use Magento\Store\Model\StoreManagerInterface;
+use Magento\Framework\Registry;
 use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 
@@ -24,13 +25,14 @@ class Layer extends \Magento\Catalog\Model\Layer
         AttributeCollectionFactory $attributeCollectionFactory,
         Product $catalogProduct,
         StoreManagerInterface $storeManager,
+        Registry $registry,
         FilterableAttributeList $filterableAttributeList,
         LoggerInterface $logger,
         array $data = []
     ) {
         $this->logger = $logger;
         $this->filterableAttributeList = $filterableAttributeList;
-        parent::__construct($context, $stateFactory, $attributeCollectionFactory, $catalogProduct, $storeManager, $data);
+        parent::__construct($context, $stateFactory, $attributeCollectionFactory, $catalogProduct, $storeManager, $registry, $data);
     }
 
     public function getProductCollection()
