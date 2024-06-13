@@ -72,9 +72,7 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         // Check cache for filter counts
         $filterCounts = $this->calculateFilterCounts($collection);
-        $this->cache->save(serialize($filterCounts), $this->cacheKey, [], 3600);
-        $this->logger->info('Calculated and cached filter counts');
-
+        
         $this->setData('filter_counts', $filterCounts);
 
         return $collection;
@@ -94,7 +92,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         $this->logger->info('Starting filter count calculation');
 
         // Fetch filterable attributes dynamically
-        $filterableAttributes = $this->.filterableAttributeList->getList();
+        $filterableAttributes = $this->filterableAttributeList->getList();
 
         // Iterate over filterable attributes 
         foreach ($filterableAttributes as $attribute) {
