@@ -14,6 +14,7 @@ use Magento\Framework\Registry;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\CacheInterface;
+use Magento\Framework\App\RequestInterface;
 use Magento\Eav\Model\Config as EavConfig;
 use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as ProductAttributeCollectionFactory;
 
@@ -24,6 +25,7 @@ class Layer extends \Magento\Catalog\Model\Layer
     protected $eavConfig;
     protected $productAttributeCollectionFactory;
     protected $cacheKey = 'gopersonal_layer_filter_counts';
+    protected $request;
 
     public function __construct(
         ContextInterface $context,
@@ -35,6 +37,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         CategoryRepositoryInterface $categoryRepository,
         LoggerInterface $logger,
         CacheInterface $cache,
+        RequestInterface $request,
         EavConfig $eavConfig,
         ProductAttributeCollectionFactory $productAttributeCollectionFactory,
         array $data = []
@@ -43,6 +46,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         $this->cache = $cache;
         $this->eavConfig = $eavConfig;
         $this->productAttributeCollectionFactory = $productAttributeCollectionFactory;
+        $this->request = $request;
         parent::__construct(
             $context, 
             $stateFactory, 
@@ -81,10 +85,16 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         $this->logger->info('Finished getProductCollection method');
 
-        // Check cache for filter counts
-        $filterCounts = $this->calculateFilterCounts($collection);
-        $this->cache->save(serialize($filterCounts), $this->cacheKey, [], 3600);
-        $this->logger->info('Calculated and cached filter counts');
+        // Check if filter counts are already in the request
+        if ($this->request->getParam('filter_counts') !== null) {
+            $filterCounts = $this->request->getParam('filter_counts');
+            $this->logger->info('Returning cached filter counts from request');
+        } else {
+            // Calculate filter counts and store in the request
+            $filterCounts = $this->calculateFilterCounts($collection);
+            $this->request->setParam('filter_counts', $filterCounts);
+            $this->logger->info('Calculated and stored filter counts in request');
+        }
 
         $this->setData('filter_counts', $filterCounts);
 
@@ -119,7 +129,7 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         // Fetch filterable attributes dynamically
         $filterableAttributes = $this->getFilterableAttributes();
-        $this->logger->info('Filterable Attributes for Count Calculation: ' . json_encode($filterableAttributes));
+        $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
 
         // Iterate over filterable attributes 
         foreach ($filterableAttributes as $attribute) {
@@ -132,8 +142,11 @@ class Layer extends \Magento\Catalog\Model\Layer
 
             $filterCounts[$attributeCode] = [];
 
+            // Get the attribute model (if it exists)
+            $attribute = $collection->getResource()->getAttribute($attributeCode);
+
             // Check if the attribute exists and has options
-            if ($attribute->usesSource()) {
+            if ($attribute && $attribute->usesSource()) {
                 // Get all possible options for the attribute
                 $attributeOptions = $attribute->getSource()->getAllOptions(false);
 
@@ -142,6 +155,7 @@ class Layer extends \Magento\Catalog\Model\Layer
                 foreach ($attributeOptions as $option) {
                     $optionMap[$option['value']] = $option['label'];
                 }
+                $this->logger->info('Option map for attribute ' . $attributeCode . ': ' . json_encode($optionMap));
 
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
@@ -150,14 +164,22 @@ class Layer extends \Magento\Catalog\Model\Layer
                     $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
 
                     // Ensure the product attribute value is in the map
-                    if (isset($optionMap[$productAttributeValue])) {
-                        if (!isset($filterCounts[$attributeCode][$productAttributeValue])) {
-                            $filterCounts[$attributeCode][$productAttributeValue] = 0;
-                        }
-                        $filterCounts[$attributeCode][$productAttributeValue]++;
-                        $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
+                    if (is_string($productAttributeValue) && strpos($productAttributeValue, ',') !== false) {
+                        $values = explode(',', $productAttributeValue);
                     } else {
-                        $this->logger->warning('Attribute value "' . $productAttributeValue . '" for attribute ' . $attributeCode . ' not found in option map');
+                        $values = [$productAttributeValue];
+                    }
+
+                    foreach ($values as $value) {
+                        if (isset($optionMap[$value])) {
+                            if (!isset($filterCounts[$attributeCode][$value])) {
+                                $filterCounts[$attributeCode][$value] = 0;
+                            }
+                            $filterCounts[$attributeCode][$value]++;
+                            $this->logger->debug('Filter item "' . $optionMap[$value] . '" (' . $value . ') has count: ' . $filterCounts[$attributeCode][$value]);
+                        } else {
+                            $this->logger->warning('Attribute value "' . $value . '" for attribute ' . $attributeCode . ' not found in option map');
+                        }
                     }
                 }
 
@@ -173,6 +195,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         }
 
         $this->logger->info('Finished filter count calculation');
+        $this->logger->info('Final filter counts: ' . json_encode($filterCounts));
 
         return $filterCounts;
     }
