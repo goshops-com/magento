@@ -30,7 +30,7 @@ class FilterRenderer extends \Magento\LayeredNavigation\Block\Navigation\FilterR
 
     public function getFilterData()
     {
-        $filter = $this->request->getParam('filter');
+        $filter = $this->request->getParam('filter_data');
         $this->logger->info('Filter Data: from Render ' . json_encode($filter));
         return $filter;
     }
