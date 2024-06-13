@@ -54,21 +54,13 @@ class Layer extends \Magento\Catalog\Model\Layer
     public function getProductCollection()
     {
         $this->logger->info('Starting getProductCollection method');
-
+        
         $collection = parent::getProductCollection();
         $idArray = $this->getProductsIds();
 
         if (!empty($idArray)) {
             $this->logger->info('Filtering collection by product IDs: ' . implode(',', $idArray));
             $collection->addAttributeToFilter('entity_id', ['in' => $idArray]);
-
-            // Dynamically load filterable attributes
-            $filterableAttributes = $this->filterableAttributeList->getList();
-            $attributesToLoad = [];
-            foreach ($filterableAttributes as $attribute) {
-                $attributesToLoad[] = $attribute->getAttributeCode();
-            }
-            $collection->addAttributeToSelect($attributesToLoad);
 
             // Custom sorting based on array order 
             $collection->getSelect()->order(
@@ -88,11 +80,6 @@ class Layer extends \Magento\Catalog\Model\Layer
         return $collection;
     }
 
-    public function getFilterCounts()
-    {
-        return $this->getData('filter_counts');
-    }
-
     public function getProductsIds()
     {
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
@@ -108,6 +95,9 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         // Fetch filterable attributes dynamically
         $filterableAttributes = $this->filterableAttributeList->getList();
+
+        // Log the filterable attributes
+        $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
 
         // Iterate over filterable attributes 
         foreach ($filterableAttributes as $attribute) {
@@ -137,8 +127,8 @@ class Layer extends \Magento\Catalog\Model\Layer
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
-                    $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
-                    $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
+                    // $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
+                    // $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
 
                     // Ensure the product attribute value is in the map
                     if (isset($optionMap[$productAttributeValue])) {
@@ -146,9 +136,9 @@ class Layer extends \Magento\Catalog\Model\Layer
                             $filterCounts[$attributeCode][$productAttributeValue] = 0;
                         }
                         $filterCounts[$attributeCode][$productAttributeValue]++;
-                        $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
+                        // $this->logger->debug('Filter item "' . $optionMap[$productAttributeValue] . '" (' . $productAttributeValue . ') has count: ' . $filterCounts[$attributeCode][$productAttributeValue]);
                     } else {
-                        $this->logger->warning('Attribute value "' . $productAttributeValue . '" for attribute ' . $attributeCode . ' not found in option map');
+                        // $this->logger->warning('Attribute value "' . $productAttributeValue . '" for attribute ' . $attributeCode . ' not found in option map');
                     }
                 }
 
@@ -163,7 +153,10 @@ class Layer extends \Magento\Catalog\Model\Layer
             }
         }
 
-        $this->logger->info('Finished filter count calculation');
+        // $this->logger->info('Finished filter count calculation');
+
+        // Log the filter counts as JSON
+        $this->logger->info('Filter Counts: ' . json_encode($filterCounts, JSON_PRETTY_PRINT));
 
         return $filterCounts;
     }
