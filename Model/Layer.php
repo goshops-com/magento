@@ -97,7 +97,19 @@ class Layer extends \Magento\Catalog\Model\Layer
         $filterableAttributes = $this->filterableAttributeList->getList();
 
         // Log the filterable attributes
-        $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
+        if (empty($filterableAttributes)) {
+            $this->logger->warning('No filterable attributes found. Please check attribute settings.');
+        } else {
+            $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
+        }
+
+        // Load all attribute values for products in the collection
+        $attributesToLoad = [];
+        foreach ($filterableAttributes as $attribute) {
+            $attributesToLoad[] = $attribute->getAttributeCode();
+        }
+        $collection->addAttributeToSelect($attributesToLoad);
+        $this->logger->info('Loaded attributes for collection: ' . json_encode($attributesToLoad));
 
         // Iterate over filterable attributes 
         foreach ($filterableAttributes as $attribute) {
@@ -146,20 +158,17 @@ class Layer extends \Magento\Catalog\Model\Layer
                 }
 
                 // Remove filter options with zero count
-                // foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
-                //     if ($optionValue == 0) {
-                //         unset($filterCounts[$attributeCode][$optionKey]);
-                //     }
-                // }
+                foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
+                    if ($optionValue == 0) {
+                        unset($filterCounts[$attributeCode][$optionKey]);
+                    }
+                }
             } else {
                 $this->logger->warning("Attribute '$attributeCode' not found or doesn't use a source model");
             }
         }
 
         $this->logger->info('Finished filter count calculation');
-
-        // Log the filter counts as JSON
-        $this->logger->info('Filter Counts: ' . json_encode($filterCounts, JSON_PRETTY_PRINT));
 
         return $filterCounts;
     }
