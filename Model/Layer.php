@@ -5,13 +5,12 @@
  */
 namespace Gopersonal\Magento\Model;
 
-use Magento\Framework\App\ObjectManager;
-use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Layer\ContextInterface;
 use Magento\Catalog\Model\Layer\StateFactory;
-use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as AttributeCollectionFactory;
+use Magento\Catalog\Model\ResourceModel\Product;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
+use Psr\Log\LoggerInterface;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
@@ -22,14 +21,14 @@ class Layer extends \Magento\Catalog\Model\Layer
         ContextInterface $context,
         StateFactory $stateFactory,
         AttributeCollectionFactory $attributeCollectionFactory,
-        CollectionFactory $collectionFactory,
+        Product $catalogProduct,
         FilterableAttributeList $filterableAttributeList,
         LoggerInterface $logger,
         array $data = []
     ) {
         $this->logger = $logger;
         $this->filterableAttributeList = $filterableAttributeList;
-        parent::__construct($context, $stateFactory, $attributeCollectionFactory, $collectionFactory, $data);
+        parent::__construct($context, $stateFactory, $attributeCollectionFactory, $catalogProduct, $data);
     }
 
     public function getProductCollection()
@@ -60,7 +59,7 @@ class Layer extends \Magento\Catalog\Model\Layer
 
     public function getProductsIds()
     {
-        $objectManager = ObjectManager::getInstance();
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         $helper = $objectManager->get(\Gopersonal\Magento\Helper\Data::class);
 
         return $helper->getProductsIds('layer');
