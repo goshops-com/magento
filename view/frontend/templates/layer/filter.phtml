@@ -29,7 +29,7 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
                 <?php if ($filterData && $filterCounts): ?>
                     <?php foreach ($filterData as $attributeCode => $options): ?>
                         <dt role="heading" aria-level="3" class="filter-options-title">
-                            <?= $escaper->escapeHtml($attributeCode) ?>
+                            <?= $escaper->escapeHtml(ucwords(str_replace('_', ' ', $attributeCode))) ?>
                         </dt>
                         <dd class="filter-options-content">
                             <ol class="items">
