@@ -11,12 +11,7 @@ $mageVersion = $block->getVersion();
 $filterCounts = $block->getFilterCounts();
 $filterData = $block->getFilterData();
 
-echo "<pre>";
-var_dump($filterCounts);
-var_dump($filterData);
-echo "</pre>";
-
-// Handle version comparison safely
+// Initialize locale formatter if needed (Magento 2.4.5+)
 $localeFormatter = null;
 if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
     $localeFormatter = $block->getLocaleFormatter();
@@ -31,7 +26,7 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
         <div class="block-content filter-content">
             <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Shopping Options</strong>
             <dl class="filter-options" id="narrow-by-list">
-                <?php if ($filterData): ?>
+                <?php if ($filterData && $filterCounts): ?>
                     <?php foreach ($filterData as $attributeCode => $options): ?>
                         <dt role="heading" aria-level="3" class="filter-options-title">
                             <?= $escaper->escapeHtml($attributeCode) ?>
@@ -44,7 +39,7 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
                                     ?>
                                     <li class="item">
                                         <?php if ($filterCount > 0): ?>
-                                            <a href="<?= $escaper->escapeUrl($filterItem->getUrl()) ?>" rel="nofollow">
+                                            <a href="#" rel="nofollow">
                                                 <?= $escaper->escapeHtml($label) ?>
                                                 <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
                                                     <span class="count">
@@ -60,7 +55,7 @@ if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
                                                 <?php endif; ?>
                                             </a>
                                         <?php else: ?>
-                                            <span class="item-label"><?= $escaper->escapeHtml($label) ?></span> 
+                                            <span class="item-label"><?= $escaper->escapeHtml($label) ?></span>
                                             <?php if ($viewModel->shouldDisplayProductCountOnLayer()): ?>
                                                 <span class="count">
                                                     <?php if ($localeFormatter): ?>
