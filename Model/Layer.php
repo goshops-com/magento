@@ -140,6 +140,13 @@ class Layer extends \Magento\Catalog\Model\Layer
                     }
                 }
 
+                // Remove options with count 0
+                foreach ($optionMap as $key => $data) {
+                    if ($data['count'] === 0) {
+                        unset($optionMap[$key]);
+                    }
+                }
+
                 $combinedFilterData[$attributeCode] = $optionMap;
             }
         }
