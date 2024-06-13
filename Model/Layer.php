@@ -11,6 +11,7 @@ use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as A
 use Magento\Catalog\Model\ResourceModel\Product;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
+use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
@@ -23,11 +24,12 @@ class Layer extends \Magento\Catalog\Model\Layer
         AttributeCollectionFactory $attributeCollectionFactory,
         Product $catalogProduct,
         StoreManagerInterface $storeManager,
+        FilterableAttributeList $filterableAttributeList,
         LoggerInterface $logger,
         array $data = []
     ) {
         $this->logger = $logger;
-        $this->filterableAttributeList = $context->getFilterableAttributes();
+        $this->filterableAttributeList = $filterableAttributeList;
         parent::__construct($context, $stateFactory, $attributeCollectionFactory, $catalogProduct, $storeManager, $data);
     }
 
