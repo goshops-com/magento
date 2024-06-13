@@ -146,11 +146,11 @@ class Layer extends \Magento\Catalog\Model\Layer
                 }
 
                 // Remove filter options with zero count
-                foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
-                    if ($optionValue == 0) {
-                        unset($filterCounts[$attributeCode][$optionKey]);
-                    }
-                }
+                // foreach ($filterCounts[$attributeCode] as $optionKey => $optionValue) {
+                //     if ($optionValue == 0) {
+                //         unset($filterCounts[$attributeCode][$optionKey]);
+                //     }
+                // }
             } else {
                 $this->logger->warning("Attribute '$attributeCode' not found or doesn't use a source model");
             }
