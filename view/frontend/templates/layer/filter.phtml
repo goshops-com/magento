@@ -11,9 +11,9 @@ $mageVersion = $block->getVersion();
 $filterCounts = $block->getFilterCounts();
 $filter = $block->getFilterData();
 
-// Initialize locale formatter if needed (Magento 2.4.5+)
+// Handle version comparison safely
 $localeFormatter = null;
-if (version_compare($mageVersion, "2.4.5", '>')) {
+if ($mageVersion && version_compare($mageVersion, "2.4.5", '>')) {
     $localeFormatter = $block->getLocaleFormatter();
 }
 ?>
