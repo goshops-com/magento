@@ -88,6 +88,11 @@ class Layer extends \Magento\Catalog\Model\Layer
         return $collection;
     }
 
+    public function getFilterCounts()
+    {
+        return $this->getData('filter_counts');
+    }
+
     public function getProductsIds()
     {
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
