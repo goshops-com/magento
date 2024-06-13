@@ -13,14 +13,16 @@ use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\Registry;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Psr\Log\LoggerInterface;
-use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 use Magento\Framework\App\CacheInterface;
+use Magento\Eav\Model\Config as EavConfig;
+use Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory as ProductAttributeCollectionFactory;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
     protected $logger;
-    protected $filterableAttributeList;
     protected $cache;
+    protected $eavConfig;
+    protected $productAttributeCollectionFactory;
     protected $cacheKey = 'gopersonal_layer_filter_counts';
 
     public function __construct(
@@ -31,14 +33,16 @@ class Layer extends \Magento\Catalog\Model\Layer
         StoreManagerInterface $storeManager,
         Registry $registry,
         CategoryRepositoryInterface $categoryRepository,
-        FilterableAttributeList $filterableAttributeList,
         LoggerInterface $logger,
         CacheInterface $cache,
+        EavConfig $eavConfig,
+        ProductAttributeCollectionFactory $productAttributeCollectionFactory,
         array $data = []
     ) {
         $this->logger = $logger;
-        $this->filterableAttributeList = $filterableAttributeList;
         $this->cache = $cache;
+        $this->eavConfig = $eavConfig;
+        $this->productAttributeCollectionFactory = $productAttributeCollectionFactory;
         parent::__construct(
             $context, 
             $stateFactory, 
@@ -68,6 +72,13 @@ class Layer extends \Magento\Catalog\Model\Layer
             );
         }
 
+        // Add filterable attributes to the collection
+        $filterableAttributes = $this->getFilterableAttributes();
+        $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
+        foreach ($filterableAttributes as $attribute) {
+            $collection->addAttributeToSelect($attribute->getAttributeCode());
+        }
+
         $this->logger->info('Finished getProductCollection method');
 
         // Check cache for filter counts
@@ -88,28 +99,27 @@ class Layer extends \Magento\Catalog\Model\Layer
         return $helper->getProductsIds('layer');
     }
 
+    private function getFilterableAttributes()
+    {
+        $attributeCollection = $this->productAttributeCollectionFactory->create();
+        $attributeCollection->addIsFilterableFilter();
+
+        $filterableAttributes = [];
+        foreach ($attributeCollection as $attribute) {
+            $filterableAttributes[] = $this->eavConfig->getAttribute('catalog_product', $attribute->getAttributeCode());
+        }
+
+        return $filterableAttributes;
+    }
+
     private function calculateFilterCounts(\Magento\Catalog\Model\ResourceModel\Product\Collection $collection)
     {
         $filterCounts = [];
         $this->logger->info('Starting filter count calculation');
 
         // Fetch filterable attributes dynamically
-        $filterableAttributes = $this->filterableAttributeList->getList();
-
-        // Log the filterable attributes
-        if (empty($filterableAttributes)) {
-            $this->logger->warning('No filterable attributes found. Please check attribute settings.');
-        } else {
-            $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
-        }
-
-        // Load all attribute values for products in the collection
-        $attributesToLoad = [];
-        foreach ($filterableAttributes as $attribute) {
-            $attributesToLoad[] = $attribute->getAttributeCode();
-        }
-        $collection->addAttributeToSelect($attributesToLoad);
-        $this->logger->info('Loaded attributes for collection: ' . json_encode($attributesToLoad));
+        $filterableAttributes = $this->getFilterableAttributes();
+        $this->logger->info('Filterable Attributes for Count Calculation: ' . json_encode($filterableAttributes));
 
         // Iterate over filterable attributes 
         foreach ($filterableAttributes as $attribute) {
@@ -122,11 +132,8 @@ class Layer extends \Magento\Catalog\Model\Layer
 
             $filterCounts[$attributeCode] = [];
 
-            // Get the attribute model (if it exists)
-            $attribute = $collection->getResource()->getAttribute($attributeCode);
-
             // Check if the attribute exists and has options
-            if ($attribute && $attribute->usesSource()) {
+            if ($attribute->usesSource()) {
                 // Get all possible options for the attribute
                 $attributeOptions = $attribute->getSource()->getAllOptions(false);
 
@@ -135,9 +142,6 @@ class Layer extends \Magento\Catalog\Model\Layer
                 foreach ($attributeOptions as $option) {
                     $optionMap[$option['value']] = $option['label'];
                 }
-
-                // Log the option map for the current attribute
-                $this->logger->info("Option map for attribute '$attributeCode': " . json_encode($optionMap));
 
                 // Iterate through each product to collect filter data
                 foreach ($collection as $product) {
