@@ -5,12 +5,6 @@ $filterData = $block->getFilterData();
 $logger = $block->getLogger();
 $logger->info('Filter Counts in Template: ' . json_encode($filterCounts));
 $logger->info('Filter Data in Template: ' . json_encode($filterData));
-
-// Initialize locale formatter if needed (Magento 2.4.5+)
-$localeFormatter = null;
-if (version_compare($block->getVersion(), "2.4.5", '>')) {
-    $localeFormatter = $block->getLocaleFormatter();
-}
 ?>
 
 <div class="sidebar sidebar-main">
