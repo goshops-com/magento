@@ -15,9 +15,9 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
                 <?php foreach ($filterDataCombined as $attributeCode => $options): ?>
                     <?php if (!empty($options)): ?>
                         <dt role="heading" aria-level="3" class="filter-options-title">
-                            <?= $escaper->escapeHtml($attributeCode) ?>
+                            <a href="javascript:void(0);" class="toggle-section"><?= $escaper->escapeHtml($attributeCode) ?></a>
                         </dt>
-                        <dd class="filter-options-content">
+                        <dd class="filter-options-content" style="display: none;">
                             <ol class="items">
                                 <?php foreach ($options as $optionId => $optionData): ?>
                                     <li class="item">
@@ -36,3 +36,41 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var toggles = document.querySelectorAll('.toggle-section');
+    toggles.forEach(function(toggle) {
+        toggle.addEventListener('click', function() {
+            var content = this.parentElement.nextElementSibling;
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.toggle-section {
+    cursor: pointer;
+    text-decoration: none;
+    color: #000;
+}
+
+.toggle-section::before {
+    content: '\25B6'; /* Right-pointing triangle */
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.filter-options-title[aria-expanded="true"] .toggle-section::before {
+    content: '\25BC'; /* Down-pointing triangle */
+}
+
+.filter-options-title[aria-expanded="true"] + .filter-options-content {
+    display: block;
+}
+</style>
