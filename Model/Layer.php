@@ -71,16 +71,9 @@ class Layer extends \Magento\Catalog\Model\Layer
         $this->logger->info('Finished getProductCollection method');
 
         // Check cache for filter counts
-        $filterCounts = $this->cache->load($this->cacheKey);
-        if ($filterCounts) {
-            $filterCounts = unserialize($filterCounts);
-            $this->logger->info('Loaded filter counts from cache');
-        } else {
-            // Calculate filter counts after getting the product collection
-            $filterCounts = $this->calculateFilterCounts($collection);
-            $this->cache->save(serialize($filterCounts), $this->cacheKey, [], 3600);
-            $this->logger->info('Calculated and cached filter counts');
-        }
+        $filterCounts = $this->calculateFilterCounts($collection);
+        $this->cache->save(serialize($filterCounts), $this->cacheKey, [], 3600);
+        $this->logger->info('Calculated and cached filter counts');
 
         $this->setData('filter_counts', $filterCounts);
 
@@ -101,7 +94,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         $this->logger->info('Starting filter count calculation');
 
         // Fetch filterable attributes dynamically
-        $filterableAttributes = $this->filterableAttributeList->getList();
+        $filterableAttributes = $this->.filterableAttributeList->getList();
 
         // Iterate over filterable attributes 
         foreach ($filterableAttributes as $attribute) {
@@ -132,6 +125,7 @@ class Layer extends \Magento\Catalog\Model\Layer
                 foreach ($collection as $product) {
                     $productAttributeValue = $product->getData($attributeCode);
                     $this->logger->debug('Product ID ' . $product->getId() . ' has attribute ' . $attributeCode . ' with value "' . $productAttributeValue . '"');
+                    $this->logger->debug('Product data: ' . json_encode($product->getData(), JSON_PRETTY_PRINT));
 
                     // Ensure the product attribute value is in the map
                     if (isset($optionMap[$productAttributeValue])) {
