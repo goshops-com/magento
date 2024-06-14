@@ -2,9 +2,6 @@
 $filterDataCombined = $block->getRequest()->getParam('filter_data_combined');
 $logger = $block->getLogger();
 $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataCombined));
-
-$priceMin = $block->getRequest()->getParam('price_min');
-$priceMax = $block->getRequest()->getParam('price_max');
 ?>
 
 <div class="sidebar sidebar-main" style="width: 100%;">
@@ -40,9 +37,9 @@ $priceMax = $block->getRequest()->getParam('price_max');
             </dl>
             <div class="filter-price">
                 <label for="price-min">Precio mínimo:</label>
-                <input type="number" id="price-min" name="price_min" step="0.01" value="<?= $escaper->escapeHtml($priceMin) ?>">
+                <input type="number" id="price-min" name="price_min" step="0.01">
                 <label for="price-max">Precio máximo:</label>
-                <input type="number" id="price-max" name="price_max" step="0.01" value="<?= $escaper->escapeHtml($priceMax) ?>">
+                <input type="number" id="price-max" name="price_max" step="0.01">
                 <button id="apply-price-filter">Aplicar</button>
             </div>
             <div class="clear-filters">
@@ -86,6 +83,19 @@ document.addEventListener('DOMContentLoaded', function() {
         var maxPrice = document.getElementById('price-max').value;
         updatePriceFilter(minPrice, maxPrice);
     });
+
+    // Read URL parameters and fill input fields
+    var currentUrl = new URL(window.location.href);
+    var priceMin = currentUrl.searchParams.get('price_min');
+    var priceMax = currentUrl.searchParams.get('price_max');
+    
+    if (priceMin) {
+        document.getElementById('price-min').value = priceMin;
+    }
+    
+    if (priceMax) {
+        document.getElementById('price-max').value = priceMax;
+    }
 
     function updateUrl(attribute, value) {
         console.log('Updating URL:', attribute, value);
