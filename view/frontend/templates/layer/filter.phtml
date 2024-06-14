@@ -21,7 +21,7 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
                             <ol class="items">
                                 <?php foreach ($options as $optionId => $optionData): ?>
                                     <li class="item">
-                                        <a href="<?= $block->getUrl('*/*/*', ['_current' => true, '_use_rewrite' => true, $attributeCode => $optionId]) ?>" class="filter-option">
+                                        <a href="javascript:void(0);" class="filter-option" data-attribute="<?= $attributeCode ?>" data-value="<?= $optionId ?>">
                                             <span class="item-label"><?= $escaper->escapeHtml($optionData['label']) ?></span>
                                             <span class="count">
                                                 <?= $optionData['count'] ?>
@@ -52,6 +52,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    var filterButtons = document.querySelectorAll('.filter-option');
+    filterButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var attribute = this.getAttribute('data-attribute');
+            var value = this.getAttribute('data-value');
+            console.log('Filter clicked:', attribute, value);
+            updateUrl(attribute, value);
+        });
+    });
+
+    function updateUrl(attribute, value) {
+        console.log('Updating URL:', attribute, value);
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set(attribute, value);
+        console.log('New URL:', currentUrl.toString());
+        window.location.href = currentUrl.toString();
+    }
 });
 </script>
 
