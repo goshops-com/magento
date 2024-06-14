@@ -10,5 +10,8 @@
         <route id="search" frontName="search">
             <module name="Gopersonal_Magento"/>
         </route>
+        <route id="gp_search_result" frontName="gp-search-result">
+            <module name="Gopersonal_Magento"/>
+        </route>
     </router>
 </config>

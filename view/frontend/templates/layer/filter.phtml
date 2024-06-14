@@ -10,7 +10,7 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
             <strong>Shop By</strong>
         </div>
         <div class="block-content filter-content">
-            <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Shopping Options</strong>
+            <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle" id="gopersonal-labels-filters-subtitule">Filtros</strong>
             <dl class="filter-options" id="narrow-by-list">
                 <?php foreach ($filterDataCombined as $attributeCode => $options): ?>
                     <?php if (!empty($options)): ?>
@@ -36,7 +36,7 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
                 <?php endforeach; ?>
             </dl>
             <div class="clear-filters">
-                <a href="javascript:void(0);" class="clear-filters-link">Clear Filters</a>
+                <a href="javascript:void(0);" id="gopersonal-labels-search-clear-filters" class="clear-filters-link">Limpiar filtros</a>
             </div>
         </div>
     </div>
