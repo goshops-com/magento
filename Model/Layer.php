@@ -166,7 +166,8 @@ class Layer extends \Magento\Catalog\Model\Layer
 
             if ($filterValue) {
                 $this->logger->info("Applying filter: $attributeCode = $filterValue");
-                $collection->addAttributeToFilter($attributeCode, ['eq' => $filterValue]);
+                $filterValues = explode(',', $filterValue);
+                $collection->addAttributeToFilter($attributeCode, ['in' => $filterValues]);
             }
         }
     }

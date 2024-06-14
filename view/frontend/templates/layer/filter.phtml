@@ -35,6 +35,9 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
                     <?php endif; ?>
                 <?php endforeach; ?>
             </dl>
+            <div class="clear-filters">
+                <a href="javascript:void(0);" class="clear-filters-link">Clear Filters</a>
+            </div>
         </div>
     </div>
 </div>
@@ -63,11 +66,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    var clearFiltersLink = document.querySelector('.clear-filters-link');
+    clearFiltersLink.addEventListener('click', function() {
+        clearFilters();
+    });
+
     function updateUrl(attribute, value) {
         console.log('Updating URL:', attribute, value);
         var currentUrl = new URL(window.location.href);
-        currentUrl.searchParams.set(attribute, value);
+        var currentValues = currentUrl.searchParams.get(attribute);
+
+        if (currentValues) {
+            var valuesArray = currentValues.split(',');
+            if (valuesArray.indexOf(value) === -1) {
+                valuesArray.push(value);
+                currentUrl.searchParams.set(attribute, valuesArray.join(','));
+            }
+        } else {
+            currentUrl.searchParams.set(attribute, value);
+        }
+
         console.log('New URL:', currentUrl.toString());
+        window.location.href = currentUrl.toString();
+    }
+
+    function clearFilters() {
+        console.log('Clearing filters');
+        var currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.forEach(function(value, key) {
+            currentUrl.searchParams.delete(key);
+        });
+        console.log('Cleared URL:', currentUrl.toString());
         window.location.href = currentUrl.toString();
     }
 });
@@ -92,5 +121,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .filter-options-title[aria-expanded="true"] + .filter-options-content {
     display: block;
+}
+
+.clear-filters {
+    margin-top: 20px;
+}
+
+.clear-filters-link {
+    color: #007bff;
+    cursor: pointer;
+    text-decoration: underline;
 }
 </style>
