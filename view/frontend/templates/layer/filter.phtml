@@ -10,7 +10,7 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
             <strong>Shop By</strong>
         </div>
         <div class="block-content filter-content">
-            <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle" id="gopersonal-labels-filters-subtitule">Filtros</strong>
+            <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Shopping Options</strong>
             <dl class="filter-options" id="narrow-by-list">
                 <?php foreach ($filterDataCombined as $attributeCode => $options): ?>
                     <?php if (!empty($options)): ?>
@@ -35,8 +35,15 @@ $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataComb
                     <?php endif; ?>
                 <?php endforeach; ?>
             </dl>
+            <div class="filter-price">
+                <label for="price-min">Price Min:</label>
+                <input type="number" id="price-min" name="price_min" step="0.01">
+                <label for="price-max">Price Max:</label>
+                <input type="number" id="price-max" name="price_max" step="0.01">
+                <button id="apply-price-filter">Apply</button>
+            </div>
             <div class="clear-filters">
-                <a href="javascript:void(0);" id="gopersonal-labels-search-clear-filters" class="clear-filters-link">Limpiar filtros</a>
+                <a href="javascript:void(0);" class="clear-filters-link">Clear Filters</a>
             </div>
         </div>
     </div>
@@ -71,6 +78,12 @@ document.addEventListener('DOMContentLoaded', function() {
         clearFilters();
     });
 
+    document.getElementById('apply-price-filter').addEventListener('click', function() {
+        var minPrice = document.getElementById('price-min').value;
+        var maxPrice = document.getElementById('price-max').value;
+        updatePriceFilter(minPrice, maxPrice);
+    });
+
     function updateUrl(attribute, value) {
         console.log('Updating URL:', attribute, value);
         var currentUrl = new URL(window.location.href);
@@ -86,6 +99,23 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUrl.searchParams.set(attribute, value);
         }
 
+        console.log('New URL:', currentUrl.toString());
+        window.location.href = currentUrl.toString();
+    }
+
+    function updatePriceFilter(min, max) {
+        console.log('Updating Price Filter:', min, max);
+        var currentUrl = new URL(window.location.href);
+        if (min) {
+            currentUrl.searchParams.set('price_min', min);
+        } else {
+            currentUrl.searchParams.delete('price_min');
+        }
+        if (max) {
+            currentUrl.searchParams.set('price_max', max);
+        } else {
+            currentUrl.searchParams.delete('price_max');
+        }
         console.log('New URL:', currentUrl.toString());
         window.location.href = currentUrl.toString();
     }
@@ -127,6 +157,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .filter-options-title[aria-expanded="true"] + .filter-options-content {
     display: block;
+}
+
+.filter-price {
+    margin-top: 20px;
+}
+
+.filter-price label {
+    display: block;
+}
+
+.filter-price input {
+    width: 100%;
+    margin-bottom: 10px;
 }
 
 .clear-filters {

@@ -181,6 +181,22 @@ class Layer extends \Magento\Catalog\Model\Layer
             }
         }
 
+        // Apply price filters
+        $priceMin = $this->request->getParam('price_min');
+        $priceMax = $this->request->getParam('price_max');
+
+        if ($priceMin || $priceMax) {
+            $this->logger->info("Applying price filter: min = $priceMin, max = $priceMax");
+
+            if ($priceMin) {
+                $collection->addAttributeToFilter('price', ['gteq' => $priceMin]);
+            }
+
+            if ($priceMax) {
+                $collection->addAttributeToFilter('price', ['lteq' => $priceMax]);
+            }
+        }
+
         // Log the product data to inspect the attributes
         foreach ($collection as $product) {
             $this->logger->info('Product Data: ' . json_encode($product->getData()));
