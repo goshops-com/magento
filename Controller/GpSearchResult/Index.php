@@ -16,6 +16,7 @@ class Index extends Action
     {
         $this->resultPageFactory = $resultPageFactory;
         $this->logger = $logger;
+        $this->logger->info('GpSearchResult Index constructor called');
         parent::__construct($context);
     }
 
