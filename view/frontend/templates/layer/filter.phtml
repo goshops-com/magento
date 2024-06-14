@@ -93,9 +93,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function clearFilters() {
         console.log('Clearing filters');
         var currentUrl = new URL(window.location.href);
+        var qParam = currentUrl.searchParams.get('q');
         currentUrl.searchParams.forEach(function(value, key) {
-            currentUrl.searchParams.delete(key);
+            if (key !== 'q') {
+                currentUrl.searchParams.delete(key);
+            }
         });
+        if (qParam) {
+            currentUrl.searchParams.set('q', qParam);
+        }
         console.log('Cleared URL:', currentUrl.toString());
         window.location.href = currentUrl.toString();
     }
