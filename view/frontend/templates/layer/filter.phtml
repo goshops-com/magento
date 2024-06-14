@@ -137,14 +137,25 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Clearing filters');
         var currentUrl = new URL(window.location.href);
         var qParam = currentUrl.searchParams.get('q');
+        var paramsToDelete = [];
+
+        // Collect all params except 'q'
         currentUrl.searchParams.forEach(function(value, key) {
             if (key !== 'q') {
-                currentUrl.searchParams.delete(key);
+                paramsToDelete.push(key);
             }
         });
+
+        // Remove collected params
+        paramsToDelete.forEach(function(param) {
+            currentUrl.searchParams.delete(param);
+        });
+
+        // Set 'q' param if it exists
         if (qParam) {
             currentUrl.searchParams.set('q', qParam);
         }
+
         console.log('Cleared URL:', currentUrl.toString());
         window.location.href = currentUrl.toString();
     }
