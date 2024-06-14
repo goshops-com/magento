@@ -2,7 +2,7 @@
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceContainer name="content">
-            <block class="Magento\Framework\View\Element\Template" name="gopersonal_search_result" template="Gopersonal_Magento::search_result.phtml" />
+            <block class="Magento\Framework\View\Element\Template" name="searchresult_index_index" template="Gopersonal_Magento::search_result.phtml" />
         </referenceContainer>
     </body>
 </page>
