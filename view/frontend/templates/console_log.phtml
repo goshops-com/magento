@@ -36,7 +36,11 @@ require(['jquery'], function($) {
             } else if ("<?= $block->isSearchResultsPage() ?>") {
                 pageType = 'search';
                 contextData = { pageType: pageType};
-            } else {
+            } else if ("<?= $block->isSearchResultsEmptyPage() ?>") {
+                pageType = 'searchResultPage';
+                contextData = { pageType: pageType};
+            }
+            else {
                 pageType = 'other';
                 contextData = { pageType: pageType};
             }

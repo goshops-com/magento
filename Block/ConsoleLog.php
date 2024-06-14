@@ -61,6 +61,10 @@ class ConsoleLog extends Template
         return $this->_request->getFullActionName() == 'catalogsearch_result_index' || $this->_request->getFullActionName() == 'search_index_index';
     }
 
+    public function isSearchResultsEmptyPage() {
+        return $this->_request->getFullActionName() == 'searchresult_index_index';
+    }
+
     public function getCurrentProductId() {
         $product = $this->getCurrentProduct();
         if ($product) {
