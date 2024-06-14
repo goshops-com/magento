@@ -170,5 +170,10 @@ class Layer extends \Magento\Catalog\Model\Layer
                 $collection->addAttributeToFilter($attributeCode, ['in' => $filterValues]);
             }
         }
+
+        // Log the product data to inspect the attributes
+        foreach ($collection as $product) {
+            $this->logger->info('Product Data: ' . json_encode($product->getData()));
+        }
     }
 }
