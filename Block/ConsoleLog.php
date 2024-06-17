@@ -65,6 +65,21 @@ class ConsoleLog extends Template
         return $this->_request->getFullActionName() == 'searchresult_index_index';
     }
 
+    public function isCategoryPage() {
+        return $this->_request->getFullActionName() == 'catalog_category_view';
+    }
+
+    public function getPageName() {
+        return $this->_request->getFullActionName();
+    }
+
+    public function getCategoryId() {
+        if ($this->isCategoryPage()) {
+            return $this->_layerResolver->get()->getCurrentCategory()->getId();
+        }
+        return null;
+    }
+
     public function getCurrentProductId() {
         $product = $this->getCurrentProduct();
         if ($product) {

@@ -39,9 +39,13 @@ require(['jquery'], function($) {
             } else if ("<?= $block->isSearchResultsEmptyPage() ?>") {
                 pageType = 'searchResultPage';
                 contextData = { pageType: pageType};
-            }
+            }else if ("<?= $block->isCategoryPage() ?>") {
+                pageType = 'category';
+                var categoryId = "<?= $block->getCategoryId() ?>";
+                contextData = { pageType: pageType, category_id: categoryId };
+            } 
             else {
-                pageType = 'other';
+                pageType = "<?= $block->getPageName() ?>";
                 contextData = { pageType: pageType};
             }
 
