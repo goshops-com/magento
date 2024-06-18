@@ -9,6 +9,7 @@ use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Customer\Model\Session as CustomerSession;
 use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable as ConfigurableTypeResource;
+use Magento\Catalog\Model\Layer\Resolver as LayerResolver;
 
 class ConsoleLog extends Template
 {
@@ -18,6 +19,7 @@ class ConsoleLog extends Template
     protected $_checkoutSession;
     protected $_customerSession;
     protected $_configurableTypeResource;
+    protected $_layerResolver;
 
     public function __construct(
         Context $context,
@@ -26,6 +28,7 @@ class ConsoleLog extends Template
         CheckoutSession $checkoutSession,
         CustomerSession $customerSession,
         ConfigurableTypeResource $configurableTypeResource,
+        LayerResolver $layerResolver,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -35,6 +38,7 @@ class ConsoleLog extends Template
         $this->_checkoutSession = $checkoutSession;
         $this->_customerSession = $customerSession;
         $this->_configurableTypeResource = $configurableTypeResource;
+        $this->_layerResolver = $layerResolver;
     }
 
     public function isHomePage() {
@@ -67,10 +71,6 @@ class ConsoleLog extends Template
 
     public function isCategoryPage() {
         return $this->_request->getFullActionName() == 'catalog_category_view';
-    }
-
-    public function getPageName() {
-        return $this->_request->getFullActionName();
     }
 
     public function getCategoryId() {
@@ -125,6 +125,4 @@ class ConsoleLog extends Template
     public function getCustomerEmail() {
         return $this->_customerSession->getCustomer()->getEmail();
     }
-
-
 }
