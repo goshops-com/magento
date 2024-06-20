@@ -2,9 +2,20 @@
 $filterDataCombined = $block->getRequest()->getParam('filter_data_combined');
 $logger = $block->getLogger();
 $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataCombined));
+
+$showPriceFilter = false;
+foreach ($filterDataCombined as $value) {
+    if (!empty($value)) {
+        $showPriceFilter = true;
+        break;
+    }
+}
+
+$logger->info('Filters' . $showPriceFilter);
+
 ?>
 
-<?php if (count($filterDataCombined) > 0): ?>
+<?php if ($showPriceFilter): ?>
 <div class="sidebar sidebar-main" style="width: 100%;">
     <div class="block filter">
         <div class="block-title filter-title">
