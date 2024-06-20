@@ -131,14 +131,22 @@ class BeforeSearchRequest implements ObserverInterface
                 // Check if product IDs are an array
                 if (is_array($productIds)) {
                     // Log the product IDs
+                    
+
+                    if (empty($productIds)) {
+                        $productIds = [-1];
+                    }
+
                     $this->logger->info("Product IDs: " . implode(',', $productIds));
 
+                    
                     // Set the product IDs into the request
                     $this->request->setParam('product_ids', $productIds);
                 } else {
                     // Log the error if product IDs are not an array
                     $this->logger->error("Product IDs are not an array", ['product_ids' => $productIds]);
 
+                    $this->logger->info('performNativeSearch');
                     // Perform native Magento search as fallback
                     $this->performNativeSearch($searchTerm);
                 }
@@ -150,6 +158,7 @@ class BeforeSearchRequest implements ObserverInterface
 
                 if ($attempts >= $maxAttempts) {
                     // Perform native Magento search as fallback
+                    $this->logger->info('performNativeSearch');
                     $this->performNativeSearch($searchTerm);
                     break;
                 }
