@@ -91,7 +91,7 @@ class BeforeSearchRequest implements ObserverInterface
         $url .= $queryParam . $filtersParam;
 
         $attempts = 0;
-        $maxAttempts = 3;
+        $maxAttempts = 2;
         $success = false;
 
         while ($attempts < $maxAttempts && !$success) {
