@@ -7,7 +7,7 @@
         <route id="gp_firebase" frontName="gp-firebase">
             <module name="Gopersonal_Magento" before="Magento_Backend" />
         </route>
-        <route id="search" frontName="gpsearch">
+        <route id="gpsearch" frontName="gpsearch">
             <module name="Gopersonal_Magento"/>
         </route>
         <route id="searchresult" frontName="searchresult">
