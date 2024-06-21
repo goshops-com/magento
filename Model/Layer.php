@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 use Magento\Framework\App\CacheInterface;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
@@ -21,6 +22,7 @@ class Layer extends \Magento\Catalog\Model\Layer
     protected $cache;
     protected $cacheKey = 'gopersonal_layer_filter_counts';
     protected $request;
+    protected $scopeConfig;
 
     public function __construct(
         ContextInterface $context,
@@ -34,12 +36,14 @@ class Layer extends \Magento\Catalog\Model\Layer
         LoggerInterface $logger,
         CacheInterface $cache,
         RequestInterface $request,
+        ScopeConfigInterface $scopeConfig,
         array $data = []
     ) {
         $this->logger = $logger;
         $this->filterableAttributeList = $filterableAttributeList;
         $this->cache = $cache;
         $this->request = $request;
+        $this->scopeConfig = $scopeConfig;
         parent::__construct(
             $context, 
             $stateFactory, 
@@ -197,9 +201,23 @@ class Layer extends \Magento\Catalog\Model\Layer
             }
         }
 
+        // Apply pagination
+        $page = $this->request->getParam('p', 1);
+        $pageSize = $this->getPageSize();
+
+        $collection->setCurPage($page);
+        $collection->setPageSize($pageSize);
+
+        $this->logger->info("Applied pagination: page = $page, page_size = $pageSize");
+
         // Log the product data to inspect the attributes
         foreach ($collection as $product) {
             $this->logger->info('Product Data: ' . json_encode($product->getData()));
         }
+    }
+
+    private function getPageSize()
+    {
+        return $this->scopeConfig->getValue('catalog/frontend/grid_per_page', \Magento\Store\Model\ScopeInterface::SCOPE_STORE) ?: 20;
     }
 }

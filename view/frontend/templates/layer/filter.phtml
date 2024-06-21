@@ -150,11 +150,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Clearing filters');
         var currentUrl = new URL(window.location.href);
         var qParam = currentUrl.searchParams.get('q');
+        var gsSearchIdParam = currentUrl.searchParams.get('_gsSearchId');
         var paramsToDelete = [];
 
-        // Collect all params except 'q'
+        // Collect all params except 'q' and '_gsSearchId'
         currentUrl.searchParams.forEach(function(value, key) {
-            if (key !== 'q') {
+            if (key !== 'q' && key !== '_gsSearchId') {
                 paramsToDelete.push(key);
             }
         });
@@ -164,9 +165,12 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUrl.searchParams.delete(param);
         });
 
-        // Set 'q' param if it exists
+        // Set 'q' and '_gsSearchId' params if they exist
         if (qParam) {
             currentUrl.searchParams.set('q', qParam);
+        }
+        if (gsSearchIdParam) {
+            currentUrl.searchParams.set('_gsSearchId', gsSearchIdParam);
         }
 
         console.log('Cleared URL:', currentUrl.toString());
