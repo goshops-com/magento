@@ -53,7 +53,7 @@ class BeforeSearchRequest implements ObserverInterface
         $this->logger->info("Incoming URL: " . $this->request->getUriString());
 
         // Check if the 'q' parameter exists
-        if (strpos($pathInfo, '/search') !== 0 || !isset($queryParams['q'])) {
+        if (strpos($pathInfo, '/gp-search') !== 0 || !isset($queryParams['q'])) {
             // Log the ignored request
             $this->logger->info("Ignoring request. URL path does not start with /search or 'q' parameter is missing.");
             return $this;
