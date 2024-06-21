@@ -9,7 +9,7 @@
 		<!--adding attribute tag to inherit the default stying for products-->
 		<attribute name="class" value="page-products"/>
 		<referenceContainer name="content">
-			<block class="Gopersonal\Magento\Block\Product\ListProduct" name="search_index_index" as="product_list" template="Magento_Catalog::product/list.phtml">
+			<block class="Gopersonal\Magento\Block\Product\ListProduct" name="gp-search_index_index" as="product_list" template="Magento_Catalog::product/list.phtml">
 				<container name="category.product.list.additional" as="additional" />
 				<block class="Magento\Framework\View\Element\RendererList" name="category.product.type.details.renderers" as="details.renderers">
 					<block class="Magento\Framework\View\Element\Template" name="category.product.type.details.renderers.default" as="default"/>
@@ -30,7 +30,7 @@
 		<referenceContainer name="sidebar.main">
             <block class="Gopersonal\Magento\Block\Navigation\FilterRenderer" name="catalog.leftnav" as="navigation" before="-" template="Gopersonal_Magento::layer/filter.phtml" />
         </referenceContainer>
-		<referenceBlock name="search_index_index">
+		<referenceBlock name="gp-search_index_index">
 			<arguments>
 				<argument name="viewModel" xsi:type="object">Magento\Catalog\ViewModel\Product\OptionsData</argument>
 			</arguments>
