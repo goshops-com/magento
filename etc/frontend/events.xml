@@ -15,7 +15,7 @@
     <!-- <event name="controller_action_predispatch_catalogsearch_result_index">
         <observer name="custom_search_controller_redirect" instance="Gopersonal\Magento\Observer\RedirectSearch"/>
     </event> -->
-    <event name="controller_action_predispatch_gp-search_index_index">
+    <event name="controller_action_predispatch_gpsearch_index_index">
         <observer name="controller_action_predispatch" instance="Gopersonal\Magento\Observer\BeforeSearchRequest" />
     </event>
 </config>
