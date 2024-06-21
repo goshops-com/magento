@@ -11,6 +11,7 @@ use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\Session\SessionManagerInterface;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
+use Magento\Framework\App\CacheInterface;
 use Exception;
 
 class BeforeSearchRequest implements ObserverInterface
@@ -22,6 +23,7 @@ class BeforeSearchRequest implements ObserverInterface
     protected $cookieManager;
     protected $sessionManager;
     protected $productCollectionFactory;
+    protected $cache;
 
     public function __construct(
         RequestInterface $request,
@@ -30,7 +32,8 @@ class BeforeSearchRequest implements ObserverInterface
         ClientInterface $httpClient,
         CookieManagerInterface $cookieManager,
         SessionManagerInterface $sessionManager,
-        ProductCollectionFactory $productCollectionFactory
+        ProductCollectionFactory $productCollectionFactory,
+        CacheInterface $cache
     ) {
         $this->request = $request;
         $this->logger = $logger;
@@ -39,6 +42,7 @@ class BeforeSearchRequest implements ObserverInterface
         $this->cookieManager = $cookieManager;
         $this->sessionManager = $sessionManager;
         $this->productCollectionFactory = $productCollectionFactory;
+        $this->cache = $cache;
     }
 
     public function execute(Observer $observer)
@@ -62,6 +66,26 @@ class BeforeSearchRequest implements ObserverInterface
         // Log the query parameters
         $this->logger->info("Query Params: " . json_encode($queryParams));
 
+        // Initialize the cache key
+        $cacheKey = null;
+
+        // Check for _gsSearchId parameter and value
+        if (isset($queryParams['_gsSearchId']) && !empty($queryParams['_gsSearchId'])) {
+            $gsSearchId = $queryParams['_gsSearchId'];
+            $cacheKey = '_gsSearchId:' . $gsSearchId;
+
+            // Check if the cache contains product IDs for this _gsSearchId
+            $cachedProductIds = $this->cache->load($cacheKey);
+            if ($cachedProductIds) {
+                $productIds = json_decode($cachedProductIds, true);
+                $this->logger->info('Found cached product IDs for ' . $cacheKey . ': ' . implode(',', $productIds));
+
+                // Set the cached product IDs into the request
+                $this->request->setParam('product_ids', $productIds);
+                return $this;
+            }
+        }
+
         // Obtain the client ID from the configuration
         $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
 
@@ -83,8 +107,8 @@ class BeforeSearchRequest implements ObserverInterface
         }
 
         // Include the _gsSearchId if it exists
-        if (isset($queryParams['_gsSearchId'])) {
-            $gsSearchIdParam = '&_gsSearchId=' . urlencode($queryParams['_gsSearchId']);
+        if (isset($gsSearchId)) {
+            $gsSearchIdParam = '&_gsSearchId=' . urlencode($gsSearchId);
             $url .= $gsSearchIdParam;
         }
 
@@ -142,6 +166,11 @@ class BeforeSearchRequest implements ObserverInterface
                     }
 
                     $this->logger->info("Product IDs: " . implode(',', $productIds));
+
+                    // Store the product IDs in the cache for 1 hour (3600 seconds)
+                    if ($cacheKey) {
+                        $this->cache->save(json_encode($productIds), $cacheKey, [], 3600);
+                    }
 
                     // Set the product IDs into the request
                     $this->request->setParam('product_ids', $productIds);
