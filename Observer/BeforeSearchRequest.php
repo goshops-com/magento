@@ -82,6 +82,12 @@ class BeforeSearchRequest implements ObserverInterface
             $filtersParam = '&filters=' . urlencode(json_encode($queryParams));
         }
 
+        // Include the _gsSearchId if it exists
+        if (isset($queryParams['_gsSearchId'])) {
+            $gsSearchIdParam = '&_gsSearchId=' . urlencode($queryParams['_gsSearchId']);
+            $url .= $gsSearchIdParam;
+        }
+
         $url .= $queryParam . $filtersParam;
 
         $attempts = 0;
@@ -131,15 +137,12 @@ class BeforeSearchRequest implements ObserverInterface
                 // Check if product IDs are an array
                 if (is_array($productIds)) {
                     // Log the product IDs
-                    
-
                     if (empty($productIds)) {
                         $productIds = [-1];
                     }
 
                     $this->logger->info("Product IDs: " . implode(',', $productIds));
 
-                    
                     // Set the product IDs into the request
                     $this->request->setParam('product_ids', $productIds);
                 } else {
