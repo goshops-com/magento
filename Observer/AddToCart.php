@@ -10,6 +10,8 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable as ConfigurableProductResource;
+use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Framework\Stdlib\Cookie\CookieMetadataFactory;
 
 class AddToCart implements ObserverInterface
 {
@@ -18,19 +20,25 @@ class AddToCart implements ObserverInterface
     protected $logger;
     protected $scopeConfig;
     protected $configurableProductResource;
+    protected $cookieManager;
+    protected $cookieMetadataFactory;
 
     public function __construct(
         Session $customerSession,
         Curl $curl,
         LoggerInterface $logger,
         ScopeConfigInterface $scopeConfig,
-        ConfigurableProductResource $configurableProductResource
+        ConfigurableProductResource $configurableProductResource,
+        CookieManagerInterface $cookieManager,
+        CookieMetadataFactory $cookieMetadataFactory
     ) {
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->logger = $logger;
         $this->scopeConfig = $scopeConfig;
         $this->configurableProductResource = $configurableProductResource;
+        $this->cookieManager = $cookieManager;
+        $this->cookieMetadataFactory = $cookieMetadataFactory;
     }
 
     public function execute(Observer $observer)
@@ -45,7 +53,7 @@ class AddToCart implements ObserverInterface
             $parentIds = $this->configurableProductResource->getParentIdsByChild($productId);
             $parentId = !empty($parentIds) ? $parentIds[0] : null;
 
-            $token = $this->customerSession->getData('gopersonal_jwt');
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
             if (!$token) {
                 $this->logger->info('No API token found in session.');
                 return;

@@ -8,6 +8,8 @@ use Magento\Customer\Model\Session as CustomerSession;
 use Magento\Framework\HTTP\Client\Curl;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Framework\Stdlib\Cookie\CookieMetadataFactory;
 
 class AfterOrderPlace implements ObserverInterface
 {
@@ -15,17 +17,23 @@ class AfterOrderPlace implements ObserverInterface
     protected $customerSession;
     protected $curl;
     protected $scopeConfig;
+    protected $cookieManager;
+    protected $cookieMetadataFactory;
 
     public function __construct(
         LoggerInterface $logger,
         CustomerSession $customerSession,
         Curl $curl,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        CookieManagerInterface $cookieManager,
+        CookieMetadataFactory $cookieMetadataFactory
     ) {
         $this->logger = $logger;
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->scopeConfig = $scopeConfig;
+        $this->cookieManager = $cookieManager;
+        $this->cookieMetadataFactory = $cookieMetadataFactory;
     }
 
     public function execute(Observer $observer)
@@ -39,7 +47,7 @@ class AfterOrderPlace implements ObserverInterface
         $orderId = reset($orderIds);
         $this->logger->info('AfterOrderPlace: Order ID on Thank You Page - ' . $orderId);
 
-        $token = $this->customerSession->getData('gopersonal_jwt');
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
         if (!$token) {
             $this->logger->error('AfterOrderPlace: No API token found in session.');
             return;

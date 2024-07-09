@@ -10,6 +10,8 @@ use Magento\Framework\HTTP\Client\Curl;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Framework\Stdlib\Cookie\CookieMetadataFactory;
 
 class UpdateCartItems implements ObserverInterface
 {
@@ -18,19 +20,25 @@ class UpdateCartItems implements ObserverInterface
     protected $curl;
     protected $logger;
     protected $scopeConfig;
+    protected $cookieManager;
+    protected $cookieMetadataFactory;
 
     public function __construct(
         ConfigurableProductResource $configurableProductResource,
         Session $customerSession,
         Curl $curl,
         LoggerInterface $logger,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        CookieManagerInterface $cookieManager,
+        CookieMetadataFactory $cookieMetadataFactory
     ) {
         $this->configurableProductResource = $configurableProductResource;
         $this->customerSession = $customerSession;
         $this->curl = $curl;
         $this->logger = $logger;
         $this->scopeConfig = $scopeConfig;
+        $this->cookieManager = $cookieManager;
+        $this->cookieMetadataFactory = $cookieMetadataFactory;
     }
 
     public function execute(Observer $observer)
@@ -61,7 +69,7 @@ class UpdateCartItems implements ObserverInterface
 
         $actionId = uniqid($quoteId . '-' . $productId . '-' . $currentWindow . '-', true);
         
-        $token = $this->customerSession->getData('gopersonal_jwt');
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
         if (!$token) {
             $this->logger->info('No API token found in session.');
             return;
