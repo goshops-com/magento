@@ -63,7 +63,24 @@ $logger->info('Filters' . $showPriceFilter);
 <?php endif; ?>
 
 <script>
+
+
 document.addEventListener('DOMContentLoaded', function() {
+
+    document.querySelectorAll('a.product-item-photo').forEach(function(anchor) {
+        let href = anchor.getAttribute('href');
+        if (href) {
+            anchor.setAttribute('href', href.replace(/([^:]\/)\/+/g, "$1"));
+        }
+    });
+    document.querySelectorAll('a.product-item-link').forEach(element => {
+        let url = element.getAttribute('href');
+        if (url) {
+            let updatedUrl = url.replace(/([^:])\/\//g, '$1/');
+            element.setAttribute('href', updatedUrl);
+        }
+    });
+
     var toggles = document.querySelectorAll('.toggle-section');
     toggles.forEach(function(toggle) {
         toggle.addEventListener('click', function() {
