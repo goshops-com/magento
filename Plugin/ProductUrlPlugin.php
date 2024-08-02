@@ -7,9 +7,9 @@ class ProductUrlPlugin
     {
         // Parse the URL
 
-        $url = parent::getProductUrl($product, $additional);
-        return $this->addParamToUrl($url, 'my_param', 'value');
-        
+        $separator = (strpos($result, '?') !== false) ? '&' : '?';
+        return $result . $separator . 'my_param=value';
+
         // $urlParts = parse_url($result);
         
         // if (isset($urlParts['path'])) {
