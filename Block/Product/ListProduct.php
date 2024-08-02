@@ -28,9 +28,9 @@ class ListProduct extends \Magento\Catalog\Block\Product\ListProduct
         );
     }
 
-    public function getProductUrl($product)
+    public function getProductUrl($product, $additional = [])
     {
-        $url = parent::getProductUrl($product);
+        $url = parent::getProductUrl($product, $additional);
         return $this->addParamToUrl($url, 'my_param', 'value');
     }
 

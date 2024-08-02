@@ -30,4 +30,8 @@
             <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>
         </arguments>
     </type>
+
+    <!-- <type name="Magento\Catalog\Model\Product">
+        <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
+    </type> -->
 </config>
