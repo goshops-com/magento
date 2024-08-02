@@ -80,12 +80,6 @@ class Layer extends \Magento\Catalog\Model\Layer
         }
         $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
 
-        foreach ($collection as $product) {
-            $originalUrl = $product->getProductUrl();
-            $modifiedUrl = $originalUrl . (strpos($originalUrl, '?') !== false ? '&' : '?') . 'my_param=value';
-            $product->setData('product_url', $modifiedUrl);
-        }
-
         $this->logger->info('Finished getProductCollection method');
 
         // Apply URL filters to the collection
