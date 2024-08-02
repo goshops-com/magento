@@ -1,33 +1,38 @@
 <?php
-/**
- * @package   Gopersonal_Magento
- * @author    Shahid Taj
- */
 namespace Gopersonal\Magento\Block\Product;
+
+use Magento\Catalog\Model\Product;
 
 class ListProduct extends \Magento\Catalog\Block\Product\ListProduct
 {
-	public function __construct(
-		\Magento\Catalog\Block\Product\Context $context,
-		\Magento\Framework\Data\Helper\PostHelper $postDataHelper,
-		\Gopersonal\Magento\Model\Layer\Resolver $layerResolver,
-		\Magento\Catalog\Api\CategoryRepositoryInterface $categoryRepository,
-		\Magento\Framework\Url\Helper\Data $urlHelper,
-		array $data = []
-	) {
-		parent::__construct(
-			$context,
-			$postDataHelper,
-			$layerResolver,
-			$categoryRepository,
-			$urlHelper,
-			$data
-		);
-	}
+    public function __construct(
+        \Magento\Catalog\Block\Product\Context $context,
+        \Magento\Framework\Data\Helper\PostHelper $postDataHelper,
+        \Gopersonal\Magento\Model\Layer\Resolver $layerResolver,
+        \Magento\Catalog\Api\CategoryRepositoryInterface $categoryRepository,
+        \Magento\Framework\Url\Helper\Data $urlHelper,
+        array $data = []
+    ) {
+        parent::__construct(
+            $context,
+            $postDataHelper,
+            $layerResolver,
+            $categoryRepository,
+            $urlHelper,
+            $data
+        );
+    }
 
-	public function getProductUrl($product)
+    /**
+     * Get Product URL
+     *
+     * @param Product $product
+     * @param array $additional
+     * @return string
+     */
+    public function getProductUrl($product, $additional = [])
     {
-        $url = $product->getProductUrl();
+        $url = parent::getProductUrl($product, $additional);
         
         // Normalize the URL
         $url = $this->normalizeUrl($url);
@@ -36,7 +41,7 @@ class ListProduct extends \Magento\Catalog\Block\Product\ListProduct
     }
 
     /**
-     * Normalize the URL to ensure single leading slash and no trailing slashes
+     * Normalize the URL to ensure no double slashes after the protocol
      *
      * @param string $url
      * @return string
