@@ -82,10 +82,10 @@ class Layer extends \Magento\Catalog\Model\Layer
 
         foreach ($collection as $product) {
             $originalUrl = $product->getProductUrl();
-            $modifiedUrl = $originalUrl . '?my_param=value';
-            $product->setProductUrl($modifiedUrl);
+            $modifiedUrl = $originalUrl . (strpos($originalUrl, '?') !== false ? '&' : '?') . 'my_param=value';
+            $product->setData('product_url', $modifiedUrl);
         }
-        
+
         $this->logger->info('Finished getProductCollection method');
 
         // Apply URL filters to the collection
