@@ -43,15 +43,20 @@ class ListProduct extends \Magento\Catalog\Block\Product\ListProduct
      */
     protected function normalizeUrl($url)
     {
-        // Remove all leading slashes
-        $url = ltrim($url, '/');
+        // Parse the URL to extract components
+        $parsedUrl = parse_url($url);
 
-        // Remove all trailing slashes
-        $url = rtrim($url, '/');
+        // Reconstruct the URL, ensuring no double slashes
+        $scheme = isset($parsedUrl['scheme']) ? $parsedUrl['scheme'] . '://' : '';
+        $host = isset($parsedUrl['host']) ? $parsedUrl['host'] : '';
+        $path = isset($parsedUrl['path']) ? $parsedUrl['path'] : '';
 
-        // Add a single leading slash
-        $url = '/' . $url;
+        // Normalize path to remove double slashes
+        $path = preg_replace('#/+#', '/', $path);
 
-        return $url;
+        // Construct the normalized URL
+        $normalizedUrl = $scheme . $host . $path;
+
+        return $normalizedUrl;
     }
 }
