@@ -28,15 +28,15 @@ class ListProduct extends \Magento\Catalog\Block\Product\ListProduct
         );
     }
 
-    public function getProductUrl($product, $additional = [])
-    {
-        $url = parent::getProductUrl($product, $additional);
-        return $this->addParamToUrl($url, 'my_param', 'value');
-    }
+    // public function getProductUrl($product, $additional = [])
+    // {
+    //     $url = parent::getProductUrl($product, $additional);
+    //     return $this->addParamToUrl($url, 'my_param', 'value');
+    // }
 
-    private function addParamToUrl($url, $paramName, $paramValue)
-    {
-        $separator = (strpos($url, '?') !== false) ? '&' : '?';
-        return $url . $separator . $paramName . '=' . urlencode($paramValue);
-    }
+    // private function addParamToUrl($url, $paramName, $paramValue)
+    // {
+    //     $separator = (strpos($url, '?') !== false) ? '&' : '?';
+    //     return $url . $separator . $paramName . '=' . urlencode($paramValue);
+    // }
 }

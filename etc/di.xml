@@ -31,7 +31,7 @@
         </arguments>
     </type>
 
-    <!-- <type name="Magento\Catalog\Model\Product">
+    <type name="Magento\Catalog\Model\Product">
         <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
-    </type> -->
+    </type>
 </config>
