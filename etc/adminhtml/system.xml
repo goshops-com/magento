@@ -14,11 +14,6 @@
                     <comment>Enter the Client ID for GoPersonal.</comment>
                     <validate>required-entry</validate>
                 </field>
-
-                <field id="gopersonal_has_search" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Enable Search Feature</label>
-                    <comment>Set this value to 'YES' to enable the GoPersonal AI Search capabilities (ask support if can be enabled).</comment>
-                </field>
             </group>
         </section>
     </system>
