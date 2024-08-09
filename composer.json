@@ -17,13 +17,5 @@
         "psr-4": {
             "GoPersonal\\Magento\\": ""
         }
-    },
-    "extra": {
-        "map": [
-            [
-                "*",
-                "GoPersonal/Magento"
-            ]
-        ]
     }
 }
