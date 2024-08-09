@@ -46,6 +46,31 @@ bin/magento setup:static-content:deploy -f
 bin/magento cache:clean
 ```
 
+## Upgrading
+
+To upgrade the GoPersonal Magento Plugin to the latest version, follow these steps:
+
+1. From your Magento root directory, run the following command:
+
+```bash
+composer require gopersonal/magento-plugin:dev-main --update-with-dependencies
+```
+
+This command will update the module to the latest version from the main branch.
+
+2. After the composer update is complete, run the following Magento commands:
+
+```bash
+bin/magento setup:upgrade
+bin/magento setup:di:compile
+bin/magento setup:static-content:deploy -f
+bin/magento cache:clean
+```
+
+3. If you're upgrading from a significantly older version, make sure to check the changelog or release notes for any breaking changes or additional upgrade steps.
+
+Note: If you prefer to upgrade to a specific version instead of the latest, replace `dev-main` with the desired version number in the composer command.
+
 ## Configuration
 
 After installation, you need to configure the module with your GoPersonal credentials:
