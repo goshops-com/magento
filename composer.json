@@ -8,7 +8,7 @@
         "AFL-3.0"
     ],
     "require": {
-        "php": "~7.3.0||~7.4.0||~8.1.0",
+        "php": ">=7.0.0",
         "magento/framework": "*"
     },
     "autoload": {
@@ -18,5 +18,7 @@
         "psr-4": {
             "GoPersonal\\Magento\\": ""
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
