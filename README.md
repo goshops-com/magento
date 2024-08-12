@@ -34,7 +34,7 @@ composer require gopersonal/magento-plugin:1.0.16
 3. Once the installation is complete, enable the module by running:
 
 ```bash
-bin/magento module:enable GoPersonal_Magento
+bin/magento module:enable Gopersonal_Magento
 bin/magento setup:upgrade
 bin/magento setup:di:compile
 bin/magento setup:static-content:deploy -f
