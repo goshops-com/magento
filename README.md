@@ -66,6 +66,7 @@ bin/magento setup:upgrade
 bin/magento setup:di:compile
 bin/magento setup:static-content:deploy -f
 bin/magento cache:clean
+bin/magento setup:upgrade
 ```
 
 3. If you're upgrading from a significantly older version, make sure to check the changelog or release notes for any breaking changes or additional upgrade steps.
