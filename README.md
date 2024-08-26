@@ -26,7 +26,7 @@ composer require gopersonal/magento-plugin:dev-main
    If you prefer to install a specific version, you can specify the version number instead:
 
 ```bash
-composer require gopersonal/magento-plugin:1.0.16
+composer require gopersonal/magento-plugin:1.0.17
 ```
 
    Replace `1.0.16` with the desired version number.
