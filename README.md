@@ -38,6 +38,7 @@ bin/magento module:enable Gopersonal_Magento
 bin/magento setup:upgrade
 bin/magento setup:di:compile
 bin/magento setup:static-content:deploy -f
+bin/magento setup:upgrade
 ```
 
 4. Clear the cache:
