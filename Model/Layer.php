@@ -77,6 +77,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         $filterableAttributes = $this->filterableAttributeList->getList();
         foreach ($filterableAttributes as $attribute) {
             $collection->addAttributeToSelect($attribute->getAttributeCode());
+
         }
         $this->logger->info('Filterable Attributes: ' . json_encode($filterableAttributes));
 
@@ -151,7 +152,10 @@ class Layer extends \Magento\Catalog\Model\Layer
                     }
                 }
 
-                $combinedFilterData[$attributeCode] = $optionMap;
+                $combinedFilterData[$attributeCode] = [
+                    'attribute_label' => $attribute->getStoreLabel() ?: $attribute->getFrontendLabel(),
+                    'options' => $optionMap
+                ];
             }
         }
 

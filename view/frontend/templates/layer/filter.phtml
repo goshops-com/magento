@@ -24,28 +24,28 @@ $logger->info('Filters' . $showPriceFilter);
         <div class="block-content filter-content">
             <strong role="heading" aria-level="2" class="block-subtitle filter-subtitle">Opciones de compra</strong>
             <dl class="filter-options" id="narrow-by-list">
-                <?php foreach ($filterDataCombined as $attributeCode => $options): ?>
-                    <?php if (!empty($options)): ?>
-                        <dt role="heading" aria-level="3" class="filter-options-title">
-                            <a href="javascript:void(0);" class="toggle-section"><?= $escaper->escapeHtml($attributeCode) ?></a>
-                        </dt>
-                        <dd class="filter-options-content" style="display: none;">
-                            <ol class="items">
-                                <?php foreach ($options as $optionId => $optionData): ?>
-                                    <li class="item">
-                                        <a href="javascript:void(0);" class="filter-option" data-attribute="<?= $attributeCode ?>" data-value="<?= $optionId ?>">
-                                            <span class="item-label"><?= $escaper->escapeHtml($optionData['label']) ?></span>
-                                            <span class="count">
-                                                <?= $optionData['count'] ?>
-                                                <span class="filter-count-label">artículos</span>
-                                            </span>
-                                        </a>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ol>
-                        </dd>
-                    <?php endif; ?>
-                <?php endforeach; ?>
+            <?php foreach ($filterDataCombined as $attributeCode => $attributeData): ?>
+                <?php if (!empty($attributeData['options'])): ?>
+                    <dt role="heading" aria-level="3" class="filter-options-title">
+                        <a href="javascript:void(0);" class="toggle-section"><?= $escaper->escapeHtml($attributeData['attribute_label']) ?></a>
+                    </dt>
+                    <dd class="filter-options-content" style="display: none;">
+                        <ol class="items">
+                            <?php foreach ($attributeData['options'] as $optionId => $optionData): ?>
+                                <li class="item">
+                                    <a href="javascript:void(0);" class="filter-option" data-attribute="<?= $attributeCode ?>" data-value="<?= $optionId ?>">
+                                        <span class="item-label"><?= $escaper->escapeHtml($optionData['label']) ?></span>
+                                        <span class="count">
+                                            <?= $optionData['count'] ?>
+                                            <span class="filter-count-label">artículos</span>
+                                        </span>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ol>
+                    </dd>
+                <?php endif; ?>
+            <?php endforeach; ?>
             </dl>
             <div class="filter-price">
                 <label for="price-min">Precio mínimo:</label>
