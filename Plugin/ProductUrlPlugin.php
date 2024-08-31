@@ -28,10 +28,4 @@ class ProductUrlPlugin
         
         return $cleanedUrl;
     }
-
-    private function addParamToUrl($url, $paramName, $paramValue)
-    {
-        $separator = (strpos($url, '?') !== false) ? '&' : '?';
-        return $url . $separator . $paramName . '=' . urlencode($paramValue);
-    }
 }

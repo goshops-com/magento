@@ -58,10 +58,4 @@ class GetToken extends Action
 
         return $result->setData($data);
     }
-
-    private function getStackTrace()
-    {
-        $e = new \Exception();
-        return $e->getTraceAsString();
-    }
 }
