@@ -1,4 +1,3 @@
-// app/code/Gopersonal/Magento/Plugin/SearchPlugin.php
 <?php
 namespace Gopersonal\Magento\Plugin;
 
