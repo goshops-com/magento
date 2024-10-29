@@ -27,8 +27,11 @@
         <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
     </type>
 
-    <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
+    <!-- <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
         <plugin name="gopersonal_search_override" type="Gopersonal\Magento\Plugin\SearchPlugin" />
-    </type>
+    </type> -->
 
+    <preference for="Magento\Framework\Search\SearchResponseBuilder" 
+            type="Gopersonal\Magento\Model\Search\CustomSearchResultProvider" />
+            
 </config>
