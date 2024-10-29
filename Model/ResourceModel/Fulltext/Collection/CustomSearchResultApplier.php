@@ -3,7 +3,7 @@ namespace Gopersonal\Magento\Model\ResourceModel\Fulltext\Collection;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection\SearchResultApplier;
 use Magento\Framework\Api\Search\SearchResultInterface;
-use Magento\Framework\Data\Collection;
+use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection;
 
 class CustomSearchResultApplier extends SearchResultApplier
 {
@@ -17,11 +17,14 @@ class CustomSearchResultApplier extends SearchResultApplier
      */
     private $collection;
 
+    /**
+     * @param SearchResultInterface $searchResult
+     * @param Collection $collection
+     */
     public function __construct(
         SearchResultInterface $searchResult,
         Collection $collection
     ) {
-        parent::__construct($searchResult, $collection);
         $this->searchResult = $searchResult;
         $this->collection = $collection;
     }
