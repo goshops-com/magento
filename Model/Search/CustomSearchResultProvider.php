@@ -3,8 +3,8 @@ namespace Gopersonal\Magento\Model\Search;
 
 use Magento\Framework\Search\Response\QueryResponse;
 use Magento\Framework\Search\Response\Aggregation;
-use Magento\Framework\Search\Document;
-use Magento\Framework\Search\DocumentField;
+use Magento\Framework\Api\Search\Document;
+use Magento\Framework\Api\AttributeValue;
 
 class CustomSearchResultProvider extends QueryResponse 
 {
@@ -12,8 +12,13 @@ class CustomSearchResultProvider extends QueryResponse
     {
         $documents = [
             new Document(
-                '2040',
-                ['entity_id' => new DocumentField('entity_id', 2040)]
+                '2040', 
+                [
+                    'entity_id' => new AttributeValue([
+                        'attribute_code' => 'entity_id',
+                        'value' => 2040
+                    ])
+                ]
             )
         ];
         
