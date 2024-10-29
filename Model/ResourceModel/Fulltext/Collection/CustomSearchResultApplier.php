@@ -1,5 +1,5 @@
 <?php
-<?php
+
 namespace Gopersonal\Magento\Model\ResourceModel\Fulltext\Collection;
 
 use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection\SearchResultApplier;
