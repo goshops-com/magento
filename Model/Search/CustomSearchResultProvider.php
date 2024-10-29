@@ -1,26 +1,23 @@
 <?php
 namespace Gopersonal\Magento\Model\Search;
 
-use Magento\Framework\Search\SearchEngineInterface;
-use Magento\Framework\Search\RequestInterface;
+use Magento\Framework\Api\Search\SearchResultInterface;
+use Magento\Framework\Api\SearchResultsInterface;
+use Magento\Framework\Search\Response\QueryInterface;
 
-class CustomSearchResultProvider implements SearchEngineInterface
+class CustomSearchResultProvider extends \Magento\Framework\Search\Response\QueryResponse 
 {
-    public function search(RequestInterface $request)
+    public function __construct()
     {
-        // Debug to see if we're hitting this
-        die('Custom search provider called!');
-
+        die('Custom Search Provider Called!');
+        
         $documents = [
             [
                 'entity_id' => 2040,
                 'score' => 1
             ]
         ];
-
-        return new \Magento\Framework\Search\Response\QueryResponse(
-            $documents,
-            []  // empty aggregations
-        );
+        
+        parent::__construct($documents, []);
     }
 }
