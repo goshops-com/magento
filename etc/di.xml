@@ -31,15 +31,12 @@
             type="Gopersonal\Magento\Model\Search\CustomSearchResultProvider" /> -->
 
     <!-- File: app/code/Vendor/Module/etc/di.xml -->
-    <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-        <virtualType name="Gopersonal\Magento\SearchAdapter\CustomAdapter" type="Gopersonal\Magento\SearchAdapter\CustomAdapter" />
+    <virtualType name="Gopersonal\Magento\SearchAdapter\CustomAdapter" type="Gopersonal\Magento\SearchAdapter\CustomAdapter" />
         <type name="Magento\CatalogSearch\Model\Search\SearchAdapter">
             <arguments>
                 <argument name="searchAdapter" xsi:type="object">Gopersonal\Magento\SearchAdapter\CustomAdapter</argument>
             </arguments>
         </type>
-    </config>
 
 
 </config>
