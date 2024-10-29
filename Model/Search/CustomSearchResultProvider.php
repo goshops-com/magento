@@ -1,41 +1,26 @@
 <?php
 namespace Gopersonal\Magento\Model\Search;
 
-use Magento\Framework\Search\EntityMetadata;
-use Magento\Framework\Search\Request\BucketInterface;
+use Magento\Framework\Search\SearchEngineInterface;
 use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Search\Response\QueryResponse;
-use Magento\Framework\Search\Response\Aggregation;
-use Magento\Framework\Api\Search\SearchResultInterface;
 
-class CustomSearchResultProvider implements \Magento\Framework\Search\SearchResponseBuilder
+class CustomSearchResultProvider implements SearchEngineInterface
 {
-    private $entityMetadata;
-
-    public function __construct(EntityMetadata $entityMetadata)
+    public function search(RequestInterface $request)
     {
-        $this->entityMetadata = $entityMetadata;
-    }
+        // Debug to see if we're hitting this
+        die('Custom search provider called!');
 
-    public function build(RequestInterface $request, array $rawSearchResults)
-    {
-        // Always return our hardcoded product
         $documents = [
             [
-                $this->entityMetadata->getEntityId() => 2040,
+                'entity_id' => 2040,
                 'score' => 1
             ]
         ];
 
-        return new QueryResponse(
+        return new \Magento\Framework\Search\Response\QueryResponse(
             $documents,
-            $this->buildAggregations($request, $rawSearchResults)
+            []  // empty aggregations
         );
-    }
-
-    private function buildAggregations(RequestInterface $request, array $rawSearchResults)
-    {
-        $buckets = [];
-        return new Aggregation($buckets);
     }
 }
