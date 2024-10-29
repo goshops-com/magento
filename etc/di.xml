@@ -27,7 +27,10 @@
         <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
     </type>
 
-    <preference for="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection\SearchResultApplier"
-                type="Gopersonal\Magento\Model\ResourceModel\Fulltext\Collection\CustomSearchResultApplier" />
+    <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
+        <arguments>
+            <argument name="searchResultApplier" xsi:type="object">Gopersonal\Magento\Model\ResourceModel\Fulltext\Collection\CustomSearchResultApplier</argument>
+        </arguments>
+    </type>
                 
 </config>
