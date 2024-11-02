@@ -27,23 +27,5 @@
         <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
     </type>
 
-    <!-- Define the virtual type with lazy loading -->
-    <virtualType name="Gopersonal\Magento\SearchAdapter\CustomAdapter" 
-                 type="Gopersonal\Magento\SearchAdapter\CustomAdapter">
-        <arguments>
-            <argument name="productIds" xsi:type="array">
-                <item name="0" xsi:type="number">2040</item>
-            </argument>
-        </arguments>
-    </virtualType>
-
-    <type name="Magento\CatalogSearch\Model\Search\SearchAdapter">
-        <arguments>
-            <argument name="searchAdapter" xsi:type="object" shared="false">
-                Gopersonal\Magento\SearchAdapter\CustomAdapter
-            </argument>
-        </arguments>
-    </type>
-
 
 </config>
