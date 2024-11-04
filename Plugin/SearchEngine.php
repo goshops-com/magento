@@ -50,6 +50,9 @@ class SearchEngine extends MagentoSearchEngine
             $parentResponse = parent::search($request);
             $parentAggregations = $parentResponse->getAggregations();
 
+            var_dump("Parent Aggregations:");
+            var_dump($parentAggregations);
+
             // Your custom products data
             $products = [
                 [
