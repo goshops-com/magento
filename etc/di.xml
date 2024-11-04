@@ -12,6 +12,26 @@
     <!-- Search Engine configuration -->
     <preference for="Magento\Search\Model\SearchEngine" type="Gopersonal\Magento\Plugin\SearchEngine" />
     
+    <!-- Elasticsearch specific preferences -->
+    <preference for="Magento\Framework\Search\AdapterInterface" 
+                type="Magento\Elasticsearch\SearchAdapter\Adapter" />
+    
+    <type name="Gopersonal\Magento\Plugin\SearchEngine">
+        <arguments>
+            <argument name="engineResolver" xsi:type="object">Magento\Search\Model\EngineResolver</argument>
+            <argument name="adapter" xsi:type="object">Magento\Elasticsearch\SearchAdapter\Adapter\Proxy</argument>
+            <argument name="intervalFactory" xsi:type="object">Magento\Framework\Search\Dynamic\IntervalFactory</argument>
+        </arguments>
+    </type>
+
+    <!-- Elasticsearch adapter configuration -->
+    <virtualType name="Magento\Elasticsearch\SearchAdapter\Adapter" type="Magento\Elasticsearch\SearchAdapter\Adapter">
+        <arguments>
+            <argument name="connectionManager" xsi:type="object">Magento\Elasticsearch\SearchAdapter\ConnectionManager</argument>
+            <argument name="queryContainer" xsi:type="object">Magento\Elasticsearch\SearchAdapter\QueryContainer</argument>
+        </arguments>
+    </virtualType>
+
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
         <arguments>
             <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>
