@@ -47,7 +47,15 @@ class SearchEngine extends MagentoSearchEngine
         
         try {
             // Log the request facets
-            var_dump("Search request facets:", $request->getAggregation());
+            $this->logger->info("Requested Aggregations:");
+            foreach ($aggregations as $aggregation) {
+                $this->logger->info(print_r([
+                    'name' => $aggregation->getName(),
+                    'type' => $aggregation->getType(),
+                    'field' => $aggregation->getField(),
+                    'metrics' => $aggregation->getMetrics()
+                ], true));
+            }
 
             $products = [
                 [
