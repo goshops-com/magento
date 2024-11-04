@@ -1,3 +1,5 @@
+<?php
+
 use Magento\Framework\Api\Search\Document as SearchDocument;
 use Magento\Framework\Search\Response\AggregationFactory;
 
@@ -11,7 +13,7 @@ public function __construct(
 
 public function search(RequestInterface $request)
 {
-    var_dump("SEARCH ENGINE CALLED2");
+    var_dump("SEARCH ENGINE CALLED23");
 
     $documentData = [
         'entity_id' => '1',
