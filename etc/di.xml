@@ -11,16 +11,7 @@
 
     <!-- Search Engine configuration -->
     <preference for="Magento\Search\Model\SearchEngine" type="Gopersonal\Magento\Plugin\SearchEngine" />
-    <preference for="Magento\Framework\Search\AdapterInterface" type="Magento\Elasticsearch\SearchAdapter\Adapter" />
-
-    <type name="Gopersonal\Magento\Plugin\SearchEngine">
-        <arguments>
-            <argument name="engineResolver" xsi:type="object">Magento\Search\SearchEngineResolver</argument>
-            <argument name="adapter" xsi:type="object">Magento\Elasticsearch\SearchAdapter\Adapter</argument>
-            <argument name="intervalFactory" xsi:type="object">Magento\Framework\Search\Dynamic\IntervalFactory</argument>
-        </arguments>
-    </type>
-
+    
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
         <arguments>
             <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>

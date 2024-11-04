@@ -9,7 +9,7 @@ use Magento\Framework\Search\Response\Aggregation\Value;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
-use Magento\Search\SearchEngineResolver;
+use Magento\Framework\Search\EngineResolverInterface;
 use Magento\Framework\Search\AdapterInterface;
 use Magento\Framework\Search\Dynamic\IntervalFactory;
 
@@ -19,7 +19,7 @@ class SearchEngine extends MagentoSearchEngine
     protected $httpRequest;
 
     public function __construct(
-        SearchEngineResolver $engineResolver,
+        EngineResolverInterface $engineResolver,
         AdapterInterface $adapter,
         IntervalFactory $intervalFactory,
         LoggerInterface $logger,
@@ -40,7 +40,7 @@ class SearchEngine extends MagentoSearchEngine
         var_dump("USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Your custom search implementation stays the same
+            // Your custom search implementation
             $products = [
                 [
                     'entity_id' => '1',
