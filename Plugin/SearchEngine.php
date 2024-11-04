@@ -2,13 +2,14 @@
 
 namespace Gopersonal\Magento\Plugin;
 
-use Magento\Framework\Api\Search\Document as SearchDocument;
-use Magento\Framework\Search\Response\AggregationFactory;
+use Magento\Framework\Search\SearchEngineInterface;
 use Magento\Framework\Search\RequestInterface;
+use Magento\Framework\Api\Search\Document as SearchDocument;
 use Magento\Framework\Search\Response\QueryResponse;
+use Magento\Framework\Search\Response\AggregationFactory;
 use Psr\Log\LoggerInterface;
 
-class SearchEngine
+class SearchEngine implements SearchEngineInterface
 {
     protected $logger;
     protected $aggregationFactory;
@@ -23,7 +24,7 @@ class SearchEngine
 
     public function search(RequestInterface $request)
     {
-        var_dump("SEARCH ENGINE CALLED23");
+        $this->logger->debug("SEARCH ENGINE CALLED23");
 
         $documentData = [
             'entity_id' => '1',
@@ -32,7 +33,7 @@ class SearchEngine
             'score' => 1
         ];
 
-        var_dump("DOCUMENT DATA:", $documentData);
+        $this->logger->debug("DOCUMENT DATA:", $documentData);
 
         $document = new SearchDocument(
             '1',
@@ -48,5 +49,12 @@ class SearchEngine
         );
 
         return $response;
+    }
+
+    // Implement any other methods required by the interface
+    public function getIds(QueryResponse $response)
+    {
+        // Implement this method based on your needs
+        return [1];
     }
 }
