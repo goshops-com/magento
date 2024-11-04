@@ -21,15 +21,19 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
         var_dump("SEARCH CALLED");
         
         $document = new SearchDocument(
-            ['entity_id' => 1],
+            [
+                'entity_id' => 1,
+                'score' => 1,
+                'visibility' => 4, // Catalog, Search
+                'status' => 1,    // Enabled
+            ],
             ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
         );
         
-        // Create response with total count = 1
         $response = new QueryResponse(
             [$document],
             new \Magento\Framework\Search\Response\Aggregation([], []),
-            1  // Setting total count to 1
+            1
         );
 
         var_dump($response);
