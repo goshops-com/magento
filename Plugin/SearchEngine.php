@@ -9,6 +9,9 @@ use Magento\Framework\Search\Response\Aggregation\Value;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
+use Magento\Framework\Search\EngineResolverInterface;
+use Magento\Framework\Search\Dynamic\IntervalFactory;
+use Magento\Framework\Search\AdapterInterface;
 
 class SearchEngine extends MagentoSearchEngine
 {
@@ -16,11 +19,15 @@ class SearchEngine extends MagentoSearchEngine
     protected $httpRequest;
 
     public function __construct(
+        EngineResolverInterface $engineResolver,
+        AdapterInterface $adapter,
+        IntervalFactory $intervalFactory,
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
+        parent::__construct($engineResolver, $adapter, $intervalFactory);
     }
 
     public function search(RequestInterface $request)
