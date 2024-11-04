@@ -23,7 +23,7 @@ public function search(RequestInterface $request)
     var_dump("DOCUMENT DATA:", $documentData);
 
     $document = new SearchDocument(
-        '2040', // ID as string
+        '1', // ID as string
         $documentData
     );
 
