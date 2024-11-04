@@ -19,14 +19,20 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     public function search(RequestInterface $request)
     {
         var_dump("SEARCH CALLED");
-        var_dump("REQUEST:", $request);
         
         $document = new SearchDocument(
             [
                 'entity_id' => 2040,
                 'score' => 1,
-                'visibility' => 4,
-                'status' => 1
+                'visibility' => 3,  // Changed to match filter value
+                'status' => 1,
+                'name' => 'Joust Duffle Bag',
+                'sku' => 'test-sku',
+                'description' => 'test desc',
+                'short_description' => 'test short',
+                'manufacturer' => 'test',
+                'url_key' => 'test-url',
+                'tax_class_id' => 1
             ],
             ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
         );
