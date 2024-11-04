@@ -20,11 +20,11 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
 
     public function search(RequestInterface $request)
     {
-        var_dump("SEARCH ENGINE CALLED");
+        // var_dump("SEARCH ENGINE CALLED");
         
         // Debug request information safely
-        var_dump("Request Dimensions:", $request->getDimensions());
-        var_dump("Request Name:", $request->getName());
+        // var_dump("Request Dimensions:", $request->getDimensions());
+        // var_dump("Request Name:", $request->getName());
         
         try {
             // Create multiple products for testing
@@ -71,7 +71,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
                     ]
                 ];
 
-                var_dump("Creating document for product:", $product['entity_id']);
+                // var_dump("Creating document for product:", $product['entity_id']);
 
                 $documents[] = new SearchDocument(
                     $documentData,
