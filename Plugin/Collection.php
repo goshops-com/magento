@@ -3,18 +3,16 @@ namespace Gopersonal\Magento\Plugin;
 
 class Collection extends \Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection
 {
-    protected function _renderFiltersBefore()
+    public function getFoundIds()
     {
-        $searchTerm = $this->queryText;
-        
-        if ($searchTerm) {
-            // Clear existing search condition but keep filters
-            $this->getSelect()->reset(\Zend_Db_Select::WHERE);
-            
-            // Hardcode to product ID 2040
-            $this->getSelect()->where('e.entity_id = ?', 2040);
+        file_put_contents('/var/www/html/var/log/search_debug.log', 
+            "GetFoundIds called with query: " . $this->queryText . "\n", 
+            FILE_APPEND);
+
+        if ($this->queryText) {
+            return [2040];
         }
         
-        return parent::_renderFiltersBefore();
+        return parent::getFoundIds();
     }
 }
