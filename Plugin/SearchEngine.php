@@ -46,6 +46,9 @@ class SearchEngine extends MagentoSearchEngine
         var_dump("USING CUSTOM SEARCH ENGINE");
         
         try {
+            // Log the request facets
+            var_dump("Search request facets:", $request->getAggregation());
+
             $products = [
                 [
                     'entity_id' => '1',
@@ -61,14 +64,9 @@ class SearchEngine extends MagentoSearchEngine
                 ]
             ];
 
-            // Store the product IDs in the request
-            $productIds = array_column($products, 'entity_id');
-            $this->httpRequest->setParam('custom_product_ids', $productIds);
-            var_dump("Stored product IDs in request:", $productIds);
-
             $documents = [];
+            
             foreach ($products as $product) {
-                // Rest of your existing code...
                 $documentData = [
                     'entity_id' => $product['entity_id'],
                     'id' => $product['entity_id'],
@@ -109,19 +107,30 @@ class SearchEngine extends MagentoSearchEngine
                 );
             }
 
+            // Prepare bucket data for aggregations
+            $bucketData = [
+                'price_bucket' => [
+                    'name' => 'price_bucket',
+                    'values' => [
+                        ['from' => 0, 'to' => 100, 'count' => 1],
+                        ['from' => 100, 'to' => 200, 'count' => 1]
+                    ]
+                ],
+                'category_bucket' => [
+                    'name' => 'category_bucket',
+                    'values' => [
+                        ['value' => 2, 'count' => 1],
+                        ['value' => 3, 'count' => 1]
+                    ]
+                ]
+            ];
+
             $aggregations = new Aggregation(
                 [
                     'price_bucket' => new Value(99.99, 'price'),
+                    'category_bucket' => new Value(2, 'category')
                 ],
-                [
-                    'price_bucket' => [
-                        'name' => 'price_bucket',
-                        'values' => [
-                            ['from' => 0, 'to' => 100, 'count' => 1],
-                            ['from' => 100, 'to' => 200, 'count' => 1]
-                        ]
-                    ]
-                ]
+                $bucketData
             );
 
             return new QueryResponse($documents, $aggregations, count($documents));
