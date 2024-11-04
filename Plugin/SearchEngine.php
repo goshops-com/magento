@@ -22,62 +22,57 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     {
         var_dump("SEARCH ENGINE CALLED");
 
-        // Extract search terms
-        $queries = $request->getQuery()->getShould() ?: $request->getQuery()->getMust();
-        $searchTerms = [];
-        foreach ($queries as $query) {
-            if ($query instanceof \Magento\Framework\Search\Request\Query\Match) {
-                $searchTerms[] = $query->getValue();
-            }
-        }
-
-        var_dump("SEARCH TERMS:", $searchTerms);
-
-        // Create mock search results
-        $searchResults = [
-            [
+        // Mock search results - using proper document structure
+        $documentData = [
+            'entity_id' => '1',
+            'score' => 1,
+            '_id' => 1,
+            '_score' => 1,
+            '_type' => 'product',
+            '_index' => 'catalog_product',
+            '_source' => [
                 'entity_id' => '1',
-                'name' => 'Product 1',
-                'score' => 1.0
+                'status' => 1,
+                'visibility' => 4,
+                'name' => 'Test Product',
+                'sku' => 'TEST-1',
+                'price' => 99.99,
+                'score' => 1
             ],
-            [
-                'entity_id' => '2',
-                'name' => 'Product 2',
-                'score' => 0.8
+            'custom_attributes' => [
+                'score' => 1,
+                'name' => 'Test Product',
+                'status' => 1,
+                'visibility' => 4,
+                'price' => 99.99
             ]
         ];
 
-        var_dump("SEARCH RESULTS:", $searchResults);
+        var_dump("DOCUMENT DATA:", $documentData);
 
-        // Convert to documents
-        $documents = [];
-        foreach ($searchResults as $result) {
-            $documentData = [
-                'entity_id' => $result['entity_id'],
-                '_id' => $result['entity_id'],
-                '_source' => [
-                    'entity_id' => $result['entity_id'],
-                    'status' => 1,
-                    'visibility' => 4,
-                    'score' => $result['score']
-                ]
-            ];
-
-            var_dump("DOCUMENT DATA:", $documentData);
-
-            $documents[] = new SearchDocument(
-                $documentData,
-                ['score' => new Value($result['score'], 'value')]
-            );
-        }
-
-        $response = new QueryResponse(
-            $documents,
-            new Aggregation([], []),
-            count($documents)
+        // Create the document with all required fields
+        $document = new SearchDocument(
+            $documentData,
+            [
+                'score' => new Value(1, 'score'),
+                'name' => new Value('Test Product', 'name'),
+                'status' => new Value(1, 'status'),
+                'visibility' => new Value(4, 'visibility'),
+                'price' => new Value(99.99, 'price')
+            ]
         );
 
-        var_dump("RESPONSE CREATED WITH " . count($documents) . " DOCUMENTS");
+        // Create response with documents and aggregations
+        $response = new QueryResponse(
+            [$document],
+            new Aggregation(
+                ['price' => new Value(99.99, 'price')],
+                ['price' => ['count' => 1, 'max' => 99.99, 'min' => 99.99]]
+            ),
+            1
+        );
+
+        var_dump("RESPONSE CREATED WITH 1 DOCUMENT");
 
         return $response;
     }
