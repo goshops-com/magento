@@ -4,6 +4,7 @@ namespace Gopersonal\Magento\Plugin;
 use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Api\Search\Document as SearchDocument;
 use Psr\Log\LoggerInterface;
+use Magento\Framework\Search\Response\QueryResponse;
 
 class SearchEngine extends \Magento\Search\Model\SearchEngine
 {
@@ -24,11 +25,11 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
             ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
         );
         
-        var_dump($document);
-        
-        $response = new \Magento\Framework\Search\Response\QueryResponse(
+        // Create response with total count = 1
+        $response = new QueryResponse(
             [$document],
-            new \Magento\Framework\Search\Response\Aggregation([], [])
+            new \Magento\Framework\Search\Response\Aggregation([], []),
+            1  // Setting total count to 1
         );
 
         var_dump($response);
