@@ -1,9 +1,9 @@
 <?php
 namespace Gopersonal\Magento\Plugin;
 
-use Magento\Catalog\Model\Layer\Filter\DataProvider\Price;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface;
+use Magento\Catalog\Model\Layer;
 
 class LayeredNavigationPlugin
 {
@@ -18,26 +18,27 @@ class LayeredNavigationPlugin
         $this->request = $request;
     }
 
-    public function beforeGetCollection(
-        \Magento\Catalog\Model\Layer\Filter\AbstractFilter $subject
-    ) {
-        var_dump("LayeredNavigationPlugin - beforeGetCollection called");
+    public function afterGetProductCollection(Layer $subject, $result)
+    {
+        var_dump("LayeredNavigationPlugin - afterGetProductCollection called");
             
         if ($this->request->getParam('gpSearchOverride')) {
             var_dump("Custom search is active in layered navigation");
-            
-            // Get the collection
-            $collection = $subject->getLayer()->getProductCollection();
             
             // Get product IDs from request
             $customProductIds = $this->request->getParam('custom_product_ids');
             
             if ($customProductIds) {
                 var_dump("Found custom product IDs:", $customProductIds);
+                var_dump("Before filter query: " . $result->getSelect()->__toString());
                 
                 // Apply custom product IDs filter
-                $collection->addFieldToFilter('entity_id', ['in' => $customProductIds]);
+                $result->addFieldToFilter('entity_id', ['in' => $customProductIds]);
+                
+                var_dump("After filter query: " . $result->getSelect()->__toString());
             }
         }
+
+        return $result;
     }
 }

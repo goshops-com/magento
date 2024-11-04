@@ -35,7 +35,7 @@
     <preference for="Magento\Search\Model\SearchEngine"
                 type="Gopersonal\Magento\Plugin\SearchEngine" />
 
-    <type name="Magento\Catalog\Model\Layer\Filter\AbstractFilter">
+    <type name="Magento\Catalog\Model\Layer">
         <plugin name="gopersonal_layered_navigation"
                 type="Gopersonal\Magento\Plugin\LayeredNavigationPlugin"/>
     </type>
