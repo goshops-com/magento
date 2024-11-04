@@ -15,7 +15,7 @@
 
     <type name="Gopersonal\Magento\Plugin\SearchEngine">
         <arguments>
-            <argument name="engineResolver" xsi:type="object">Magento\Framework\Search\EngineResolver</argument>
+            <argument name="engineResolver" xsi:type="object">Magento\Search\SearchEngineResolver</argument>
             <argument name="adapter" xsi:type="object">Magento\Elasticsearch\SearchAdapter\Adapter</argument>
             <argument name="intervalFactory" xsi:type="object">Magento\Framework\Search\Dynamic\IntervalFactory</argument>
         </arguments>
