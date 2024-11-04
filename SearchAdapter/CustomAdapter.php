@@ -1,102 +1,50 @@
 <?php
-namespace Gopersonal\Magento\SearchAdapter;
+namespace Gopersonal\Magento\Plugin;
 
-use Magento\Framework\Search\AdapterInterface;
-use Magento\Framework\Api\Search\SearchResultInterface;
-use Magento\Framework\Api\Search\SearchResultInterfaceFactory;
-use Magento\Framework\Api\Search\DocumentFactory;
-use Magento\Framework\App\ObjectManager;
+use Magento\Framework\Search\RequestInterface;
+use Magento\Framework\Api\Search\Document as SearchDocument;
+use Psr\Log\LoggerInterface;
+use Magento\Framework\Search\Response\QueryResponse;
 
-class CustomAdapter implements AdapterInterface
+class SearchEngine extends \Magento\Search\Model\SearchEngine
 {
-    private const BATCH_SIZE = 100;
-    
-    /**
-     * @var SearchResultInterfaceFactory
-     */
-    private $searchResultFactory;
-    
-    /**
-     * @var DocumentFactory
-     */
-    private $documentFactory;
-    
-    /**
-     * @var array
-     */
-    private $productIds;
-    
-    /**
-     * @var bool
-     */
-    private $isInitialized = false;
+    protected $logger;
 
-    /**
-     * @param SearchResultInterfaceFactory $searchResultFactory
-     * @param DocumentFactory $documentFactory
-     * @param array $productIds
-     */
     public function __construct(
-        SearchResultInterfaceFactory $searchResultFactory,
-        DocumentFactory $documentFactory,
-        array $productIds = [2040]
+        LoggerInterface $logger
     ) {
-        $this->searchResultFactory = $searchResultFactory;
-        $this->documentFactory = $documentFactory;
-        $this->productIds = $productIds;
+        $this->logger = $logger;
     }
 
-    /**
-     * @param \Magento\Framework\Search\RequestInterface $request
-     * @return SearchResultInterface
-     */
-    public function query(\Magento\Framework\Search\RequestInterface $request)
+    public function search(RequestInterface $request)
     {
-        // Create search result instance early to avoid DI compilation issues
-        $searchResult = $this->searchResultFactory->create();
+        var_dump("SEARCH ENGINE CALLED");
         
-        if (empty($this->productIds)) {
-            $searchResult->setItems([]);
-            $searchResult->setTotalCount(0);
-            return $searchResult;
-        }
-
-        $documents = [];
+        // Create document with entity_id as string
+        $documentData = [
+            'entity_id' => '2040',  // Changed to string
+            '_id' => 2040,
+            '_source' => [
+                'entity_id' => '2040',
+                'status' => 1,
+                'visibility' => 4,
+                'score' => 1
+            ]
+        ];
         
-        // Process in batches to avoid memory issues
-        foreach (array_chunk($this->productIds, self::BATCH_SIZE) as $chunk) {
-            foreach ($chunk as $productId) {
-                $documents[] = $this->documentFactory->create()
-                    ->setId($productId)
-                    ->setCustomAttribute('entity_id', $productId)
-                    ->setCustomAttribute('score', 1);
-            }
-        }
-
-        $searchResult->setItems($documents);
-        $searchResult->setTotalCount(count($documents));
+        var_dump("DOCUMENT DATA:", $documentData);
         
-        return $searchResult;
-    }
-
-    /**
-     * Get product IDs
-     *
-     * @return array
-     */
-    public function getProductIds(): array
-    {
-        return $this->productIds;
-    }
-
-    /**
-     * Set product IDs
-     *
-     * @param array $productIds
-     * @return void
-     */
-    public function setProductIds(array $productIds): void
-    {
-        $this->productIds = $productIds;
+        $document = new SearchDocument(
+            $documentData,
+            ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
+        );
+        
+        $response = new QueryResponse(
+            [$document],
+            new \Magento\Framework\Search\Response\Aggregation([], []),
+            1
+        );
+        
+        return $response;
     }
 }
