@@ -15,8 +15,8 @@ class LayerPlugin
 
     public function afterGetProductCollection(Layer $subject, $result)
     {
-        var_dump("LAYER PRODUCT COLLECTION SIZE: " . $result->getSize());
-        var_dump("LAYER COLLECTION QUERY: " . $result->getSelect()->__toString());
+        // var_dump("LAYER PRODUCT COLLECTION SIZE: " . $result->getSize());
+        // var_dump("LAYER COLLECTION QUERY: " . $result->getSelect()->__toString());
         
         return $result;
     }

@@ -29,9 +29,10 @@
 
     <preference for="Magento\Search\Model\SearchEngine"
                 type="Gopersonal\Magento\Plugin\SearchEngine" />
-    <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
+    
+    <!-- <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
         <plugin name="debug_fulltext_collection" type="Gopersonal\Magento\Plugin\FulltextCollectionPlugin" />
-    </type>
+    </type> -->
 
     <type name="Magento\Catalog\Model\Layer">
         <plugin name="debug_layer_collection" type="Gopersonal\Magento\Plugin\LayerPlugin" />
