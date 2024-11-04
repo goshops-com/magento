@@ -18,7 +18,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
 
     public function search(RequestInterface $request)
     {
-        var_dump("SEARCH ENGINE CALLED");
+        var_dump("SEARCH ENGINE CALLED2");
         
         // Create document with entity_id as string
         $documentData = [
