@@ -20,18 +20,26 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     {
         var_dump("SEARCH CALLED");
         
+        $documentData = [
+            'entity_id' => 2040,
+            'score' => 1,
+            'visibility' => 4,
+            'status' => 1,
+            '_id' => 2040,
+            '_score' => 1,
+            'sku' => 'test',
+            'name' => 'Test Product',
+            'type_id' => 'simple'
+        ];
+        
+        var_dump("DOCUMENT DATA:", $documentData);
+        
         $document = new SearchDocument(
-            [
-                'entity_id' => 2040,
-                'score' => 1,
-                'visibility' => 4,
-                'status' => 1,
-                '_id' => 2040    // Add _id field
-            ],
+            $documentData,
             ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
         );
-        
-        var_dump("DOCUMENT:", $document);
+
+        var_dump("DOCUMENT CREATED:", $document);
         
         $response = new QueryResponse(
             [$document],
@@ -39,14 +47,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
             1
         );
 
-        var_dump("BEFORE RETURN");
-        var_dump("Looking at _renderFiltersBefore...");
-        $debug = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-        foreach ($debug as $d) {
-            if (strpos($d['file'], 'Collection.php') !== false) {
-                var_dump($d['file'] . ':' . $d['line']);
-            }
-        }
+        var_dump("RESPONSE:", $response);
         
         return $response;
     }

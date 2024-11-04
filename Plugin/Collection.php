@@ -3,8 +3,15 @@ namespace Gopersonal\Magento\Plugin;
 
 class Collection extends \Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection
 {
-    public function getFoundIds()
+    protected function _renderFiltersBefore()
     {
-        return [2040];
+        var_dump("COLLECTION RENDER FILTERS");
+        
+        $this->_productLimitationPrice();
+
+        parent::_renderFiltersBefore();
+        
+        var_dump("AFTER PARENT RENDER");
+        var_dump($this->getItems());
     }
 }
