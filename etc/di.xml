@@ -33,4 +33,8 @@
         <plugin name="debug_fulltext_collection" type="Gopersonal\Magento\Plugin\FulltextCollectionPlugin" />
     </type>
 
+    <type name="Magento\Catalog\Model\Layer">
+        <plugin name="debug_layer_collection" type="Gopersonal\Magento\Plugin\LayerPlugin" />
+    </type>
+
 </config>

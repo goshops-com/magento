@@ -21,93 +21,112 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     public function search(RequestInterface $request)
     {
         var_dump("SEARCH ENGINE CALLED");
-        var_dump("REQUEST DATA:", $request->toArray());
-
-        // Create document with minimum required fields
-        $documentData = [
-            'entity_id' => '1',
-            'id' => '1', // Added id field
-            'score' => 1,
-            '_id' => 1,
-            '_score' => 1,
-            '_type' => 'product',
-            '_index' => 'catalog_product',
-            'store_id' => 1, // Added store_id
-            'visibility' => 4,
-            'status' => 1,
-            '_source' => [
-                'entity_id' => '1',
-                'id' => '1', // Added id field in source
-                'status' => 1,
-                'visibility' => 4,
-                'name' => 'Test Product',
-                'sku' => 'TEST-1',
-                'price' => 99.99,
-                'score' => 1,
-                'store_id' => 1, // Added store_id in source
-                'type_id' => 'simple', // Added product type
-                'website_ids' => [1], // Added website IDs
-            ],
-            'custom_attributes' => [
-                'score' => 1,
-                'name' => 'Test Product',
-                'status' => 1,
-                'visibility' => 4,
-                'price' => 99.99,
-                'store_id' => 1,
-                'website_id' => 1
-            ]
-        ];
-
-        var_dump("DOCUMENT DATA:", $documentData);
-
-        // Create document with all field values explicitly set
-        $attributeValues = [
-            'id' => new Value('1', 'id'),
-            'entity_id' => new Value('1', 'entity_id'),
-            'score' => new Value(1, 'score'),
-            'status' => new Value(1, 'status'),
-            'visibility' => new Value(4, 'visibility'),
-            'name' => new Value('Test Product', 'name'),
-            'price' => new Value(99.99, 'price'),
-            'store_id' => new Value(1, 'store_id'),
-            'website_id' => new Value(1, 'website_id'),
-            'type_id' => new Value('simple', 'type_id')
-        ];
-
-        $document = new SearchDocument($documentData, $attributeValues);
-
-        // Create basic aggregations
-        $aggregations = [
-            'price_bucket' => new Value(99.99, 'price'),
-            'category_bucket' => new Value(2, 'category_ids'),
-        ];
-
-        $buckets = [
-            'price_bucket' => [
-                'type' => 'dynamicBucket',
-                'name' => 'price_bucket',
-                'values' => [
-                    ['value' => 99.99, 'count' => 1]
+        
+        // Debug request information safely
+        var_dump("Request Dimensions:", $request->getDimensions());
+        var_dump("Request Name:", $request->getName());
+        
+        try {
+            // Create multiple products for testing
+            $products = [
+                [
+                    'entity_id' => '1',
+                    'name' => 'Test Product 1',
+                    'price' => 99.99,
+                    'sku' => 'TEST-1'
+                ],
+                [
+                    'entity_id' => '2',
+                    'name' => 'Test Product 2',
+                    'price' => 149.99,
+                    'sku' => 'TEST-2'
                 ]
-            ],
-            'category_bucket' => [
-                'type' => 'termBucket',
-                'name' => 'category_bucket',
-                'values' => [
-                    ['value' => '2', 'count' => 1]
+            ];
+
+            $documents = [];
+            
+            foreach ($products as $product) {
+                $documentData = [
+                    'entity_id' => $product['entity_id'],
+                    'id' => $product['entity_id'],
+                    '_id' => $product['entity_id'],
+                    '_score' => 1,
+                    'score' => 1,
+                    'visibility' => 4,
+                    'status' => 1,
+                    'type_id' => 'simple',
+                    'store_id' => 1,
+                    'website_ids' => [1],
+                    '_type' => 'product',
+                    '_index' => 'catalog_product',
+                    '_source' => [
+                        'entity_id' => $product['entity_id'],
+                        'name' => $product['name'],
+                        'sku' => $product['sku'],
+                        'price' => $product['price'],
+                        'status' => 1,
+                        'visibility' => 4,
+                        'type_id' => 'simple',
+                        'store_id' => 1
+                    ]
+                ];
+
+                var_dump("Creating document for product:", $product['entity_id']);
+
+                $documents[] = new SearchDocument(
+                    $documentData,
+                    [
+                        'entity_id' => new Value($product['entity_id'], 'entity_id'),
+                        'name' => new Value($product['name'], 'name'),
+                        'price' => new Value($product['price'], 'price'),
+                        'sku' => new Value($product['sku'], 'sku'),
+                        'status' => new Value(1, 'status'),
+                        'visibility' => new Value(4, 'visibility'),
+                        'store_id' => new Value(1, 'store_id'),
+                        'score' => new Value(1, 'score')
+                    ]
+                );
+            }
+
+            // Create aggregations
+            $aggregations = new Aggregation(
+                [
+                    'price_bucket' => new Value(99.99, 'price'),
+                ],
+                [
+                    'price_bucket' => [
+                        'name' => 'price_bucket',
+                        'values' => [
+                            [
+                                'from' => 0,
+                                'to' => 100,
+                                'count' => 1
+                            ],
+                            [
+                                'from' => 100,
+                                'to' => 200,
+                                'count' => 1
+                            ]
+                        ]
+                    ]
                 ]
-            ]
-        ];
+            );
 
-        $response = new QueryResponse(
-            [$document],
-            new Aggregation($aggregations, $buckets),
-            1
-        );
+            var_dump("Created documents count:", count($documents));
 
-        var_dump("RESPONSE CREATED WITH 1 DOCUMENT");
+            $response = new QueryResponse(
+                $documents,
+                $aggregations,
+                count($documents)
+            );
 
-        return $response;
+            var_dump("RESPONSE CREATED WITH " . count($documents) . " DOCUMENTS");
+
+            return $response;
+
+        } catch (\Exception $e) {
+            var_dump("Error in search engine:", $e->getMessage());
+            throw $e;
+        }
     }
 }
