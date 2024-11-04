@@ -9,32 +9,37 @@ use Magento\Framework\Search\Response\Aggregation\Value;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
-use Magento\Search\Model\EngineResolver;
+use Magento\Framework\Search\EngineResolverInterface;
 use Magento\Framework\Search\AdapterInterface;
 use Magento\Framework\Search\Dynamic\IntervalFactory;
+use Magento\Framework\ObjectManagerInterface;
 
 class SearchEngine extends MagentoSearchEngine
 {
     protected $logger;
     protected $httpRequest;
+    protected $objectManager;
 
     public function __construct(
-        EngineResolver $engineResolver,
+        EngineResolverInterface $engineResolver,
         AdapterInterface $adapter,
         IntervalFactory $intervalFactory,
         LoggerInterface $logger,
-        HttpRequestInterface $httpRequest
+        HttpRequestInterface $httpRequest,
+        ObjectManagerInterface $objectManager
     ) {
+        parent::__construct($engineResolver, $adapter, $intervalFactory);
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
-        parent::__construct($engineResolver, $adapter, $intervalFactory);
+        $this->objectManager = $objectManager;
     }
 
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             var_dump("USING DEFAULT MAGENTO SEARCH");
-            return parent::search($request);
+            $defaultEngine = $this->objectManager->create(MagentoSearchEngine::class);
+            return $defaultEngine->search($request);
         }
 
         var_dump("USING CUSTOM SEARCH ENGINE");
