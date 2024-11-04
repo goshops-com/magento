@@ -18,6 +18,8 @@ class SearchEngine extends MagentoSearchEngine
     protected $logger;
     protected $httpRequest;
     protected $objectManager;
+    protected $adapterFactory;
+    protected $intervalFactory;
 
     public function __construct(
         AdapterFactory $adapterFactory,
@@ -26,24 +28,26 @@ class SearchEngine extends MagentoSearchEngine
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager
     ) {
-        parent::__construct($adapterFactory, $intervalFactory);
+        $this->adapterFactory = $adapterFactory;
+        $this->intervalFactory = $intervalFactory;
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
+        parent::__construct($adapterFactory, $intervalFactory);
     }
 
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             var_dump("USING DEFAULT MAGENTO SEARCH");
-            $defaultEngine = $this->objectManager->create(MagentoSearchEngine::class);
-            return $defaultEngine->search($request);
+            // Call parent implementation directly instead of creating a new instance
+            return parent::search($request);
         }
 
         var_dump("USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Your custom search implementation
+            // Rest of your custom search implementation remains the same
             $products = [
                 [
                     'entity_id' => '1',
