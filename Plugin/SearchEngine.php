@@ -18,7 +18,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
 
     public function search(RequestInterface $request)
     {
-        var_dump("SEARCH CALLED");
+        var_dump("SEARCH ENGINE CALLED");
         
         $documentData = [
             'entity_id' => 2040,
@@ -26,10 +26,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
             'visibility' => 4,
             'status' => 1,
             '_id' => 2040,
-            '_score' => 1,
-            'sku' => 'test',
-            'name' => 'Test Product',
-            'type_id' => 'simple'
+            '_score' => 1
         ];
         
         var_dump("DOCUMENT DATA:", $documentData);
@@ -38,16 +35,12 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
             $documentData,
             ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
         );
-
-        var_dump("DOCUMENT CREATED:", $document);
         
         $response = new QueryResponse(
             [$document],
             new \Magento\Framework\Search\Response\Aggregation([], []),
             1
         );
-
-        var_dump("RESPONSE:", $response);
         
         return $response;
     }

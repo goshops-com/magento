@@ -27,9 +27,6 @@
         <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
     </type>
 
-    <!-- <preference for="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection"
-                type="Gopersonal\Magento\Model\ResourceModel\Fulltext\Collection" /> -->
-
     <preference for="Magento\Search\Model\SearchEngine"
                 type="Gopersonal\Magento\Plugin\SearchEngine" />
     <preference for="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection"

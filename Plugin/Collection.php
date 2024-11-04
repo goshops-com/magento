@@ -5,13 +5,12 @@ class Collection extends \Magento\CatalogSearch\Model\ResourceModel\Fulltext\Col
 {
     protected function _renderFiltersBefore()
     {
-        var_dump("COLLECTION RENDER FILTERS");
+        var_dump("COLLECTION RENDER FILTERS BEFORE");
         
-        $this->_productLimitationPrice();
-
         parent::_renderFiltersBefore();
         
-        var_dump("AFTER PARENT RENDER");
-        var_dump($this->getItems());
+        var_dump("COLLECTION AFTER PARENT");
+        var_dump("Current IDs:", $this->_loadedIds);
+        var_dump("Search Result:", $this->searchResult);
     }
 }
