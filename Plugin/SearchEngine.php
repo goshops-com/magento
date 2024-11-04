@@ -17,8 +17,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
 
    public function search(RequestInterface $request)
    {
-       $this->logger->info('Search called with request: ' . json_encode($request->getName()));
-       $this->logger->info('Search query: ' . json_encode($request->getQuery()));
+       print_r("Search called\n");
        
        $response = new \Magento\Framework\Search\Response\QueryResponse(
            [
@@ -30,7 +29,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
            new \Magento\Framework\Search\Response\Aggregation([], [])
        );
 
-       $this->logger->info('Search response: ' . json_encode($response));
+       print_r("Response created\n");
        
        return $response;
    }
