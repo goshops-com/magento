@@ -39,16 +39,19 @@ class SearchEngine extends MagentoSearchEngine
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            var_dump("USING DEFAULT MAGENTO SEARCH");
+            $this->logger->info("USING DEFAULT MAGENTO SEARCH");
             return parent::search($request);
         }
 
-        var_dump("USING CUSTOM SEARCH ENGINE");
+        $this->logger->info("USING CUSTOM SEARCH ENGINE");
         
         try {
+            // Get aggregations from request
+            $requestAggregations = $request->getAggregation();
+            
             // Log the request facets
             $this->logger->info("Requested Aggregations:");
-            foreach ($aggregations as $aggregation) {
+            foreach ($requestAggregations as $aggregation) {
                 $this->logger->info(print_r([
                     'name' => $aggregation->getName(),
                     'type' => $aggregation->getType(),
@@ -144,7 +147,7 @@ class SearchEngine extends MagentoSearchEngine
             return new QueryResponse($documents, $aggregations, count($documents));
 
         } catch (\Exception $e) {
-            var_dump("Error in search engine:", $e->getMessage());
+            $this->logger->error("Error in search engine: " . $e->getMessage());
             throw $e;
         }
     }
