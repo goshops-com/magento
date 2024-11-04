@@ -19,17 +19,19 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     {
         var_dump("SEARCH CALLED");
         
+        $document = new SearchDocument(
+            ['entity_id' => 1],
+            ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
+        );
+        
+        var_dump($document);
+        
         $response = new \Magento\Framework\Search\Response\QueryResponse(
-            [
-                new SearchDocument(
-                    ['entity_id' => 1],
-                    ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
-                )
-            ],
+            [$document],
             new \Magento\Framework\Search\Response\Aggregation([], [])
         );
 
-        var_dump("RESPONSE CREATED");
+        var_dump($response);
         
         return $response;
     }
