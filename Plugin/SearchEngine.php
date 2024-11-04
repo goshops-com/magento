@@ -12,7 +12,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
             [
                 new SearchDocument(
                     '2040',
-                    ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0)]
+                    ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
                 )
             ],
             new \Magento\Framework\Search\Response\Aggregation([], [])
