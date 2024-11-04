@@ -1,41 +1,52 @@
 <?php
 
+namespace Gopersonal\Magento\Plugin;
+
 use Magento\Framework\Api\Search\Document as SearchDocument;
 use Magento\Framework\Search\Response\AggregationFactory;
+use Magento\Framework\Search\RequestInterface;
+use Magento\Framework\Search\Response\QueryResponse;
+use Psr\Log\LoggerInterface;
 
-public function __construct(
-    LoggerInterface $logger,
-    AggregationFactory $aggregationFactory
-) {
-    $this->logger = $logger;
-    $this->aggregationFactory = $aggregationFactory;
-}
-
-public function search(RequestInterface $request)
+class SearchEngine
 {
-    var_dump("SEARCH ENGINE CALLED23");
+    protected $logger;
+    protected $aggregationFactory;
 
-    $documentData = [
-        'entity_id' => '1',
-        'status' => 1,
-        'visibility' => 4,
-        'score' => 1
-    ];
+    public function __construct(
+        LoggerInterface $logger,
+        AggregationFactory $aggregationFactory
+    ) {
+        $this->logger = $logger;
+        $this->aggregationFactory = $aggregationFactory;
+    }
 
-    var_dump("DOCUMENT DATA:", $documentData);
+    public function search(RequestInterface $request)
+    {
+        var_dump("SEARCH ENGINE CALLED23");
 
-    $document = new SearchDocument(
-        '1', // ID as string
-        $documentData
-    );
+        $documentData = [
+            'entity_id' => '1',
+            'status' => 1,
+            'visibility' => 4,
+            'score' => 1
+        ];
 
-    $aggregations = $this->aggregationFactory->create([]);
+        var_dump("DOCUMENT DATA:", $documentData);
 
-    $response = new QueryResponse(
-        [$document],
-        $aggregations,
-        1 // total count
-    );
+        $document = new SearchDocument(
+            '1',
+            $documentData
+        );
 
-    return $response;
+        $aggregations = $this->aggregationFactory->create([]);
+
+        $response = new QueryResponse(
+            [$document],
+            $aggregations,
+            1
+        );
+
+        return $response;
+    }
 }
