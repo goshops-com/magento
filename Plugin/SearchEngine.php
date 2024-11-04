@@ -9,14 +9,14 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     {
         return new \Magento\Framework\Search\Response\QueryResponse(
             [
-                new \Magento\Framework\SearchFramework\Document(
+                new \Magento\Framework\Search\Document(
                     '2040',
                     [
                         'score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0)
                     ]
                 )
             ],
-            new \Magento\Framework\Search\Response\Aggregation([])
+            new \Magento\Framework\Search\Response\Aggregation([], [])
         );
     }
 }
