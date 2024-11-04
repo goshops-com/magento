@@ -7,33 +7,24 @@ use Magento\Framework\Search\Response\QueryResponse;
 use Magento\Framework\Search\Response\Aggregation;
 use Magento\Framework\Search\Response\Aggregation\Value;
 use Psr\Log\LoggerInterface;
-use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 
 class SearchEngine extends \Magento\Search\Model\SearchEngine
 {
     protected $logger;
-    protected $httpRequest;
-    protected $parentSearchEngine;
 
     public function __construct(
-        LoggerInterface $logger,
-        HttpRequestInterface $httpRequest,
-        \Magento\Search\Model\SearchEngine $parentSearchEngine
+        LoggerInterface $logger
     ) {
         $this->logger = $logger;
-        $this->httpRequest = $httpRequest;
-        $this->parentSearchEngine = $parentSearchEngine;
     }
 
     public function search(RequestInterface $request)
     {
-        // Check if override parameter exists
-        if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            var_dump("USING DEFAULT MAGENTO SEARCH");
-            return $this->parentSearchEngine->search($request);
-        }
-
-        var_dump("USING CUSTOM SEARCH ENGINE");
+        var_dump("SEARCH ENGINE CALLED");
+        
+        // Debug request information safely
+        var_dump("Request Dimensions:", $request->getDimensions());
+        var_dump("Request Name:", $request->getName());
         
         try {
             // Create multiple products for testing
