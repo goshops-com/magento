@@ -37,8 +37,7 @@
 
     <type name="Magento\Catalog\Model\Layer\Filter\AbstractFilter">
         <plugin name="gopersonal_layered_navigation"
-                type="Gopersonal\Magento\Plugin\LayeredNavigationPlugin"
-                sortOrder="10"/>
+                type="Gopersonal\Magento\Plugin\LayeredNavigationPlugin"/>
     </type>
     
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
