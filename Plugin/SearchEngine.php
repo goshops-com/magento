@@ -19,13 +19,14 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     public function search(RequestInterface $request)
     {
         var_dump("SEARCH CALLED");
+        var_dump("REQUEST:", $request);
         
         $document = new SearchDocument(
             [
-                'entity_id' => 1,
+                'entity_id' => 2040,
                 'score' => 1,
-                'visibility' => 4, // Catalog, Search
-                'status' => 1,    // Enabled
+                'visibility' => 4,
+                'status' => 1
             ],
             ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
         );
