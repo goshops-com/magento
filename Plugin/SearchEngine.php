@@ -8,36 +8,26 @@ use Magento\Framework\Search\Response\Aggregation;
 use Magento\Framework\Search\Response\Aggregation\Value;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
-use Magento\Elasticsearch\SearchAdapter\SearchIndexNameResolver;
-use Magento\Elasticsearch\Model\Client\ClientInterface;
+use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
 
-class SearchEngine extends \Magento\Search\Model\SearchEngine
+class SearchEngine extends MagentoSearchEngine
 {
     protected $logger;
     protected $httpRequest;
-    protected $searchIndexResolver;
-    protected $elasticsearchClient;
 
     public function __construct(
         LoggerInterface $logger,
-        HttpRequestInterface $httpRequest,
-        SearchIndexNameResolver $searchIndexResolver,
-        ClientInterface $elasticsearchClient
+        HttpRequestInterface $httpRequest
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
-        $this->searchIndexResolver = $searchIndexResolver;
-        $this->elasticsearchClient = $elasticsearchClient;
     }
 
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             var_dump("USING DEFAULT MAGENTO SEARCH");
-            // Call Elasticsearch directly instead of using parent
-            $indexName = $this->searchIndexResolver->getIndexName();
-            $result = $this->elasticsearchClient->query($this->buildDefaultQuery($request));
-            return $this->convertElasticsearchResponse($result);
+            return parent::search($request);
         }
 
         var_dump("USING CUSTOM SEARCH ENGINE");
@@ -123,50 +113,5 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
             var_dump("Error in search engine:", $e->getMessage());
             throw $e;
         }
-    }
-
-    private function buildDefaultQuery(RequestInterface $request)
-    {
-        // Build the elasticsearch query based on the request
-        // This is a basic example - you'll need to adapt this based on your needs
-        return [
-            'index' => $this->searchIndexResolver->getIndexName(),
-            'body' => [
-                'query' => [
-                    'bool' => [
-                        'must' => [
-                            ['match_all' => new \stdClass()]
-                        ]
-                    ]
-                ]
-            ]
-        ];
-    }
-
-    private function convertElasticsearchResponse($elasticsearchResponse)
-    {
-        // Convert Elasticsearch response to Magento's QueryResponse format
-        $documents = [];
-        if (isset($elasticsearchResponse['hits']['hits'])) {
-            foreach ($elasticsearchResponse['hits']['hits'] as $hit) {
-                $documentData = array_merge(
-                    ['_id' => $hit['_id'], '_score' => $hit['_score']],
-                    $hit['_source']
-                );
-                
-                $documents[] = new SearchDocument(
-                    $documentData,
-                    ['score' => new Value($hit['_score'], 'score')]
-                );
-            }
-        }
-
-        return new QueryResponse(
-            $documents,
-            new Aggregation([], []),
-            isset($elasticsearchResponse['hits']['total']['value']) 
-                ? $elasticsearchResponse['hits']['total']['value'] 
-                : 0
-        );
     }
 }
