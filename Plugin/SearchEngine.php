@@ -11,7 +11,7 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
         return new \Magento\Framework\Search\Response\QueryResponse(
             [
                 new SearchDocument(
-                    '2040',
+                    ['entity_id' => '2040'],
                     ['score' => new \Magento\Framework\Search\Response\Aggregation\Value(1.0, 'value')]
                 )
             ],
