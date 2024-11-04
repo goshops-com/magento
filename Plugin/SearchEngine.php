@@ -6,6 +6,7 @@ use Magento\Framework\Api\Search\Document as SearchDocument;
 use Magento\Framework\Search\Response\QueryResponse;
 use Magento\Framework\Search\Response\Aggregation;
 use Magento\Framework\Search\Response\Aggregation\Value;
+use Magento\Framework\Search\Response\Bucket;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
 use Magento\Search\Model\AdapterFactory;
@@ -36,84 +37,51 @@ class SearchEngine extends MagentoSearchEngine
                     'entity_id' => '1',
                     'name' => 'Test Product 1',
                     'price' => 99.99,
-                    'sku' => 'TEST-1'
+                    'sku' => 'TEST-1',
+                    'category_ids' => [2, 3]
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
-                    'sku' => 'TEST-2'
+                    'sku' => 'TEST-2',
+                    'category_ids' => [2, 4]
                 ]
             ];
 
+            // Create documents
             $documents = [];
             foreach ($products as $product) {
-                $documentData = [
-                    'entity_id' => $product['entity_id'],
-                    'id' => $product['entity_id'],
-                    '_id' => $product['entity_id'],
-                    '_score' => 1,
-                    'score' => 1,
-                    'visibility' => 4,
-                    'status' => 1,
-                    'type_id' => 'simple',
-                    'store_id' => 1,
-                    'website_ids' => [1],
-                    '_type' => 'product',
-                    '_index' => 'catalog_product',
-                    '_source' => [
-                        'entity_id' => $product['entity_id'],
-                        'name' => $product['name'],
-                        'sku' => $product['sku'],
-                        'price' => $product['price'],
-                        'status' => 1,
-                        'visibility' => 4,
-                        'type_id' => 'simple',
-                        'store_id' => 1
-                    ]
-                ];
+                $documentFields = [];
+                foreach ($product as $key => $value) {
+                    $documentFields[$key] = new Value($value, $key);
+                }
 
-                $documents[] = new SearchDocument(
-                    $documentData,
-                    [
-                        'entity_id' => new Value($product['entity_id'], 'entity_id'),
-                        'name' => new Value($product['name'], 'name'),
-                        'price' => new Value($product['price'], 'price'),
-                        'sku' => new Value($product['sku'], 'sku'),
-                        'status' => new Value(1, 'status'),
-                        'visibility' => new Value(4, 'visibility'),
-                        'store_id' => new Value(1, 'store_id'),
-                        'score' => new Value(1, 'score')
-                    ]
-                );
+                $documents[] = new SearchDocument($product, $documentFields);
             }
 
-            $bucketData = [
-                'price_bucket' => [
-                    'name' => 'price_bucket',
-                    'values' => [
-                        ['from' => 0, 'to' => 100, 'count' => 1],
-                        ['from' => 100, 'to' => 200, 'count' => 1]
-                    ]
-                ],
-                'category_bucket' => [
-                    'name' => 'category_bucket',
-                    'values' => [
-                        ['value' => 2, 'count' => 1],
-                        ['value' => 3, 'count' => 1]
-                    ]
-                ]
+            // Create buckets properly
+            $buckets = [];
+            
+            // Category bucket
+            $categoryValues = [
+                new Value(2, 'category', ['count' => 2]),
+                new Value(3, 'category', ['count' => 1]),
+                new Value(4, 'category', ['count' => 1])
             ];
+            $buckets['category'] = new Bucket('category', 'category', $categoryValues);
 
-            $aggregations = new Aggregation(
-                [
-                    'price_bucket' => new Value(99.99, 'price'),
-                    'category_bucket' => new Value(2, 'category')
-                ],
-                $bucketData
-            );
+            // Price bucket
+            $priceValues = [
+                new Value(['from' => 0, 'to' => 100], 'price', ['count' => 1]),
+                new Value(['from' => 100, 'to' => 200], 'price', ['count' => 1])
+            ];
+            $buckets['price'] = new Bucket('price', 'price', $priceValues);
 
-            return new QueryResponse($documents, $aggregations, count($documents));
+            // Create aggregation with buckets
+            $aggregation = new Aggregation($buckets);
+
+            return new QueryResponse($documents, $aggregation, count($documents));
 
         } catch (\Exception $e) {
             throw $e;
