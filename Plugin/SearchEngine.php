@@ -15,26 +15,7 @@ use Magento\Framework\Search\Dynamic\IntervalFactory;
 
 class SearchEngine extends MagentoSearchEngine
 {
-    protected $logger;
-    protected $httpRequest;
-    protected $objectManager;
-    protected $adapterFactory;
-    protected $intervalFactory;
-
-    public function __construct(
-        AdapterFactory $adapterFactory,
-        IntervalFactory $intervalFactory,
-        LoggerInterface $logger,
-        HttpRequestInterface $httpRequest,
-        ObjectManagerInterface $objectManager
-    ) {
-        $this->adapterFactory = $adapterFactory;
-        $this->intervalFactory = $intervalFactory;
-        $this->logger = $logger;
-        $this->httpRequest = $httpRequest;
-        $this->objectManager = $objectManager;
-        parent::__construct($adapterFactory, $intervalFactory);
-    }
+    // ... (keep existing properties and constructor)
 
     public function search(RequestInterface $request)
     {
@@ -46,105 +27,54 @@ class SearchEngine extends MagentoSearchEngine
         $this->logger->info("USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Get aggregations from request
+            // Log the original request aggregations
             $requestAggregations = $request->getAggregation();
-            
-            // Log the request facets
-            $this->logger->info("Requested Aggregations:");
-            foreach ($requestAggregations as $aggregation) {
-                $this->logger->info(print_r([
-                    'name' => $aggregation->getName(),
-                    'type' => $aggregation->getType(),
-                    'field' => $aggregation->getField(),
-                    'metrics' => $aggregation->getMetrics()
-                ], true));
-            }
+            $this->logger->info("Original Request Aggregations:", ['aggregations' => print_r($requestAggregations, true)]);
 
-            $products = [
-                [
-                    'entity_id' => '1',
-                    'name' => 'Test Product 1',
-                    'price' => 99.99,
-                    'sku' => 'TEST-1'
-                ],
-                [
-                    'entity_id' => '2',
-                    'name' => 'Test Product 2',
-                    'price' => 149.99,
-                    'sku' => 'TEST-2'
-                ]
-            ];
+            // Get search query
+            $queryText = $request->getName();
+            $this->logger->info("Search query: " . $queryText);
 
-            $documents = [];
-            
-            foreach ($products as $product) {
-                $documentData = [
-                    'entity_id' => $product['entity_id'],
-                    'id' => $product['entity_id'],
-                    '_id' => $product['entity_id'],
-                    '_score' => 1,
-                    'score' => 1,
-                    'visibility' => 4,
-                    'status' => 1,
-                    'type_id' => 'simple',
-                    'store_id' => 1,
-                    'website_ids' => [1],
-                    '_type' => 'product',
-                    '_index' => 'catalog_product',
-                    '_source' => [
-                        'entity_id' => $product['entity_id'],
-                        'name' => $product['name'],
-                        'sku' => $product['sku'],
-                        'price' => $product['price'],
-                        'status' => 1,
-                        'visibility' => 4,
-                        'type_id' => 'simple',
-                        'store_id' => 1
-                    ]
-                ];
-
-                $documents[] = new SearchDocument(
-                    $documentData,
-                    [
-                        'entity_id' => new Value($product['entity_id'], 'entity_id'),
-                        'name' => new Value($product['name'], 'name'),
-                        'price' => new Value($product['price'], 'price'),
-                        'sku' => new Value($product['sku'], 'sku'),
-                        'status' => new Value(1, 'status'),
-                        'visibility' => new Value(4, 'visibility'),
-                        'store_id' => new Value(1, 'store_id'),
-                        'score' => new Value(1, 'score')
-                    ]
-                );
-            }
-
-            // Prepare bucket data for aggregations
+            // Add default buckets since original request might be empty
             $bucketData = [
-                'price_bucket' => [
-                    'name' => 'price_bucket',
-                    'values' => [
-                        ['from' => 0, 'to' => 100, 'count' => 1],
-                        ['from' => 100, 'to' => 200, 'count' => 1]
-                    ]
-                ],
                 'category_bucket' => [
                     'name' => 'category_bucket',
+                    'field' => 'category_ids',
+                    'metrics' => ['count' => 1],
                     'values' => [
                         ['value' => 2, 'count' => 1],
                         ['value' => 3, 'count' => 1]
                     ]
+                ],
+                'price_bucket' => [
+                    'name' => 'price_bucket',
+                    'field' => 'price',
+                    'metrics' => ['count' => 1],
+                    'values' => [
+                        ['from' => 0, 'to' => 100, 'count' => 1],
+                        ['from' => 100, 'to' => 200, 'count' => 1]
+                    ]
                 ]
             ];
 
+            // Rest of your existing code for $products and $documents...
+
             $aggregations = new Aggregation(
                 [
-                    'price_bucket' => new Value(99.99, 'price'),
-                    'category_bucket' => new Value(2, 'category')
+                    'category_bucket' => new Value(2, 'category_ids'),
+                    'price_bucket' => new Value(99.99, 'price')
                 ],
                 $bucketData
             );
 
-            return new QueryResponse($documents, $aggregations, count($documents));
+            $response = new QueryResponse($documents, $aggregations, count($documents));
+            
+            // Log the response aggregations
+            $this->logger->info("Response Aggregations:", [
+                'buckets' => print_r($bucketData, true)
+            ]);
+
+            return $response;
 
         } catch (\Exception $e) {
             $this->logger->error("Error in search engine: " . $e->getMessage());
