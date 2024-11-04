@@ -1,16 +1,24 @@
 <?php
 namespace Gopersonal\Magento\Plugin;
 
-class Collection extends \Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection
+use Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection as FulltextCollection;
+
+class Collection extends FulltextCollection 
 {
     protected function _renderFiltersBefore()
     {
-        var_dump("COLLECTION RENDER FILTERS BEFORE");
+        var_dump("===== COLLECTION START =====");
+        $this->printStack();
         
         parent::_renderFiltersBefore();
         
-        var_dump("COLLECTION AFTER PARENT");
-        var_dump("Current IDs:", $this->_loadedIds);
-        var_dump("Search Result:", $this->searchResult);
+        var_dump("===== COLLECTION END =====");
+        var_dump($this->getSelect()->__toString());
+    }
+
+    private function printStack() 
+    {
+        $e = new \Exception();
+        var_dump("Stack trace:", $e->getTraceAsString());
     }
 }
