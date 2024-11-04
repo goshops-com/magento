@@ -35,6 +35,12 @@
     <preference for="Magento\Search\Model\SearchEngine"
                 type="Gopersonal\Magento\Plugin\SearchEngine" />
 
+    <type name="Gopersonal\Magento\Plugin\SearchEngine">
+        <arguments>
+            <argument name="adapter" xsi:type="object">Magento\Elasticsearch7\SearchAdapter\Adapter\Proxy</argument>
+        </arguments>
+    </type>
+    
     <!-- Override search request -->
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
         <arguments>
