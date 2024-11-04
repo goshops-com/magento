@@ -56,6 +56,17 @@ class BeforeSearchRequest implements ObserverInterface
         // Log the incoming URL
         $this->logger->info("Incoming URL: " . $this->request->getUriString());
 
+        if (strpos($pathInfo, '/catalogsearch/result') !== false && isset($queryParams['q'])) {
+            $this->logger->info("Search request intercepted");
+            
+            // Set both parameters
+            $productIds = [1, 2];
+            $this->request->setParam('custom_product_ids', $productIds);
+            $this->request->setParam('gpSearchOverride', 1);
+            
+            $this->logger->info("Set custom product IDs: " . implode(',', $productIds));
+        }
+
         // Check if the 'q' parameter exists
         if (strpos($pathInfo, '/gpsearch') !== 0 || !isset($queryParams['q'])) {
             // Log the ignored request
