@@ -20,13 +20,16 @@ class SearchEngine extends \Magento\Search\Model\SearchEngine
     {
         var_dump("SEARCH ENGINE CALLED");
         
+        // Create document with entity_id as string
         $documentData = [
-            'entity_id' => 2040,
-            'score' => 1,
-            'visibility' => 4,
-            'status' => 1,
+            'entity_id' => '2040',  // Changed to string
             '_id' => 2040,
-            '_score' => 1
+            '_source' => [
+                'entity_id' => '2040',
+                'status' => 1,
+                'visibility' => 4,
+                'score' => 1
+            ]
         ];
         
         var_dump("DOCUMENT DATA:", $documentData);
