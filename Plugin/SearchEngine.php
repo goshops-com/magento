@@ -1,52 +1,83 @@
 <?php
-
 namespace Gopersonal\Magento\Plugin;
 
-use Magento\Framework\Api\Search\Document as SearchDocument;
 use Magento\Framework\Search\RequestInterface;
+use Magento\Framework\Api\Search\Document as SearchDocument;
 use Magento\Framework\Search\Response\QueryResponse;
-use Magento\Framework\Search\Response\AggregationFactory;
+use Magento\Framework\Search\Response\Aggregation;
+use Magento\Framework\Search\Response\Aggregation\Value;
 use Psr\Log\LoggerInterface;
 
-class SearchEnginePlugin
+class SearchEngine extends \Magento\Search\Model\SearchEngine
 {
     protected $logger;
-    protected $aggregationFactory;
 
     public function __construct(
-        LoggerInterface $logger,
-        AggregationFactory $aggregationFactory
+        LoggerInterface $logger
     ) {
         $this->logger = $logger;
-        $this->aggregationFactory = $aggregationFactory;
     }
 
-    public function aroundSearch(
-        \Magento\Search\Model\SearchEngine $subject,
-        callable $proceed,
-        RequestInterface $request
-    ) {
-        $this->logger->debug("SEARCH ENGINE PLUGIN CALLED");
+    public function search(RequestInterface $request)
+    {
+        var_dump("SEARCH ENGINE CALLED");
 
-        $documentData = [
-            'id' => '1',
-            'entity_id' => '1',
-            'status' => 1,
-            'visibility' => 4,
-            'score' => 1
+        // Extract search terms
+        $queries = $request->getQuery()->getShould() ?: $request->getQuery()->getMust();
+        $searchTerms = [];
+        foreach ($queries as $query) {
+            if ($query instanceof \Magento\Framework\Search\Request\Query\Match) {
+                $searchTerms[] = $query->getValue();
+            }
+        }
+
+        var_dump("SEARCH TERMS:", $searchTerms);
+
+        // Create mock search results
+        $searchResults = [
+            [
+                'entity_id' => '1',
+                'name' => 'Product 1',
+                'score' => 1.0
+            ],
+            [
+                'entity_id' => '2',
+                'name' => 'Product 2',
+                'score' => 0.8
+            ]
         ];
 
-        $this->logger->debug("DOCUMENT DATA:", $documentData);
+        var_dump("SEARCH RESULTS:", $searchResults);
 
-        $document = new SearchDocument($documentData);
+        // Convert to documents
+        $documents = [];
+        foreach ($searchResults as $result) {
+            $documentData = [
+                'entity_id' => $result['entity_id'],
+                '_id' => $result['entity_id'],
+                '_source' => [
+                    'entity_id' => $result['entity_id'],
+                    'status' => 1,
+                    'visibility' => 4,
+                    'score' => $result['score']
+                ]
+            ];
 
-        $aggregations = $this->aggregationFactory->create([]);
+            var_dump("DOCUMENT DATA:", $documentData);
+
+            $documents[] = new SearchDocument(
+                $documentData,
+                ['score' => new Value($result['score'], 'value')]
+            );
+        }
 
         $response = new QueryResponse(
-            [$document],
-            $aggregations,
-            1
+            $documents,
+            new Aggregation([], []),
+            count($documents)
         );
+
+        var_dump("RESPONSE CREATED WITH " . count($documents) . " DOCUMENTS");
 
         return $response;
     }
