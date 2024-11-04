@@ -35,6 +35,12 @@
     <preference for="Magento\Search\Model\SearchEngine"
                 type="Gopersonal\Magento\Plugin\SearchEngine" />
 
+    <type name="Magento\Catalog\Model\Layer\Filter\AbstractFilter">
+        <plugin name="gopersonal_layered_navigation"
+                type="Gopersonal\Magento\Plugin\LayeredNavigationPlugin"
+                sortOrder="10"/>
+    </type>
+    
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
         <arguments>
             <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>
