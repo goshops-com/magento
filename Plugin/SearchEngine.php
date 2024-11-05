@@ -12,86 +12,119 @@ use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Search\Model\AdapterFactory;
 use Magento\Framework\Search\Dynamic\IntervalFactory;
-use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 
 class SearchEngine extends MagentoSearchEngine
 {
     protected $logger;
     protected $httpRequest;
     protected $objectManager;
-    protected $productCollectionFactory;
+    protected $adapterFactory;
+    protected $intervalFactory;
 
     public function __construct(
         AdapterFactory $adapterFactory,
         IntervalFactory $intervalFactory,
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
-        ObjectManagerInterface $objectManager,
-        CollectionFactory $productCollectionFactory
+        ObjectManagerInterface $objectManager
     ) {
+        $this->adapterFactory = $adapterFactory;
+        $this->intervalFactory = $intervalFactory;
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
-        $this->productCollectionFactory = $productCollectionFactory;
         parent::__construct($adapterFactory, $intervalFactory);
     }
 
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
+            var_dump("USING DEFAULT MAGENTO SEARCH");
+            // Call parent implementation directly instead of creating a new instance
             return parent::search($request);
         }
 
+        var_dump("USING CUSTOM SEARCH ENGINE");
+        
         try {
-            // Get default search result for aggregations
-            $defaultResult = parent::search($request);
-
-            // Your custom product IDs
-            $productIds = [1, 2]; // Your hardcoded product IDs
-
-            // Load full product data to get attributes for layered navigation
-            $collection = $this->productCollectionFactory->create();
-            $collection->addAttributeToSelect('*')
-                      ->addFieldToFilter('entity_id', ['in' => $productIds]);
+            // Rest of your custom search implementation remains the same
+            $products = [
+                [
+                    'entity_id' => '1',
+                    'name' => 'Test Product 1',
+                    'price' => 99.99,
+                    'sku' => 'TEST-1'
+                ],
+                [
+                    'entity_id' => '2',
+                    'name' => 'Test Product 2',
+                    'price' => 149.99,
+                    'sku' => 'TEST-2'
+                ]
+            ];
 
             $documents = [];
-            foreach ($collection as $product) {
-                $documentFields = [];
-                
-                // Add all product attributes that might be used in layered navigation
-                foreach ($product->getData() as $code => $value) {
-                    $documentFields[$code] = new Value($value, $code);
-                }
-
-                // Essential fields for proper document handling
+            
+            foreach ($products as $product) {
                 $documentData = [
-                    'entity_id' => $product->getId(),
-                    'id' => $product->getId(),
-                    '_id' => $product->getId(),
+                    'entity_id' => $product['entity_id'],
+                    'id' => $product['entity_id'],
+                    '_id' => $product['entity_id'],
                     '_score' => 1,
                     'score' => 1,
-                    'visibility' => $product->getVisibility(),
-                    'status' => $product->getStatus(),
-                    'type_id' => $product->getTypeId(),
-                    'store_id' => $product->getStoreId(),
-                    'website_ids' => $product->getWebsiteIds(),
+                    'visibility' => 4,
+                    'status' => 1,
+                    'type_id' => 'simple',
+                    'store_id' => 1,
+                    'website_ids' => [1],
                     '_type' => 'product',
                     '_index' => 'catalog_product',
-                    '_source' => $product->getData()
+                    '_source' => [
+                        'entity_id' => $product['entity_id'],
+                        'name' => $product['name'],
+                        'sku' => $product['sku'],
+                        'price' => $product['price'],
+                        'status' => 1,
+                        'visibility' => 4,
+                        'type_id' => 'simple',
+                        'store_id' => 1
+                    ]
                 ];
 
-                $documents[] = new SearchDocument($documentData, $documentFields);
+                $documents[] = new SearchDocument(
+                    $documentData,
+                    [
+                        'entity_id' => new Value($product['entity_id'], 'entity_id'),
+                        'name' => new Value($product['name'], 'name'),
+                        'price' => new Value($product['price'], 'price'),
+                        'sku' => new Value($product['sku'], 'sku'),
+                        'status' => new Value(1, 'status'),
+                        'visibility' => new Value(4, 'visibility'),
+                        'store_id' => new Value(1, 'store_id'),
+                        'score' => new Value(1, 'score')
+                    ]
+                );
             }
 
-            // Use original aggregations from default search
-            return new QueryResponse(
-                $documents,
-                $defaultResult->getAggregations(),
-                count($documents)
+            $aggregations = new Aggregation(
+                [
+                    'price_bucket' => new Value(99.99, 'price'),
+                ],
+                [
+                    'price_bucket' => [
+                        'name' => 'price_bucket',
+                        'values' => [
+                            ['from' => 0, 'to' => 100, 'count' => 1],
+                            ['from' => 100, 'to' => 200, 'count' => 1]
+                        ]
+                    ]
+                ]
             );
 
+            return new QueryResponse($documents, $aggregations, count($documents));
+
         } catch (\Exception $e) {
-            $this->logger->error("Search engine error: " . $e->getMessage());
+            var_dump("Error in search engine:", $e->getMessage());
             throw $e;
         }
     }
