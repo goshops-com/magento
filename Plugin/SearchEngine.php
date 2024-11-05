@@ -39,43 +39,16 @@ class SearchEngine extends MagentoSearchEngine
     public function search(RequestInterface $request)
     {
         if ($this->httpRequest->getParam('gsOverrideQuery')) {
-            // Create a new request with modified query
-            $requestData = [
-                'index' => $request->getIndex(),
-                'from' => $request->getFrom(),
-                'size' => $request->getSize(),
-                'query' => $request->getQuery(),
-                'dimensions' => $request->getDimensions(),
-                'aggregation' => $request->getAggregation(),
-                'sort' => $request->getSort(),
-            ];
-
-            // Override the query to 'bags'
-            if (method_exists($request, 'getQuery')) {
-                $query = $request->getQuery();
-                if (method_exists($query, 'setQueryText')) {
-                    $query->setQueryText('bags');
-                }
-                $requestData['query'] = $query;
+            // Simply modify the existing query
+            $query = $request->getQuery();
+            if (method_exists($query, 'setQueryText')) {
+                $query->setQueryText('bags');
             }
-
-            // Create new request object with modified query
-            $modifiedRequest = new Request(
-                $requestData['index'],
-                $requestData['from'],
-                $requestData['size'],
-                $requestData['query'],
-                $requestData['dimensions'],
-                $requestData['aggregation'],
-                $requestData['sort']
-            );
-
-            return parent::search($modifiedRequest);
+            return parent::search($request);
         }
-        
+
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             var_dump("USING DEFAULT MAGENTO SEARCH");
-            // Call parent implementation directly instead of creating a new instance
             return parent::search($request);
         }
 
