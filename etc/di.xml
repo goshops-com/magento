@@ -10,7 +10,7 @@
     <preference for="Magento\Catalog\Model\Layer\AvailabilityFlagInterface" type="Magento\Catalog\Model\Layer\Category\AvailabilityFlag" /> -->
 
     <!-- Search Engine configuration -->
-    <!-- <preference for="Magento\Search\Model\SearchEngine" type="Gopersonal\Magento\Plugin\SearchEngine" /> -->
+    <preference for="Magento\Search\Model\SearchEngine" type="Gopersonal\Magento\Plugin\SearchEngine" />
     
     <!-- Elasticsearch specific preferences -->
     <!-- <preference for="Magento\Framework\Search\AdapterInterface" 
