@@ -2,9 +2,9 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Search\Request\FilterInterface;
-use Magento\Framework\Search\Request\Filter\Term as TermFilter;
-use Magento\Framework\Search\Request\BoolExpression;
+use Magento\Framework\Search\Request\QueryInterface;
+use Magento\Framework\Search\Request\Query\Filter;
+use Magento\Framework\Search\Request\Query\BoolExpression;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
@@ -48,24 +48,27 @@ class SearchEngine extends MagentoSearchEngine
             // Your custom product IDs
             $productIds = ['1', '2'];
             
-            // Create a new filter for entity_id IN (your ids)
-            $idFilter = new TermFilter(
-                'entity_id',
-                $productIds,
-                FilterInterface::FILTER_TYPE_TERM
+            // Create a terms query for entity_id
+            $idQuery = new Filter(
+                'entity_id_filter',
+                QueryInterface::TYPE_TERM,
+                [
+                    'field' => 'entity_id',
+                    'value' => $productIds
+                ]
             );
 
-            // Add or modify the filter in the request
+            // Get original query from request
             $originalQuery = $request->getQuery();
             
-            // Combine your filter with existing query if needed
+            // Combine with existing query if needed
             if ($originalQuery) {
                 $newQuery = new BoolExpression(
+                    'combined_filter',
                     [
-                        $originalQuery,
-                        $idFilter
-                    ],
-                    BoolExpression::MUST
+                        QueryInterface::SHOULD => [$originalQuery],
+                        QueryInterface::MUST => [$idQuery]
+                    ]
                 );
                 
                 // Set the modified query back to request
