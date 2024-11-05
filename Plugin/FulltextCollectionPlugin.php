@@ -17,38 +17,31 @@ class FulltextCollectionPlugin
 
     public function beforeLoad(Collection $subject, $printQuery = false, $logQuery = false)
     {
-        if (!$this->request->getParam('gpSearchOverride')) {
-            return [$printQuery, $logQuery];
-        }
-
         try {
             // Your custom product IDs
             $productIds = [1, 2]; // Replace with your hardcoded IDs
 
-            // Get the collection's select object
+            // Reset the collection's select object
             $select = $subject->getSelect();
             
-            // Get the current where conditions
-            $where = $select->getPart(Select::WHERE);
+            // Clear existing where conditions and search criteria
+            $select->reset(Select::WHERE);
             
-            // Remove any existing entity_id conditions but keep other conditions
-            $where = array_filter($where, function($condition) {
-                return !strpos($condition, 'e.entity_id');
-            });
+            // Add our custom product IDs condition
+            $select->where(
+                $subject->getConnection()->quoteInto('e.entity_id IN (?)', $productIds)
+            );
             
-            // Add our custom product IDs condition with AND
-            if (!empty($where)) {
-                $where[] = 'AND ' . $subject->getConnection()->quoteInto('e.entity_id IN (?)', $productIds);
-            } else {
-                $where[] = $subject->getConnection()->quoteInto('e.entity_id IN (?)', $productIds);
-            }
-            
-            // Set the modified where conditions back to the select
-            $select->setPart(Select::WHERE, $where);
-            
-            // Set the order by
+            // Reset and set the order
             $select->reset(Select::ORDER);
             $select->order(new \Zend_Db_Expr("FIELD(e.entity_id," . implode(',', $productIds) . ")"));
+
+            // Reset search criteria
+            $subject->resetData();
+            
+            // Ensure visibility and status filters are still applied
+            $subject->addAttributeToFilter('status', 1); // Only enabled products
+            $subject->addAttributeToFilter('visibility', ['neq' => 1]); // Not hidden
             
             return [$printQuery, $logQuery];
             
