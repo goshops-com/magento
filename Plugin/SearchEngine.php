@@ -2,7 +2,6 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Search\Request\QueryInterface;
 use Magento\Framework\Search\Request\Query\BoolExpression;
 use Magento\Framework\Search\Request\Query\Filter;
 use Psr\Log\LoggerInterface;
@@ -51,7 +50,7 @@ class SearchEngine extends MagentoSearchEngine
             // Create a filter query for entity_id
             $idQuery = new Filter(
                 'entity_id_filter',
-                QueryInterface::QUERY_FILTER,
+                'filterable',  // Using string instead of constant
                 [
                     'field' => 'entity_id',
                     'value' => $productIds,
@@ -74,6 +73,9 @@ class SearchEngine extends MagentoSearchEngine
                 
                 // Set the modified query back to request
                 $request->setQuery($newQuery);
+            } else {
+                // If no original query, just use our filter
+                $request->setQuery($idQuery);
             }
 
             // Let parent handle everything with our modified request
