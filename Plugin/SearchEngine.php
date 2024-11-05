@@ -39,15 +39,14 @@ class SearchEngine extends MagentoSearchEngine
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            var_dump("USING DEFAULT MAGENTO SEARCH");
-            // Call parent implementation directly instead of creating a new instance
             return parent::search($request);
         }
 
-        var_dump("USING CUSTOM SEARCH ENGINE");
-        
         try {
-            // Rest of your custom search implementation remains the same
+            // Get default search result first to use its aggregations
+            $defaultResult = parent::search($request);
+            
+            // Your custom product list
             $products = [
                 [
                     'entity_id' => '1',
@@ -106,25 +105,11 @@ class SearchEngine extends MagentoSearchEngine
                 );
             }
 
-            $aggregations = new Aggregation(
-                [
-                    'price_bucket' => new Value(99.99, 'price'),
-                ],
-                [
-                    'price_bucket' => [
-                        'name' => 'price_bucket',
-                        'values' => [
-                            ['from' => 0, 'to' => 100, 'count' => 1],
-                            ['from' => 100, 'to' => 200, 'count' => 1]
-                        ]
-                    ]
-                ]
-            );
-
-            return new QueryResponse($documents, $aggregations, count($documents));
+            // Use the aggregations from the default search result
+            return new QueryResponse($documents, $defaultResult->getAggregations(), count($documents));
 
         } catch (\Exception $e) {
-            var_dump("Error in search engine:", $e->getMessage());
+            $this->logger->error("Error in search engine: " . $e->getMessage());
             throw $e;
         }
     }
