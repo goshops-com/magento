@@ -32,15 +32,22 @@
         </arguments>
     </virtualType> -->
 
-    <preference for="Magento\Search\Model\SearchEngine"
+    <!-- <preference for="Magento\Search\Model\SearchEngine"
                 type="Gopersonal\Magento\Plugin\SearchEngine" />
     
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
         <arguments>
             <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>
         </arguments>
-    </type>
+    </type> -->
 
+    <type name="Magento\CatalogSearch\Model\ResourceModel\Fulltext\Collection">
+        <plugin name="gopersonal_search_collection_plugin" 
+                type="Gopersonal\Magento\Plugin\FulltextCollectionPlugin"
+                sortOrder="10"/>
+    </type>
+    
+    <!-- Product URL Plugin -->
     <type name="Magento\Catalog\Model\Product">
         <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
     </type>
