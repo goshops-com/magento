@@ -2,14 +2,13 @@
 namespace Gopersonal\Magento\Plugin;
 
 use Magento\Framework\Search\RequestInterface;
-use Magento\Framework\Search\Request\Query\BoolExpression;
-use Magento\Framework\Search\Request\Query\Filter;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Search\Model\AdapterFactory;
 use Magento\Framework\Search\Dynamic\IntervalFactory;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 
 class SearchEngine extends MagentoSearchEngine
 {
@@ -18,72 +17,47 @@ class SearchEngine extends MagentoSearchEngine
     protected $objectManager;
     protected $adapterFactory;
     protected $intervalFactory;
+    protected $collectionFactory;
 
     public function __construct(
         AdapterFactory $adapterFactory,
         IntervalFactory $intervalFactory,
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
-        ObjectManagerInterface $objectManager
+        ObjectManagerInterface $objectManager,
+        CollectionFactory $collectionFactory
     ) {
         $this->adapterFactory = $adapterFactory;
         $this->intervalFactory = $intervalFactory;
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
+        $this->collectionFactory = $collectionFactory;
         parent::__construct($adapterFactory, $intervalFactory);
     }
 
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            var_dump("USING DEFAULT MAGENTO SEARCH");
             return parent::search($request);
         }
-
-        var_dump("USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Your custom product IDs
+            // Get your specific product IDs
             $productIds = ['1', '2'];
             
-            // Create a filter query for entity_id
-            $idQuery = new Filter(
-                'entity_id_filter',
-                'filterable',  // Using string instead of constant
-                [
-                    'field' => 'entity_id',
-                    'value' => $productIds,
-                    'type' => 'terms'
-                ]
-            );
-
-            // Get original query from request
-            $originalQuery = $request->getQuery();
+            // Create a product collection filtered by these IDs
+            $collection = $this->collectionFactory->create();
+            $collection->addAttributeToFilter('entity_id', ['in' => $productIds]);
             
-            // Combine with existing query if needed
-            if ($originalQuery) {
-                $newQuery = new BoolExpression(
-                    'combined_filter',
-                    [
-                        'must' => [$idQuery],
-                        'should' => [$originalQuery]
-                    ]
-                );
-                
-                // Set the modified query back to request
-                $request->setQuery($newQuery);
-            } else {
-                // If no original query, just use our filter
-                $request->setQuery($idQuery);
-            }
-
-            // Let parent handle everything with our modified request
+            // Let Magento handle the search using this filtered collection
+            $collection->addSearchFilter($request->getQuery()->getQueryText());
+            
             return parent::search($request);
 
         } catch (\Exception $e) {
-            var_dump("Error in search engine:", $e->getMessage());
-            throw $e;
+            $this->logger->error("Search engine error: " . $e->getMessage());
+            return parent::search($request);
         }
     }
 }
