@@ -3,8 +3,8 @@ namespace Gopersonal\Magento\Plugin;
 
 use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Search\Request\QueryInterface;
-use Magento\Framework\Search\Request\Query\Filter;
 use Magento\Framework\Search\Request\Query\BoolExpression;
+use Magento\Framework\Search\Request\Query\Filter;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine as MagentoSearchEngine;
@@ -48,13 +48,14 @@ class SearchEngine extends MagentoSearchEngine
             // Your custom product IDs
             $productIds = ['1', '2'];
             
-            // Create a terms query for entity_id
+            // Create a filter query for entity_id
             $idQuery = new Filter(
                 'entity_id_filter',
-                QueryInterface::TYPE_TERM,
+                QueryInterface::QUERY_FILTER,
                 [
                     'field' => 'entity_id',
-                    'value' => $productIds
+                    'value' => $productIds,
+                    'type' => 'terms'
                 ]
             );
 
@@ -66,8 +67,8 @@ class SearchEngine extends MagentoSearchEngine
                 $newQuery = new BoolExpression(
                     'combined_filter',
                     [
-                        QueryInterface::SHOULD => [$originalQuery],
-                        QueryInterface::MUST => [$idQuery]
+                        'must' => [$idQuery],
+                        'should' => [$originalQuery]
                     ]
                 );
                 
