@@ -87,7 +87,6 @@ class SearchEnginePlugin
                     'price' => 99.99,
                     'sku' => 'TEST-1',
                     'category_ids' => [3, 9, 20],
-                    'color' => '49',      // Black
                     'size' => '166',      // XS
                 ],
                 [
@@ -96,7 +95,6 @@ class SearchEnginePlugin
                     'price' => 149.99,
                     'sku' => 'TEST-2',
                     'category_ids' => [3, 11, 37],
-                    'color' => '50',      // Blue
                     'size' => '167',      // S
                 ]
             ];
