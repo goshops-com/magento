@@ -11,6 +11,7 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
+use Magento\Catalog\Model\ProductRepository;
 
 class SearchEnginePlugin
 {
@@ -19,18 +20,20 @@ class SearchEnginePlugin
     protected $logger;
     protected $httpRequest;
     protected $objectManager;
+    protected $productRepository;
 
     public function __construct(
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager,
-        FilterableAttributeList $filterableAttributeList 
+        FilterableAttributeList $filterableAttributeList,
+        ProductRepository $productRepository
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
-        
+        $this->productRepository = $productRepository;
     }
 
     protected function getFilterableAttributes()
@@ -40,7 +43,6 @@ class SearchEnginePlugin
             $code = $attribute->getAttributeCode();
             $options = [];
             
-            // Get all options for this attribute
             if ($attribute->usesSource()) {
                 foreach ($attribute->getSource()->getAllOptions() as $option) {
                     if (!empty($option['value'])) {
@@ -60,9 +62,8 @@ class SearchEnginePlugin
                 'options' => $options
             ];
         }
-
-        $this->logger->debug('Filterable attributes: ' . print_r($attributes, true));
         
+        $this->logger->debug('Filterable attributes loaded: ' . print_r($attributes, true));
         return $attributes;
     }
     
@@ -83,28 +84,42 @@ class SearchEnginePlugin
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
-            // Products with multiple categories and attributes
-            $products = [
-                [
-                    'entity_id' => '1',
-                    'name' => 'Test Product 1',
-                    'price' => 99.99,
-                    'sku' => 'TEST-1',
-                    'category_ids' => [3, 9, 20],
-                    'color' => '49',      // Black
-                    'size' => '166',      // XS
-                ],
-                [
-                    'entity_id' => '2',
-                    'name' => 'Test Product 2',
-                    'price' => 149.99,
-                    'sku' => 'TEST-2',
-                    'category_ids' => [3, 11, 37],
-                    'color' => '50',      // Blue
-                    'size' => '167',      // S
-                ]
-            ];
+            // Define product IDs and load real products
+            $productIds = [1, 2];
+            $products = [];
+            
+            $this->logger->debug("Loading products with IDs: " . print_r($productIds, true));
 
+            foreach ($productIds as $productId) {
+                try {
+                    $product = $this->productRepository->getById($productId);
+                    
+                    $productData = [
+                        'entity_id' => $product->getId(),
+                        'name' => $product->getName(),
+                        'price' => $product->getPrice(),
+                        'sku' => $product->getSku(),
+                        'category_ids' => $product->getCategoryIds(),
+                    ];
+
+                    // Load all filterable attributes
+                    foreach ($filterableAttributes as $code => $attribute) {
+                        $value = $product->getData($code);
+                        if ($value !== null) {
+                            $productData[$code] = $value;
+                        }
+                    }
+
+                    $this->logger->debug("Loaded product data for ID {$productId}: " . print_r($productData, true));
+                    $products[] = $productData;
+
+                } catch (\Exception $e) {
+                    $this->logger->error("Failed to load product {$productId}: " . $e->getMessage());
+                }
+            }
+
+            $this->logger->debug("Creating documents for products");
+            
             // Create documents
             $documents = [];
             foreach ($products as $product) {
@@ -119,7 +134,6 @@ class SearchEnginePlugin
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
 
-                // Add filterable attributes dynamically
                 foreach ($filterableAttributes as $code => $attribute) {
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
@@ -133,10 +147,12 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
+            $this->logger->debug("Creating buckets");
+            
             // Create buckets array
             $buckets = [];
 
-            // Price bucket (keep the same as it works)
+            // Price bucket
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'price_bucket',
                 [
@@ -155,9 +171,11 @@ class SearchEnginePlugin
                 ]
             );
 
-            // Category bucket (keep the same as it works)
+            // Category bucket
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
+            $this->logger->debug("Category counts: " . print_r($categoryCounts, true));
+            
             foreach ($categoryCounts as $value => $count) {
                 $categoryValues[] = new Value((string)$value, [
                     'value' => $value,
@@ -169,14 +187,15 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
-            // Add attribute buckets dynamically
+            // Add attribute buckets
             foreach ($filterableAttributes as $code => $attribute) {
-                // Skip price as we handle it separately
                 if ($code === 'price') {
                     continue;
                 }
 
                 $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
+                $this->logger->debug("Counts for attribute {$code}: " . print_r($counts, true));
+
                 if (!empty($counts)) {
                     $values = [];
                     foreach ($counts as $value => $count) {
@@ -198,7 +217,7 @@ class SearchEnginePlugin
                 }
             }
 
-            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
+            $this->logger->debug("Final bucket names: " . print_r(array_keys($buckets), true));
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
@@ -207,12 +226,15 @@ class SearchEnginePlugin
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
+            $this->logger->error("Stack trace: " . $e->getTraceAsString());
             throw $e;
         }
     }
 
     protected function getValueCounts(array $products, string $field, bool $isArray = false): array
     {
+        $this->logger->debug("Counting values for field {$field}, isArray: " . ($isArray ? 'true' : 'false'));
+        
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$field])) {
@@ -232,6 +254,8 @@ class SearchEnginePlugin
                 }
             }
         }
+        
+        $this->logger->debug("Counts result for {$field}: " . print_r($counts, true));
         return $counts;
     }
 }
