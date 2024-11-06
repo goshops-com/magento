@@ -63,14 +63,14 @@ class SearchEnginePlugin
             foreach ($products as $product) {
                 // Create a document fields array
                 $fields = [
-                    'entity_id' => new Value($product['entity_id']),
-                    'name' => new Value($product['name']),
-                    'price' => new Value($product['price']),
-                    'sku' => new Value($product['sku']),
-                    'status' => new Value(1),
-                    'visibility' => new Value(4),
-                    'store_id' => new Value(1),
-                    'score' => new Value(1)
+                    'entity_id' => new Value($product['entity_id'], 'entity_id'),
+                    'name' => new Value($product['name'], 'name'),
+                    'price' => new Value($product['price'], 'price'),
+                    'sku' => new Value($product['sku'], 'sku'),
+                    'status' => new Value(1, 'status'),
+                    'visibility' => new Value(4, 'visibility'),
+                    'store_id' => new Value(1, 'store_id'),
+                    'score' => new Value(1, 'score')
                 ];
 
                 // Create the document
@@ -81,33 +81,33 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Create proper bucket values
+            // Create proper bucket values with field names
             $priceBucketValues = [
                 new Value('0_10', [
                     'from' => 0,
                     'to' => 10,
                     'count' => 0,
                     'value' => '0_10'
-                ]),
+                ], 'price_bucket'),
                 new Value('90_100', [
                     'from' => 90,
                     'to' => 100,
                     'count' => 1,
                     'value' => '90_100'
-                ]),
+                ], 'price_bucket'),
                 new Value('140_150', [
                     'from' => 140,
                     'to' => 150,
                     'count' => 1,
                     'value' => '140_150'
-                ])
+                ], 'price_bucket')
             ];
 
             $categoryBucketValues = [
                 new Value(3, [
                     'value' => 3,
                     'count' => 2
-                ])
+                ], 'category_bucket')
             ];
 
             // Create the aggregation buckets
