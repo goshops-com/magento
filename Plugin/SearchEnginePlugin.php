@@ -45,20 +45,6 @@ class SearchEnginePlugin
         $this->attributeRepository = $attributeRepository;
     }
 
-    protected function formatAttributeValue($value, string $attributeCode, array $attribute)
-    {
-        switch ($attributeCode) {
-            case 'price':
-                return number_format($value, 2, '_', '');
-            
-            case 'category_ids':
-                return (string)$value;
-                
-            default:
-                return (string)$value;
-        }
-    }
-
     /**
      * Get all filterable attributes
      *
@@ -73,6 +59,8 @@ class SearchEnginePlugin
             $filterableAttributes[$attribute->getAttributeCode()] = [
                 'code' => $attribute->getAttributeCode(),
                 'frontend_label' => $attribute->getFrontendLabel(),
+                'backend_type' => $attribute->getBackendType(),
+                'frontend_input' => $attribute->getFrontendInput(),
                 'options' => $this->getAttributeOptions($attribute)
             ];
         }
@@ -80,49 +68,6 @@ class SearchEnginePlugin
         $this->logger->debug('Filterable attributes: ' . print_r($filterableAttributes, true));
         
         return $filterableAttributes;
-    }
-
-    protected function createBucket(string $attributeCode, array $values, array $attribute)
-    {
-        $bucketName = $attributeCode . self::BUCKET_SUFFIX;
-        
-        switch ($attributeCode) {
-            case 'price':
-                $bucketValues = [];
-                foreach ($values as $value => $count) {
-                    $rangeLower = floor($value / 10) * 10;
-                    $rangeUpper = $rangeLower + 10;
-                    $rangeKey = $rangeLower . '_' . $rangeUpper;
-                    
-                    if (!isset($bucketValues[$rangeKey])) {
-                        $bucketValues[$rangeKey] = [
-                            'value' => $rangeKey,
-                            'count' => 0,
-                            'from' => $rangeLower,
-                            'to' => $rangeUpper
-                        ];
-                    }
-                    $bucketValues[$rangeKey]['count'] += $count;
-                }
-                
-                return new \Magento\Framework\Search\Response\Bucket(
-                    $bucketName,
-                    array_map(function($range) use ($bucketName) {
-                        return new Value($range['value'], $range, $bucketName);
-                    }, array_values($bucketValues))
-                );
-                
-            default:
-                return new \Magento\Framework\Search\Response\Bucket(
-                    $bucketName,
-                    array_map(function($value, $count) use ($bucketName) {
-                        return new Value((string)$value, [
-                            'value' => $value,
-                            'count' => $count
-                        ], $bucketName);
-                    }, array_keys($values), array_values($values))
-                );
-        }
     }
 
     /**
@@ -147,169 +92,104 @@ class SearchEnginePlugin
         return $options;
     }
 
-    public function aroundSearch(
-        SearchEngine $subject,
-        callable $proceed,
-        RequestInterface $request
-    ) {
-        $this->logger->debug("SearchEnginePlugin aroundSearch() called");
-        
-        if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            return $proceed($request);
-        }
+    /**
+     * Handle different attribute types for bucket values
+     *
+     * @param mixed $value
+     * @param string $attributeCode
+     * @param array $attribute
+     * @return mixed
+     */
+    protected function formatAttributeValue($value, string $attributeCode, array $attribute)
+    {
+        switch ($attributeCode) {
+            case 'price':
+                return number_format((float)$value, 2, '_', '');
+            
+            case 'category_ids':
+                return (string)$value;
 
-        $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
-        
-        try {
-            // Get default response first to preserve bucket structure
-            $defaultResponse = $proceed($request);
-            $this->logger->debug('Default buckets: ' . print_r(
-                array_keys($defaultResponse->getAggregations()->getBuckets()),
-                true
-            ));
-
-            // Products with multiple categories
-            $products = [
-                [
-                    'entity_id' => '1',
-                    'name' => 'Test Product 1',
-                    'price' => 99.99,
-                    'sku' => 'TEST-1',
-                    'category_ids' => [3, 9, 20],
-                    // Add sample values for other filterable attributes
-                    'color' => 'red',
-                    'size' => 'L',
-                    'manufacturer' => 'brand1'
-                ],
-                [
-                    'entity_id' => '2',
-                    'name' => 'Test Product 2',
-                    'price' => 149.99,
-                    'sku' => 'TEST-2',
-                    'category_ids' => [3, 11, 37],
-                    // Add sample values for other filterable attributes
-                    'color' => 'blue',
-                    'size' => 'M',
-                    'manufacturer' => 'brand2'
-                ]
-            ];
-
-            // Get filterable attributes
-            $filterableAttributes = $this->getFilterableAttributes();
-
-            // Create documents with all filterable attributes
-            $documents = [];
-            foreach ($products as $product) {
-                $attributes = [
-                    'entity_id' => new Value($product['entity_id'], 'entity_id'),
-                    'name' => new Value($product['name'], 'name'),
-                    'price' => new Value($product['price'], 'price'),
-                    'sku' => new Value($product['sku'], 'sku'),
-                    'status' => new Value(1, 'status'),
-                    'visibility' => new Value(4, 'visibility'),
-                    'store_id' => new Value(1, 'store_id'),
-                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
-                ];
-
-                // Add all filterable attributes to document
-                foreach ($filterableAttributes as $code => $attribute) {
-                    if (isset($product[$code])) {
-                        $attributes[$code] = new Value($product[$code], $code);
-                    }
+            default:
+                // For select/multiselect attributes, ensure we have string values
+                if (isset($attribute['frontend_input']) 
+                    && in_array($attribute['frontend_input'], ['select', 'multiselect'])
+                ) {
+                    return (string)$value;
                 }
-
-                $document = new Document();
-                $document->setId($product['entity_id']);
-                $document->setCustomAttributes($attributes);
-                $documents[] = $document;
-            }
-
-            // Create buckets array
-            $buckets = [];
-
-            // Price bucket
-            $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
-                'price_bucket',
-                [
-                    new Value('90_100', [
-                        'from' => 90,
-                        'to' => 100,
-                        'count' => 1,
-                        'value' => '90_100'
-                    ], 'price_bucket'),
-                    new Value('140_150', [
-                        'from' => 140,
-                        'to' => 150,
-                        'count' => 1,
-                        'value' => '140_150'
-                    ], 'price_bucket')
-                ]
-            );
-
-            // Category bucket
-            $categoryValues = $this->getCategoryCounts($products);
-            $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
-                'category_bucket',
-                array_map(function($catId, $count) {
-                    return new Value((string)$catId, [
-                        'value' => $catId,
-                        'count' => $count
-                    ], 'category_bucket');
-                }, array_keys($categoryValues), array_values($categoryValues))
-            );
-
-            // Add buckets for each filterable attribute
-            foreach ($filterableAttributes as $code => $attribute) {
-                $bucketName = $code . self::BUCKET_SUFFIX;
-                $attributeValues = $this->getAttributeCounts($products, $code);
-                
-                if (!empty($attributeValues)) {
-                    $bucketValues = [];
-                    foreach ($attributeValues as $value => $count) {
-                        $bucketValues[] = new Value((string)$value, [
-                            'value' => $value,
-                            'count' => $count
-                        ], $bucketName);
-                    }
-                    
-                    $buckets[$bucketName] = new \Magento\Framework\Search\Response\Bucket(
-                        $bucketName,
-                        $bucketValues
-                    );
-                }
-            }
-
-            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
-
-            $aggregations = new Aggregation($buckets);
-            $response = new QueryResponse($documents, $aggregations, count($documents));
-
-            return $response;
-
-        } catch (\Exception $e) {
-            $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
-            throw $e;
+                return $value;
         }
     }
 
     /**
-     * Get category counts from products
+     * Create bucket based on attribute type
      *
-     * @param array $products
-     * @return array
+     * @param string $attributeCode
+     * @param array $values
+     * @param array $attribute
+     * @return \Magento\Framework\Search\Response\Bucket
      */
-    protected function getCategoryCounts(array $products): array
+    protected function createBucket(string $attributeCode, array $values, array $attribute)
     {
-        $counts = [];
-        foreach ($products as $product) {
-            foreach ($product['category_ids'] as $catId) {
-                if (!isset($counts[$catId])) {
-                    $counts[$catId] = 0;
+        $bucketName = $attributeCode . self::BUCKET_SUFFIX;
+        
+        switch ($attributeCode) {
+            case 'price':
+                $bucketValues = [];
+                foreach ($values as $value => $count) {
+                    $rangeLower = floor((float)$value / 10) * 10;
+                    $rangeUpper = $rangeLower + 10;
+                    $rangeKey = $rangeLower . '_' . $rangeUpper;
+                    
+                    if (!isset($bucketValues[$rangeKey])) {
+                        $bucketValues[$rangeKey] = [
+                            'value' => $rangeKey,
+                            'count' => 0,
+                            'from' => $rangeLower,
+                            'to' => $rangeUpper
+                        ];
+                    }
+                    $bucketValues[$rangeKey]['count'] += $count;
                 }
-                $counts[$catId]++;
-            }
+                
+                return new \Magento\Framework\Search\Response\Bucket(
+                    $bucketName,
+                    array_map(function($range) use ($bucketName) {
+                        return new Value($range['value'], $range, $bucketName);
+                    }, array_values($bucketValues))
+                );
+
+            case 'category_ids':
+                return new \Magento\Framework\Search\Response\Bucket(
+                    $bucketName,
+                    array_map(function($value, $count) use ($bucketName) {
+                        return new Value((string)$value, [
+                            'value' => $value,
+                            'count' => $count
+                        ], $bucketName);
+                    }, array_keys($values), array_values($values))
+                );
+                
+            default:
+                return new \Magento\Framework\Search\Response\Bucket(
+                    $bucketName,
+                    array_map(function($value, $count) use ($bucketName, $attribute) {
+                        $metrics = [
+                            'value' => $value,
+                            'count' => $count
+                        ];
+                        
+                        // Add label for select/multiselect attributes
+                        if (isset($attribute['frontend_input']) 
+                            && in_array($attribute['frontend_input'], ['select', 'multiselect'])
+                            && isset($attribute['options'][$value]['label'])
+                        ) {
+                            $metrics['label'] = $attribute['options'][$value]['label'];
+                        }
+                        
+                        return new Value((string)$value, $metrics, $bucketName);
+                    }, array_keys($values), array_values($values))
+                );
         }
-        return $counts;
     }
 
     /**
@@ -331,10 +211,20 @@ class SearchEnginePlugin
                     $attribute
                 );
                 
-                if (!isset($counts[$value])) {
-                    $counts[$value] = 0;
+                if (is_array($value)) {
+                    // Handle multiselect values
+                    foreach ($value as $subValue) {
+                        if (!isset($counts[$subValue])) {
+                            $counts[$subValue] = 0;
+                        }
+                        $counts[$subValue]++;
+                    }
+                } else {
+                    if (!isset($counts[$value])) {
+                        $counts[$value] = 0;
+                    }
+                    $counts[$value]++;
                 }
-                $counts[$value]++;
             }
         }
         return $counts;
@@ -353,7 +243,7 @@ class SearchEnginePlugin
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
-            // Your test products
+            // Your test products (add more attributes based on your needs)
             $products = [
                 [
                     'entity_id' => '1',
@@ -361,9 +251,11 @@ class SearchEnginePlugin
                     'price' => 99.99,
                     'sku' => 'TEST-1',
                     'category_ids' => [3, 9, 20],
-                    'size' => '166', // XS
-                    'color' => '49',  // Black
-                    'material' => '38' // Polyester
+                    'size' => '166',
+                    'color' => '49',
+                    'material' => '38',
+                    'pattern' => '196',
+                    'style_general' => '135'
                 ],
                 [
                     'entity_id' => '2',
@@ -371,9 +263,11 @@ class SearchEnginePlugin
                     'price' => 149.99,
                     'sku' => 'TEST-2',
                     'category_ids' => [3, 11, 37],
-                    'size' => '167', // S
-                    'color' => '50',  // Blue
-                    'material' => '33' // Cotton
+                    'size' => '167',
+                    'color' => '50',
+                    'material' => '33',
+                    'pattern' => '198',
+                    'style_general' => '132'
                 ]
             ];
 
@@ -414,6 +308,8 @@ class SearchEnginePlugin
                     $buckets[$code . self::BUCKET_SUFFIX] = $this->createBucket($code, $values, $attribute);
                 }
             }
+
+            $this->logger->debug('Created buckets: ' . print_r(array_keys($buckets), true));
 
             $aggregations = new Aggregation($buckets);
             return new QueryResponse($documents, $aggregations, count($documents));
