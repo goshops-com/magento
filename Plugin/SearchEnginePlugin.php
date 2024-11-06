@@ -23,7 +23,8 @@ class SearchEnginePlugin
     public function __construct(
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
-        ObjectManagerInterface $objectManager
+        ObjectManagerInterface $objectManager,
+        FilterableAttributeList $filterableAttributeList 
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
