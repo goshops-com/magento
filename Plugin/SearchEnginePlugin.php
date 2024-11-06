@@ -233,19 +233,29 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            return $proceed($request);
+            $result = $proceed($request);
+            if ($result instanceof QueryResponse) {
+                // Log the default response structure
+                $buckets = $result->getAggregations()->getBuckets();
+                foreach ($buckets as $key => $bucket) {
+                    $this->logger->debug("Default bucket {$key}: " . print_r([
+                        'name' => $bucket->getName(),
+                        'values' => array_map(function($value) {
+                            return [
+                                'value' => $value->getValue(),
+                                'metrics' => $value->getMetrics(),
+                                'field' => $value->getField()
+                            ];
+                        }, $bucket->getValues())
+                    ], true));
+                }
+            }
+            return $result;
         }
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Get default response first to preserve bucket structure
-            $defaultResponse = $proceed($request);
-            $this->logger->debug('Default buckets: ' . print_r(
-                array_keys($defaultResponse->getAggregations()->getBuckets()),
-                true
-            ));
-
             // Products with multiple categories
             $products = [
                 [
@@ -282,7 +292,8 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Count products in each category
+            // Create category values
+            $categoryValues = [];
             $categoryCounts = [];
             foreach ($products as $product) {
                 foreach ($product['category_ids'] as $catId) {
@@ -293,43 +304,52 @@ class SearchEnginePlugin
                 }
             }
 
-            // Create buckets array starting with category
-            $buckets = [];
-
-            // Category bucket first - NOTE: changed name to just 'category'
-            $categoryValues = [];
             foreach ($categoryCounts as $catId => $count) {
                 $categoryValues[] = new Value((string)$catId, [
                     'value' => $catId,
-                    'count' => $count
-                ], 'category');  // Changed to just 'category'
+                    'count' => $count,
+                    'title' => "Category {$catId}"  // Added title
+                ], 'category');
             }
-            
-            $buckets['category'] = new \Magento\Framework\Search\Response\Bucket(
-                'category',  // Changed to just 'category'
-                $categoryValues
-            );
 
-            // Price bucket
-            $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
-                'price_bucket',
-                [
-                    new Value('90_100', [
-                        'from' => 90,
-                        'to' => 100,
-                        'count' => 1,
-                        'value' => '90_100'
-                    ], 'price_bucket'),
-                    new Value('140_150', [
-                        'from' => 140,
-                        'to' => 150,
-                        'count' => 1,
-                        'value' => '140_150'
-                    ], 'price_bucket')
-                ]
-            );
+            // Create buckets
+            $buckets = [
+                'price_bucket' => new \Magento\Framework\Search\Response\Bucket(
+                    'price_bucket',
+                    [
+                        new Value('90_100', [
+                            'from' => 90,
+                            'to' => 100,
+                            'count' => 1,
+                            'value' => '90_100'
+                        ], 'price_bucket'),
+                        new Value('140_150', [
+                            'from' => 140,
+                            'to' => 150,
+                            'count' => 1,
+                            'value' => '140_150'
+                        ], 'price_bucket')
+                    ]
+                ),
+                'category' => new \Magento\Framework\Search\Response\Bucket(
+                    'category',
+                    $categoryValues
+                )
+            ];
 
-            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
+            // Log the bucket structure we're creating
+            foreach ($buckets as $key => $bucket) {
+                $this->logger->debug("Custom bucket {$key}: " . print_r([
+                    'name' => $bucket->getName(),
+                    'values' => array_map(function($value) {
+                        return [
+                            'value' => $value->getValue(),
+                            'metrics' => $value->getMetrics(),
+                            'field' => $value->getField()
+                        ];
+                    }, $bucket->getValues())
+                ], true));
+            }
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
