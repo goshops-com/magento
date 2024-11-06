@@ -62,7 +62,8 @@ class SearchEnginePlugin
                 'options' => $options
             ];
         }
-        
+
+        $this->logger->debug('Filterable attributes found:', $attributes);
         return $attributes;
     }
     
@@ -83,29 +84,41 @@ class SearchEnginePlugin
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
-            // Load real products but maintain the exact same structure as before
+            // Load products
             $productIds = [1, 2];
             $products = [];
             
             foreach ($productIds as $productId) {
                 try {
                     $product = $this->productRepository->getById($productId);
-                    // Keep exactly the same structure as the working code
-                    $products[] = [
+                    
+                    $this->logger->debug("Product {$productId} raw data:", [
+                        'product_data' => $product->getData(),
+                        'color' => $product->getData('color'),
+                        'size' => $product->getData('size')
+                    ]);
+                    
+                    $productData = [
                         'entity_id' => $product->getId(),
                         'name' => $product->getName(),
                         'price' => $product->getPrice(),
                         'sku' => $product->getSku(),
                         'category_ids' => $product->getCategoryIds(),
-                        'color' => $product->getColor(),
-                        'size' => $product->getSize()
+                        'color' => $product->getData('color'),
+                        'size' => $product->getData('size')
                     ];
+                    
+                    $this->logger->debug("Product {$productId} processed data:", $productData);
+                    $products[] = $productData;
+                    
                 } catch (\Exception $e) {
                     $this->logger->error("Error loading product {$productId}: " . $e->getMessage());
                 }
             }
 
-            // Keep everything else EXACTLY the same as the working code
+            $this->logger->debug("Final products array:", $products);
+            
+            // Create documents
             $documents = [];
             foreach ($products as $product) {
                 $attributes = [
@@ -123,6 +136,7 @@ class SearchEnginePlugin
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
                         $attributes[$code] = new Value($value, $code);
+                        $this->logger->debug("Added attribute {$code} with value {$value} to document");
                     }
                 }
 
@@ -132,6 +146,9 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
+            $this->logger->debug("Creating buckets");
+            
+            // Create buckets array
             $buckets = [];
 
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
@@ -171,6 +188,8 @@ class SearchEnginePlugin
                 }
 
                 $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
+                $this->logger->debug("Counts for attribute {$code}:", $counts);
+                
                 if (!empty($counts)) {
                     $values = [];
                     foreach ($counts as $value => $count) {
@@ -189,10 +208,11 @@ class SearchEnginePlugin
                         $code . self::BUCKET_SUFFIX,
                         $values
                     );
+                    $this->logger->debug("Created bucket for {$code}");
                 }
             }
 
-            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
+            $this->logger->debug('Created buckets:', array_keys($buckets));
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
@@ -201,12 +221,16 @@ class SearchEnginePlugin
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
+            $this->logger->error("Stack trace: " . $e->getTraceAsString());
             throw $e;
         }
     }
 
     protected function getValueCounts(array $products, string $field, bool $isArray = false): array
     {
+        $this->logger->debug("Getting value counts for {$field}, isArray: " . ($isArray ? 'true' : 'false'));
+        $this->logger->debug("Products for counting:", $products);
+        
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$field])) {
@@ -226,6 +250,8 @@ class SearchEnginePlugin
                 }
             }
         }
+        
+        $this->logger->debug("Counts result for {$field}:", $counts);
         return $counts;
     }
 }
