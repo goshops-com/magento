@@ -230,85 +230,83 @@ class SearchEnginePlugin
         callable $proceed,
         RequestInterface $request
     ) {
+        $this->logger->debug("SearchEnginePlugin aroundSearch() called");
+        
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             return $proceed($request);
         }
 
+        $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
+        
         try {
-            // Get filterable attributes
-            $filterableAttributes = $this->getFilterableAttributes();
-            
-            // Your test products (add more attributes based on your needs)
+            // Get default response first to preserve bucket structure
+            $defaultResponse = $proceed($request);
+            $this->logger->debug('Default buckets: ' . print_r(
+                array_keys($defaultResponse->getAggregations()->getBuckets()),
+                true
+            ));
+
+            // Products with multiple categories
             $products = [
                 [
                     'entity_id' => '1',
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3, 9, 20],
-                    'gender' => ['80'], // Men - showing multiselect handling
-                    'material' => ['38', '33'], // Multiple materials
-                    'color' => '49', // Black
+                    'category_ids' => [3, 9, 20]
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3, 11, 37],
-                    'gender' => ['81'], // Women
-                    'material' => ['33'], // Cotton
-                    'color' => '50', // Blue
+                    'category_ids' => [3, 11, 37]
                 ]
             ];
 
-            // Create documents (same as before)
+            // Create documents
             $documents = [];
             foreach ($products as $product) {
-                $attributes = [
+                $document = new Document();
+                $document->setId($product['entity_id']);
+                $document->setCustomAttributes([
                     'entity_id' => new Value($product['entity_id'], 'entity_id'),
                     'name' => new Value($product['name'], 'name'),
-                    'price' => new Value((string)$product['price'], 'price'),
+                    'price' => new Value($product['price'], 'price'),
                     'sku' => new Value($product['sku'], 'sku'),
                     'status' => new Value(1, 'status'),
                     'visibility' => new Value(4, 'visibility'),
                     'store_id' => new Value(1, 'store_id'),
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
-                ];
-
-                // Add other filterable attributes
-                foreach ($filterableAttributes as $code => $attribute) {
-                    if (isset($product[$code])) {
-                        $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
-                        $attributes[$code] = new Value($value, $code);
-                    }
-                }
-
-                $document = new Document();
-                $document->setId($product['entity_id']);
-                $document->setCustomAttributes($attributes);
+                ]);
                 $documents[] = $document;
             }
 
-            // Start with mandatory buckets
+            // Count products in each category
+            $categoryCounts = [];
+            foreach ($products as $product) {
+                foreach ($product['category_ids'] as $catId) {
+                    if (!isset($categoryCounts[$catId])) {
+                        $categoryCounts[$catId] = 0;
+                    }
+                    $categoryCounts[$catId]++;
+                }
+            }
+
+            // Create buckets array starting with category
             $buckets = [];
 
-            // Always add category bucket first (this is crucial)
+            // Category bucket first - NOTE: changed name to just 'category'
             $categoryValues = [];
-            $categoryCounts = $this->getAttributeCounts($products, 'category_ids', [
-                'code' => 'category_ids',
-                'frontend_input' => 'multiselect'
-            ]);
-            
-            foreach ($categoryCounts as $categoryId => $count) {
-                $categoryValues[] = new Value($categoryId, [
-                    'value' => $categoryId,
+            foreach ($categoryCounts as $catId => $count) {
+                $categoryValues[] = new Value((string)$catId, [
+                    'value' => $catId,
                     'count' => $count
-                ], 'category');
+                ], 'category');  // Changed to just 'category'
             }
             
             $buckets['category'] = new \Magento\Framework\Search\Response\Bucket(
-                'category',
+                'category',  // Changed to just 'category'
                 $categoryValues
             );
 
@@ -331,21 +329,12 @@ class SearchEnginePlugin
                 ]
             );
 
-            // Add other filterable attribute buckets
-            foreach ($filterableAttributes as $code => $attribute) {
-                if ($code !== 'price') { // Skip price as we handled it separately
-                    $values = $this->getAttributeCounts($products, $code, $attribute);
-                    if (!empty($values)) {
-                        $bucketName = $code . self::BUCKET_SUFFIX;
-                        $buckets[$bucketName] = $this->createBucket($code, $values, $attribute);
-                    }
-                }
-            }
-
             $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
 
             $aggregations = new Aggregation($buckets);
-            return new QueryResponse($documents, $aggregations, count($documents));
+            $response = new QueryResponse($documents, $aggregations, count($documents));
+
+            return $response;
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
