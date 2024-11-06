@@ -39,8 +39,7 @@ class SearchEngine extends MagentoSearchEngine
     {
         $debugData = [
             'source' => $source,
-            'buckets' => [],
-            'metadata' => []
+            'buckets' => []
         ];
 
         // Log bucket values
@@ -60,11 +59,6 @@ class SearchEngine extends MagentoSearchEngine
                     $debugData['buckets'][$bucketName]['values'][] = $value;
                 }
             }
-        }
-
-        // Log metadata
-        foreach ($aggregations->getMetadata() as $metadataName => $metadata) {
-            $debugData['metadata'][$metadataName] = $metadata;
         }
 
         $this->logger->debug('SEARCH ENGINE AGGREGATIONS DEBUG: ' . json_encode($debugData, JSON_PRETTY_PRINT));
@@ -89,10 +83,37 @@ class SearchEngine extends MagentoSearchEngine
         $this->logger->debug("USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Your existing custom search code...
+            // Rest of your custom search implementation remains the same
+            $products = [
+                [
+                    'entity_id' => '1',
+                    'name' => 'Test Product 1',
+                    'price' => 99.99,
+                    'sku' => 'TEST-1'
+                ],
+                [
+                    'entity_id' => '2',
+                    'name' => 'Test Product 2',
+                    'price' => 149.99,
+                    'sku' => 'TEST-2'
+                ]
+            ];
+
+            // Create documents...
+            $documents = [];
+            // Your existing document creation code...
+
+            // Log the request object to see what aggregations are being requested
+            $this->logger->debug('Search Request Debug: ' . json_encode([
+                'request_name' => $request->getName(),
+                'dimensions' => $request->getDimensions(),
+                'query' => $request->getQuery()->__toString(),
+                'buckets' => array_keys($request->getAggregation())
+            ], JSON_PRETTY_PRINT));
+
             $response = parent::search($request);
             
-            // Log the aggregations from custom search
+            // Log the aggregations from default search for comparison
             if ($response instanceof QueryResponse) {
                 $this->logAggregations($response->getAggregations(), 'custom_search');
             }
