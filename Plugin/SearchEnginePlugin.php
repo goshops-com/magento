@@ -11,6 +11,7 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
+use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 
 class SearchEnginePlugin
 {
@@ -19,17 +20,20 @@ class SearchEnginePlugin
     protected $logger;
     protected $httpRequest;
     protected $objectManager;
+    protected $productCollectionFactory;
 
     public function __construct(
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager,
-        FilterableAttributeList $filterableAttributeList 
+        FilterableAttributeList $filterableAttributeList, 
+        ProductCollectionFactory $productCollectionFactory
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
+        $this->productCollectionFactory = $productCollectionFactory;
     }
 
     protected function getFilterableAttributes()
@@ -76,6 +80,10 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
+
+            $productIds = [1, 2];
+
+            
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
@@ -101,6 +109,26 @@ class SearchEnginePlugin
             ];
 
             $this->logger->debug("Original products data for categories:", $products);
+
+            $collection = $this->productCollectionFactory->create()
+                ->addAttributeToSelect('*')
+                ->addIdFilter($productIds);
+
+            $products2 = [];
+
+            foreach ($collection as $product) {
+                $products2[] = [
+                    'entity_id' => $product->getId(),
+                    'name' => $product->getName(),
+                    'price' => $product->getPrice(),
+                    'sku' => $product->getSku(),
+                    'category_ids' => $product->getCategoryIds(),
+                    'size' => $product->getData('size'),
+                ];
+            }
+
+            // Log the fetched products data
+            $this->logger->debug('Fetched products data:', $products2);
 
             // Create documents
             $documents = [];
