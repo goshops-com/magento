@@ -15,6 +15,12 @@
                 sortOrder="1" />
     </type>
 
+    <type name="Gopersonal\Magento\Plugin\SearchEnginePlugin">
+        <arguments>
+            <argument name="filterableAttributeList" xsi:type="object">Magento\Catalog\Model\Layer\Category\FilterableAttributeList</argument>
+        </arguments>
+    </type>
+    
     <!-- <type name="Magento\Catalog\Model\Layer">
         <plugin name="debug_layer_collection" type="Gopersonal\Magento\Plugin\LayerPlugin" />
     </type> -->
