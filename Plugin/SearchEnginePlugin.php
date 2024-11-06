@@ -83,30 +83,29 @@ class SearchEnginePlugin
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
-            // Define product IDs
+            // Load real products but maintain the exact same structure as before
             $productIds = [1, 2];
-            
-            // Load basic product data in same format as before
             $products = [];
+            
             foreach ($productIds as $productId) {
                 try {
                     $product = $this->productRepository->getById($productId);
+                    // Keep exactly the same structure as the working code
                     $products[] = [
-                        'entity_id' => $productId,
+                        'entity_id' => $product->getId(),
                         'name' => $product->getName(),
                         'price' => $product->getPrice(),
                         'sku' => $product->getSku(),
                         'category_ids' => $product->getCategoryIds(),
-                        'color' => $product->getColor(),      
-                        'size' => $product->getSize(),      
+                        'color' => $product->getColor(),
+                        'size' => $product->getSize()
                     ];
                 } catch (\Exception $e) {
-                    $this->logger->error("Could not load product {$productId}: " . $e->getMessage());
-                    continue;
+                    $this->logger->error("Error loading product {$productId}: " . $e->getMessage());
                 }
             }
 
-            // Create documents
+            // Keep everything else EXACTLY the same as the working code
             $documents = [];
             foreach ($products as $product) {
                 $attributes = [
@@ -120,7 +119,6 @@ class SearchEnginePlugin
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
 
-                // Add filterable attributes dynamically
                 foreach ($filterableAttributes as $code => $attribute) {
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
@@ -134,10 +132,8 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Create buckets array
             $buckets = [];
 
-            // Price bucket (keep the same as it works)
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'price_bucket',
                 [
@@ -156,7 +152,6 @@ class SearchEnginePlugin
                 ]
             );
 
-            // Category bucket (keep the same as it works)
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
             foreach ($categoryCounts as $value => $count) {
@@ -170,9 +165,7 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
-            // Add attribute buckets dynamically
             foreach ($filterableAttributes as $code => $attribute) {
-                // Skip price as we handle it separately
                 if ($code === 'price') {
                     continue;
                 }
