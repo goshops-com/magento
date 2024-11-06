@@ -140,6 +140,8 @@ class SearchEnginePlugin
             // Log the fetched products data
             $this->logger->debug('Fetched products data:', $products2);
 
+            $products = $products2;
+
             // Create documents
             $documents = [];
             foreach ($products as $product) {
