@@ -92,23 +92,23 @@ class SearchEnginePlugin
                 try {
                     $product = $this->productRepository->getById($productId);
                     
-                    $this->logger->debug("Product {$productId} raw data:", [
-                        'product_data' => $product->getData(),
-                        'color' => $product->getData('color'),
-                        'size' => $product->getData('size')
-                    ]);
-                    
                     $productData = [
                         'entity_id' => $product->getId(),
                         'name' => $product->getName(),
                         'price' => $product->getPrice(),
                         'sku' => $product->getSku(),
-                        'category_ids' => $product->getCategoryIds(),
-                        'color' => $product->getData('color'),
-                        'size' => $product->getData('size')
+                        'category_ids' => $product->getCategoryIds()
                     ];
+
+                    // Only add attributes that exist in the product
+                    foreach ($filterableAttributes as $code => $attribute) {
+                        $value = $product->getData($code);
+                        if ($value !== null) {
+                            $productData[$code] = $value;
+                            $this->logger->debug("Product {$productId} has {$code} = {$value}");
+                        }
+                    }
                     
-                    $this->logger->debug("Product {$productId} processed data:", $productData);
                     $products[] = $productData;
                     
                 } catch (\Exception $e) {
@@ -116,8 +116,6 @@ class SearchEnginePlugin
                 }
             }
 
-            $this->logger->debug("Final products array:", $products);
-            
             // Create documents
             $documents = [];
             foreach ($products as $product) {
@@ -136,7 +134,6 @@ class SearchEnginePlugin
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
                         $attributes[$code] = new Value($value, $code);
-                        $this->logger->debug("Added attribute {$code} with value {$value} to document");
                     }
                 }
 
@@ -146,11 +143,10 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            $this->logger->debug("Creating buckets");
-            
             // Create buckets array
             $buckets = [];
 
+            // Add price bucket as it's special
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'price_bucket',
                 [
@@ -169,6 +165,7 @@ class SearchEnginePlugin
                 ]
             );
 
+            // Add category bucket as it always exists
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
             foreach ($categoryCounts as $value => $count) {
@@ -182,37 +179,51 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
+            // For each attribute, check if ANY product has a value for it
             foreach ($filterableAttributes as $code => $attribute) {
                 if ($code === 'price') {
                     continue;
                 }
 
-                $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
-                $this->logger->debug("Counts for attribute {$code}:", $counts);
-                
-                if (!empty($counts)) {
-                    $values = [];
-                    foreach ($counts as $value => $count) {
-                        $optionLabel = isset($attribute['options'][$value]) ? 
-                            $attribute['options'][$value]['label'] : 
-                            $value;
-
-                        $values[] = new Value((string)$value, [
-                            'value' => $value,
-                            'label' => $optionLabel,
-                            'count' => $count
-                        ], $code . self::BUCKET_SUFFIX);
+                // Check if any product has this attribute
+                $hasAttribute = false;
+                foreach ($products as $product) {
+                    if (isset($product[$code]) && $product[$code] !== null) {
+                        $hasAttribute = true;
+                        break;
                     }
+                }
+
+                if ($hasAttribute) {
+                    $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
+                    $this->logger->debug("Counts for attribute {$code}:", $counts);
                     
-                    $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
-                        $code . self::BUCKET_SUFFIX,
-                        $values
-                    );
-                    $this->logger->debug("Created bucket for {$code}");
+                    if (!empty($counts)) {
+                        $values = [];
+                        foreach ($counts as $value => $count) {
+                            $optionLabel = isset($attribute['options'][$value]) ? 
+                                $attribute['options'][$value]['label'] : 
+                                $value;
+
+                            $values[] = new Value((string)$value, [
+                                'value' => $value,
+                                'label' => $optionLabel,
+                                'count' => $count
+                            ], $code . self::BUCKET_SUFFIX);
+                        }
+                        
+                        $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
+                            $code . self::BUCKET_SUFFIX,
+                            $values
+                        );
+                        $this->logger->debug("Created bucket for {$code} because products have this attribute");
+                    }
+                } else {
+                    $this->logger->debug("Skipping bucket for {$code} because no products have this attribute");
                 }
             }
 
-            $this->logger->debug('Created buckets:', array_keys($buckets));
+            $this->logger->debug('Final buckets created:', array_keys($buckets));
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
@@ -221,7 +232,6 @@ class SearchEnginePlugin
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
-            $this->logger->error("Stack trace: " . $e->getTraceAsString());
             throw $e;
         }
     }
