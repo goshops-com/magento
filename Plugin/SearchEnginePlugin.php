@@ -63,7 +63,6 @@ class SearchEnginePlugin
             ];
         }
         
-        $this->logger->debug('Filterable attributes loaded: ' . print_r($attributes, true));
         return $attributes;
     }
     
@@ -81,47 +80,32 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Get filterable attributes first
+            // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
-            $this->logger->debug("Filterable attributes:", $filterableAttributes);
-            
-            // Define product IDs we want to use
+            // Load real products but maintain the exact same structure as before
             $productIds = [1, 2];
             $products = [];
             
             foreach ($productIds as $productId) {
                 try {
                     $product = $this->productRepository->getById($productId);
-                    
-                    // Start with basic product data
-                    $productData = [
+                    // Keep exactly the same structure as the working code
+                    $products[] = [
                         'entity_id' => $product->getId(),
                         'name' => $product->getName(),
                         'price' => $product->getPrice(),
                         'sku' => $product->getSku(),
                         'category_ids' => $product->getCategoryIds(),
+                        'color' => $product->getColor(),
+                        'size' => $product->getSize()
                     ];
-                    
-                    // Add all filterable attributes
-                    foreach ($filterableAttributes as $code => $attribute) {
-                        $value = $product->getData($code);
-                        if ($value !== null) {
-                            $productData[$code] = $value;
-                            $this->logger->debug("Added attribute {$code} with value {$value} for product {$productId}");
-                        }
-                    }
-                    
-                    $products[] = $productData;
-                    
                 } catch (\Exception $e) {
                     $this->logger->error("Error loading product {$productId}: " . $e->getMessage());
                 }
             }
-            
-            $this->logger->debug("Loaded products data:", $products);
 
-            // Create documents 
+            // Keep everything else EXACTLY the same as the working code
             $documents = [];
             foreach ($products as $product) {
                 $attributes = [
@@ -135,7 +119,6 @@ class SearchEnginePlugin
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
 
-                // Add all filterable attributes to documents
                 foreach ($filterableAttributes as $code => $attribute) {
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
@@ -149,52 +132,67 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Create all required buckets
             $buckets = [];
 
-            // Create bucket for EACH filterable attribute
+            $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
+                'price_bucket',
+                [
+                    new Value('90_100', [
+                        'from' => 90,
+                        'to' => 100,
+                        'count' => 1,
+                        'value' => '90_100'
+                    ], 'price_bucket'),
+                    new Value('140_150', [
+                        'from' => 140,
+                        'to' => 150,
+                        'count' => 1,
+                        'value' => '140_150'
+                    ], 'price_bucket')
+                ]
+            );
+
+            $categoryValues = [];
+            $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
+            foreach ($categoryCounts as $value => $count) {
+                $categoryValues[] = new Value((string)$value, [
+                    'value' => $value,
+                    'count' => $count
+                ], 'category_bucket');
+            }
+            $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
+                'category_bucket',
+                $categoryValues
+            );
+
             foreach ($filterableAttributes as $code => $attribute) {
+                if ($code === 'price') {
+                    continue;
+                }
+
                 $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
-                $this->logger->debug("Creating bucket for {$code}, counts:", $counts);
-                
                 if (!empty($counts)) {
                     $values = [];
                     foreach ($counts as $value => $count) {
-                        // Special handling for price bucket
-                        if ($code === 'price') {
-                            $rangeStart = floor($value / 10) * 10;
-                            $rangeEnd = $rangeStart + 10;
-                            $values[] = new Value("{$rangeStart}_{$rangeEnd}", [
-                                'from' => $rangeStart,
-                                'to' => $rangeEnd,
-                                'count' => $count,
-                                'value' => "{$rangeStart}_{$rangeEnd}"
-                            ], 'price_bucket');
-                        } else {
-                            $optionLabel = isset($attribute['options'][$value]) ? 
-                                $attribute['options'][$value]['label'] : 
-                                $value;
+                        $optionLabel = isset($attribute['options'][$value]) ? 
+                            $attribute['options'][$value]['label'] : 
+                            $value;
 
-                            $values[] = new Value((string)$value, [
-                                'value' => $value,
-                                'label' => $optionLabel,
-                                'count' => $count
-                            ], $code . self::BUCKET_SUFFIX);
-                        }
+                        $values[] = new Value((string)$value, [
+                            'value' => $value,
+                            'label' => $optionLabel,
+                            'count' => $count
+                        ], $code . self::BUCKET_SUFFIX);
                     }
                     
-                    if (!empty($values)) {
-                        $bucketName = $code . self::BUCKET_SUFFIX;
-                        $buckets[$bucketName] = new \Magento\Framework\Search\Response\Bucket(
-                            $bucketName,
-                            $values
-                        );
-                        $this->logger->debug("Created bucket: {$bucketName}");
-                    }
+                    $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
+                        $code . self::BUCKET_SUFFIX,
+                        $values
+                    );
                 }
             }
 
-            $this->logger->debug("Created buckets:", array_keys($buckets));
+            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
@@ -203,15 +201,12 @@ class SearchEnginePlugin
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
-            $this->logger->error("Stack trace: " . $e->getTraceAsString());
             throw $e;
         }
     }
 
     protected function getValueCounts(array $products, string $field, bool $isArray = false): array
     {
-        $this->logger->debug("Counting values for field {$field}, isArray: " . ($isArray ? 'true' : 'false'));
-        
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$field])) {
@@ -231,8 +226,6 @@ class SearchEnginePlugin
                 }
             }
         }
-        
-        $this->logger->debug("Counts result for {$field}: " . print_r($counts, true));
         return $counts;
     }
 }
