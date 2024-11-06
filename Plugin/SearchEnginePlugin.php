@@ -139,7 +139,7 @@ class SearchEnginePlugin
             // Log the fetched products data
             $this->logger->debug('Fetched products data2 (' . gettype($products2) . '):', $products2);
 
-            $products = $products2;
+            // $products = $products2;
 
             // Create documents
             $documents = [];
