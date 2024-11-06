@@ -128,7 +128,7 @@ class SearchEnginePlugin
                 // Loop over filterable attributes and add their values if available
                 foreach ($filterableAttributes as $code => $attribute) {
                     $value = $product->getData($code);
-                    if ($value !== null) {
+                    if ($value !== null && !isset($productData[$code])) {
                         $productData[$code] = $value;
                     }
                 }
@@ -137,7 +137,7 @@ class SearchEnginePlugin
             }
 
             // Log the fetched products data
-            $this->logger->debug('Fetched products data:', $products2);
+            $this->logger->debug('Fetched products data2:', $products2);
 
             $products = $products2;
 
