@@ -30,7 +30,6 @@ class SearchEnginePlugin
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
-        
     }
 
     protected function getFilterableAttributes()
@@ -40,7 +39,6 @@ class SearchEnginePlugin
             $code = $attribute->getAttributeCode();
             $options = [];
             
-            // Get all options for this attribute
             if ($attribute->usesSource()) {
                 foreach ($attribute->getSource()->getAllOptions() as $option) {
                     if (!empty($option['value'])) {
@@ -60,8 +58,6 @@ class SearchEnginePlugin
                 'options' => $options
             ];
         }
-
-        $this->logger->debug('Filterable attributes: ' . print_r($attributes, true));
         
         return $attributes;
     }
@@ -105,6 +101,8 @@ class SearchEnginePlugin
                 ]
             ];
 
+            $this->logger->debug("Original products data for categories:", $products);
+
             // Create documents
             $documents = [];
             foreach ($products as $product) {
@@ -119,7 +117,6 @@ class SearchEnginePlugin
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
 
-                // Add filterable attributes dynamically
                 foreach ($filterableAttributes as $code => $attribute) {
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
@@ -136,7 +133,6 @@ class SearchEnginePlugin
             // Create buckets array
             $buckets = [];
 
-            // Price bucket (keep the same as it works)
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'price_bucket',
                 [
@@ -155,23 +151,25 @@ class SearchEnginePlugin
                 ]
             );
 
-            // Category bucket (keep the same as it works)
+            // Category bucket with logging
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
+            $this->logger->debug("Category counts from getValueCounts:", $categoryCounts);
+            
             foreach ($categoryCounts as $value => $count) {
                 $categoryValues[] = new Value((string)$value, [
                     'value' => $value,
                     'count' => $count
                 ], 'category_bucket');
             }
+            $this->logger->debug("Created category values:", $categoryValues);
+            
             $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'category_bucket',
                 $categoryValues
             );
 
-            // Add attribute buckets dynamically
             foreach ($filterableAttributes as $code => $attribute) {
-                // Skip price as we handle it separately
                 if ($code === 'price') {
                     continue;
                 }
@@ -197,8 +195,6 @@ class SearchEnginePlugin
                     );
                 }
             }
-
-            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
