@@ -13,6 +13,8 @@ use Magento\Framework\ObjectManagerInterface;
 
 class SearchEnginePlugin
 {
+    const BUCKET_SUFFIX = '_bucket';
+
     protected $logger;
     protected $httpRequest;
     protected $objectManager;
@@ -35,36 +37,18 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            $result = $proceed($request);
-            if ($result instanceof QueryResponse) {
-                // Log the complete structure of the default search response
-                $this->logger->debug('Default search response structure: ' . print_r([
-                    'total_count' => $result->getTotal(),
-                    'aggregations' => array_map(function($bucket) {
-                        return [
-                            'name' => $bucket->getName(),
-                            'field' => method_exists($bucket, 'getField') ? $bucket->getField() : 'N/A',
-                            'metrics' => array_map(function($value) {
-                                return [
-                                    'value' => $value->getValue(),
-                                    'metrics' => $value->getMetrics()
-                                ];
-                            }, $bucket->getValues())
-                        ];
-                    }, $result->getAggregations()->getBuckets())
-                ], true));
-            }
-            return $result;
+            return $proceed($request);
         }
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Get default response first to see its structure
+            // Get default response first to preserve bucket structure
             $defaultResponse = $proceed($request);
-            if ($defaultResponse instanceof QueryResponse) {
-                $this->logger->debug('Default buckets in custom search: ' . print_r(array_keys($defaultResponse->getAggregations()->getBuckets()), true));
-            }
+            $this->logger->debug('Default buckets: ' . print_r(
+                array_keys($defaultResponse->getAggregations()->getBuckets()),
+                true
+            ));
 
             // Products with multiple categories
             $products = [
@@ -84,6 +68,7 @@ class SearchEnginePlugin
                 ]
             ];
 
+            // Create documents
             $documents = [];
             foreach ($products as $product) {
                 $document = new Document();
@@ -101,43 +86,57 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Use the same buckets from default response
-            $buckets = [];
-            if ($defaultResponse instanceof QueryResponse) {
-                $originalBuckets = $defaultResponse->getAggregations()->getBuckets();
-                foreach ($originalBuckets as $key => $originalBucket) {
-                    if ($originalBucket->getName() === 'category') {
-                        // Create category values
-                        $categoryValues = [];
-                        foreach ($products as $product) {
-                            foreach ($product['category_ids'] as $catId) {
-                                $categoryValues[$catId] = new Value($catId, [
-                                    'value' => $catId,
-                                    'count' => 1
-                                ], 'category');
-                            }
-                        }
-                        $buckets[$key] = new \Magento\Framework\Search\Response\Bucket(
-                            'category',
-                            array_values($categoryValues)
-                        );
-                    } else {
-                        // Keep other buckets as they are
-                        $buckets[$key] = $originalBucket;
+            // Count products in each category
+            $categoryCounts = [];
+            foreach ($products as $product) {
+                foreach ($product['category_ids'] as $catId) {
+                    if (!isset($categoryCounts[$catId])) {
+                        $categoryCounts[$catId] = 0;
                     }
+                    $categoryCounts[$catId]++;
                 }
             }
 
+            // Create buckets array
+            $buckets = [];
+
+            // Price bucket
+            $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
+                'price_bucket',
+                [
+                    new Value('90_100', [
+                        'from' => 90,
+                        'to' => 100,
+                        'count' => 1,
+                        'value' => '90_100'
+                    ], 'price_bucket'),
+                    new Value('140_150', [
+                        'from' => 140,
+                        'to' => 150,
+                        'count' => 1,
+                        'value' => '140_150'
+                    ], 'price_bucket')
+                ]
+            );
+
+            // Category bucket - note we use category_bucket consistently
+            $categoryValues = [];
+            foreach ($categoryCounts as $catId => $count) {
+                $categoryValues[] = new Value((string)$catId, [
+                    'value' => $catId,
+                    'count' => $count
+                ], 'category_bucket');
+            }
+            
+            $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
+                'category_bucket',
+                $categoryValues
+            );
+
+            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
+
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
-
-            // Log the final response structure
-            $this->logger->debug('Final custom response structure: ' . print_r([
-                'total_count' => $response->getTotal(),
-                'bucket_names' => array_map(function($bucket) {
-                    return $bucket->getName();
-                }, $response->getAggregations()->getBuckets())
-            ], true));
 
             return $response;
 
