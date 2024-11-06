@@ -163,18 +163,30 @@ class SearchEnginePlugin
                 ]
             );
 
-            // Category bucket
             $categoryValues = [];
-            $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
-            foreach ($categoryCounts as $value => $count) {
-                $categoryValues[] = new Value((string)$value, [
-                    'value' => $value,
-                    'count' => $count
-                ], 'category_bucket');
+            foreach ($products as $product) {
+                if (isset($product['category_ids']) && is_array($product['category_ids'])) {
+                    foreach ($product['category_ids'] as $categoryId) {
+                        if (!isset($categoryValues[$categoryId])) {
+                            $categoryValues[$categoryId] = 0;
+                        }
+                        $categoryValues[$categoryId]++;
+                    }
+                }
             }
+
+            $categoryBucketValues = [];
+            foreach ($categoryValues as $categoryId => $count) {
+                $categoryBucketValues[] = new Value(
+                    (string)$categoryId,
+                    ['value' => $categoryId, 'count' => $count],
+                    'category_bucket'
+                );
+            }
+            
             $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'category_bucket',
-                $categoryValues
+                $categoryBucketValues
             );
 
             // Create buckets for all filterable attributes (with or without data)
