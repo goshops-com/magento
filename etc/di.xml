@@ -6,7 +6,7 @@
 
     <type name="Magento\Search\Model\SearchEngine">
         <plugin name="gopersonal_search_engine" 
-                type="Gopersonal\Magento\Plugin\SearchEnginePlugin" 
+                type="Gopersonal\Magento\Plugin\SearchEngine" 
                 sortOrder="1" />
     </type>
 
