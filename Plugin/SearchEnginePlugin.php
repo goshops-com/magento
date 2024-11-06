@@ -120,9 +120,8 @@ class SearchEnginePlugin
                 $productData = [
                     'entity_id' => $product->getId(),
                     'name' => $product->getName(),
-                    'price' => $product->getPrice(),
+                    'price' => (float)$product->getPrice(),
                     'sku' => $product->getSku(),
-                    // Ensure category_ids are integers
                     'category_ids' => array_map('intval', $product->getCategoryIds()),
                 ];
             
