@@ -5,6 +5,7 @@ use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Search\Response\QueryResponse;
 use Magento\Framework\Search\Response\Aggregation;
 use Magento\Framework\Search\Response\Aggregation\Value;
+use Magento\Framework\Search\Document as SearchDocument;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
@@ -60,7 +61,7 @@ class SearchEnginePlugin
             $documents = [];
             
             foreach ($products as $product) {
-                $documents[] = new \Magento\Framework\Search\Document(
+                $documents[] = new SearchDocument(
                     $product['entity_id'],
                     [
                         'entity_id' => new Value($product['entity_id']),
