@@ -14,111 +14,71 @@ use Magento\Framework\Search\Dynamic\IntervalFactory;
 
 class SearchEngine extends MagentoSearchEngine
 {
-    protected $logger;
-    protected $httpRequest;
-    protected $objectManager;
-    protected $adapterFactory;
-    protected $intervalFactory;
-
-    public function __construct(
-        AdapterFactory $adapterFactory,
-        IntervalFactory $intervalFactory,
-        LoggerInterface $logger,
-        HttpRequestInterface $httpRequest,
-        ObjectManagerInterface $objectManager
-    ) {
-        $this->adapterFactory = $adapterFactory;
-        $this->intervalFactory = $intervalFactory;
-        $this->logger = $logger;
-        $this->httpRequest = $httpRequest;
-        $this->objectManager = $objectManager;
-        parent::__construct($adapterFactory, $intervalFactory);
-    }
-
-    protected function logAggregations(Aggregation $aggregations, $source = 'unknown') 
-    {
-        $debugData = [
-            'source' => $source,
-            'buckets' => []
-        ];
-
-        // Log bucket values
-        foreach ($aggregations->getBuckets() as $bucketName => $bucket) {
-            $debugData['buckets'][$bucketName] = [
-                'name' => $bucketName,
-                'values' => []
-            ];
-            
-            foreach ($bucket->getValues() as $value) {
-                if ($value instanceof Value) {
-                    $debugData['buckets'][$bucketName]['values'][] = [
-                        'value' => $value->getValue(),
-                        'metrics' => $value->getMetrics(),
-                    ];
-                } else {
-                    $debugData['buckets'][$bucketName]['values'][] = $value;
-                }
-            }
-        }
-
-        $this->logger->debug('SEARCH ENGINE AGGREGATIONS DEBUG: ' . json_encode($debugData, JSON_PRETTY_PRINT));
-    }
+    // ... your existing constructor and other methods ...
 
     public function search(RequestInterface $request)
     {
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             $this->logger->debug("USING DEFAULT MAGENTO SEARCH");
-            
-            // Get default search results
-            $result = parent::search($request);
-            
-            // Log the aggregations from default search
-            if ($result instanceof QueryResponse) {
-                $this->logAggregations($result->getAggregations(), 'default_search');
-            }
-            
-            return $result;
+            return parent::search($request);
         }
 
         $this->logger->debug("USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Rest of your custom search implementation remains the same
-            $products = [
-                [
-                    'entity_id' => '1',
-                    'name' => 'Test Product 1',
-                    'price' => 99.99,
-                    'sku' => 'TEST-1'
-                ],
-                [
-                    'entity_id' => '2',
-                    'name' => 'Test Product 2',
-                    'price' => 149.99,
-                    'sku' => 'TEST-2'
-                ]
+            // Your existing products array and documents creation...
+
+            // Create proper bucket values
+            $priceBucketValues = [
+                new Value('0_10', [
+                    'from' => 0,
+                    'to' => 10,
+                    'count' => 1,
+                    'value' => '0_10'
+                ]),
+                new Value('20_30', [
+                    'from' => 20,
+                    'to' => 30,
+                    'count' => 2,
+                    'value' => '20_30'
+                ]),
+                new Value('30_40', [
+                    'from' => 30,
+                    'to' => 40,
+                    'count' => 3,
+                    'value' => '30_40'
+                ]),
+                new Value('40_50', [
+                    'from' => 40,
+                    'to' => 50,
+                    'count' => 2,
+                    'value' => '40_50'
+                ])
             ];
 
-            // Create documents...
-            $documents = [];
-            // Your existing document creation code...
+            $categoryBucketValues = [
+                new Value(3, [
+                    'value' => 3,
+                    'count' => 7
+                ])
+            ];
 
-            // Log the request object to see what aggregations are being requested
-            $this->logger->debug('Search Request Debug: ' . json_encode([
-                'request_name' => $request->getName(),
-                'dimensions' => $request->getDimensions(),
-                'query' => $request->getQuery()->__toString(),
-                'buckets' => array_keys($request->getAggregation())
-            ], JSON_PRETTY_PRINT));
+            // Create the aggregation buckets
+            $buckets = [
+                'price_bucket' => new \Magento\Framework\Search\Response\Bucket(
+                    'price_bucket',
+                    $priceBucketValues
+                ),
+                'category_bucket' => new \Magento\Framework\Search\Response\Bucket(
+                    'category_bucket',
+                    $categoryBucketValues
+                )
+            ];
 
-            $response = parent::search($request);
-            
-            // Log the aggregations from default search for comparison
-            if ($response instanceof QueryResponse) {
-                $this->logAggregations($response->getAggregations(), 'custom_search');
-            }
-            
-            return $response;
+            // Create the aggregation object with the buckets
+            $aggregations = new Aggregation($buckets);
+
+            return new QueryResponse($documents, $aggregations, count($documents));
 
         } catch (\Exception $e) {
             $this->logger->error("Error in search engine: " . $e->getMessage());
