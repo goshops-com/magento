@@ -42,6 +42,13 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
+            // Log the request details
+            $this->logger->debug('Request details: ' . print_r([
+                'aggregations' => $request->getAggregation(),
+                'query' => $request->getQuery()->__toString(),
+                'dimensions' => $request->getDimensions()
+            ], true));
+
             // Hardcoded test products with category data
             $products = [
                 [
@@ -49,24 +56,23 @@ class SearchEnginePlugin
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3], // Adding category information
-                    'category_gear' => [3]  // Important for category filter
+                    'category_ids' => [3]
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3],
-                    'category_gear' => [3]
+                    'category_ids' => [3]
                 ]
             ];
 
             $documents = [];
             
             foreach ($products as $product) {
-                // Create a document fields array
-                $fields = [
+                $document = new Document();
+                $document->setId($product['entity_id']);
+                $document->setCustomAttributes([
                     'entity_id' => new Value($product['entity_id'], 'entity_id'),
                     'name' => new Value($product['name'], 'name'),
                     'price' => new Value($product['price'], 'price'),
@@ -74,80 +80,51 @@ class SearchEnginePlugin
                     'status' => new Value(1, 'status'),
                     'visibility' => new Value(4, 'visibility'),
                     'store_id' => new Value(1, 'store_id'),
-                    'score' => new Value(1, 'score'),
-                    'category_id' => new Value($product['category_ids'][0], 'category_id'),
-                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids'),
-                    'category_gear' => new Value($product['category_gear'][0], 'category_gear')
-                ];
-
-                // Create the document
-                $document = new Document();
-                $document->setId($product['entity_id']);
-                $document->setCustomAttributes($fields);
+                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
+                ]);
 
                 $documents[] = $document;
             }
 
-            // Create proper bucket values with field names
-            $priceBucketValues = [
-                new Value('0_10', [
-                    'from' => 0,
-                    'to' => 10,
-                    'count' => 0,
-                    'value' => '0_10'
-                ], 'price_bucket'),
-                new Value('90_100', [
-                    'from' => 90,
-                    'to' => 100,
-                    'count' => 1,
-                    'value' => '90_100'
-                ], 'price_bucket'),
-                new Value('140_150', [
-                    'from' => 140,
-                    'to' => 150,
-                    'count' => 1,
-                    'value' => '140_150'
-                ], 'price_bucket')
-            ];
-
-            // Let's log what buckets are being requested
-            $this->logger->debug('Requested buckets: ' . print_r(array_keys($request->getAggregation()), true));
+            // Get the aggregations from the request
+            $requestedAggs = $request->getAggregation();
             
-            $categoryBucketValues = [
-                new Value(3, [
-                    'value' => 3,
-                    'count' => 2,
-                    'title' => 'Category 3',  // Adding title
-                    'position' => 1           // Adding position
-                ], 'category_bucket')
-            ];
-
-            // Create the aggregation buckets
-            $buckets = [
-                'price_bucket' => new \Magento\Framework\Search\Response\Bucket(
-                    'price_bucket',
-                    $priceBucketValues
-                ),
-                'category_bucket' => new \Magento\Framework\Search\Response\Bucket(
-                    'category_bucket',
-                    $categoryBucketValues
-                ),
-                'category_gear_bucket' => new \Magento\Framework\Search\Response\Bucket(
-                    'category_gear_bucket',
-                    $categoryBucketValues
-                )
-            ];
+            // Create buckets based on requested aggregations
+            $buckets = [];
+            foreach ($requestedAggs as $key => $agg) {
+                $this->logger->debug('Processing aggregation: ' . print_r($agg, true));
+                
+                if ($key == 0) {  // Price bucket
+                    $buckets[$key] = new \Magento\Framework\Search\Response\Bucket(
+                        'price_bucket',
+                        [
+                            new Value('90_100', [
+                                'from' => 90,
+                                'to' => 100,
+                                'count' => 1,
+                                'value' => '90_100'
+                            ], 'price')
+                        ]
+                    );
+                } elseif ($key == 1) {  // Category bucket
+                    $buckets[$key] = new \Magento\Framework\Search\Response\Bucket(
+                        'category_bucket',
+                        [
+                            new Value(3, [
+                                'value' => 3,
+                                'count' => 2
+                            ], 'category')
+                        ]
+                    );
+                }
+            }
 
             // Create the aggregation object with the buckets
             $aggregations = new Aggregation($buckets);
 
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
-            // Log the response structure
-            $this->logger->debug('Response aggregations: ' . print_r([
-                'buckets' => array_keys($response->getAggregations()->getBuckets()),
-                'total_count' => $response->getTotal()
-            ], true));
+            $this->logger->debug('Created response with buckets: ' . print_r(array_keys($buckets), true));
 
             return $response;
 
