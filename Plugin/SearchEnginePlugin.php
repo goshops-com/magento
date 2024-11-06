@@ -85,22 +85,10 @@ class SearchEnginePlugin
             // Products with multiple categories and attributes
             $products = [
                 [
-                    'entity_id' => '1',
-                    'name' => 'Test Product 1',
-                    'price' => 99.99,
-                    'sku' => 'TEST-1',
-                    'category_ids' => [3, 9, 20],
-                    'color' => '49',      // Black
-                    'size' => '166',      // XS
+                    'entity_id' => '1'
                 ],
                 [
-                    'entity_id' => '2',
-                    'name' => 'Test Product 2',
-                    'price' => 149.99,
-                    'sku' => 'TEST-2',
-                    'category_ids' => [3, 11, 37],
-                    'color' => '50',      // Blue
-                    'size' => '167',      // S
+                    'entity_id' => '2'
                 ]
             ];
 
