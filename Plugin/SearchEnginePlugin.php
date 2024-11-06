@@ -24,12 +24,14 @@ class SearchEnginePlugin
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager,
-        FilterableAttributeList $filterableAttributeList 
+        FilterableAttributeList $filterableAttributeList,
+        ProductCollectionFactory $productCollectionFactory
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
+        $this->productCollectionFactory = $productCollectionFactory;
     }
 
     protected function getFilterableAttributes()
@@ -82,15 +84,38 @@ class SearchEnginePlugin
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
-            // Products with multiple categories and attributes
-            $products = [
-                [
-                    'entity_id' => '1'
-                ],
-                [
-                    'entity_id' => '2'
-                ]
+            $productIds = [1, 2]; // You can set this variable as needed
+
+            // Load products from the database
+            $collection = $this->productCollectionFactory->create()
+                ->addAttributeToSelect('*')
+                ->addIdFilter($productIds)
+                ->load();
+
+            $products = [];
+
+            foreach ($collection as $product) {
+                $productData = [
+                'entity_id' => $product->getId(),
+                'name' => $product->getName(),
+                'price' => $product->getPrice(),
+                'sku' => $product->getSku(),
+                'category_ids' => $product->getCategoryIds(),
+                'status' => $product->getStatus(),
+                'visibility' => $product->getVisibility(),
+                'store_id' => $product->getStoreId(),
             ];
+
+            // Add filterable attributes dynamically
+            foreach ($filterableAttributes as $code => $attribute) {
+                $value = $product->getData($code);
+                if ($value !== null) {
+                        $productData[$code] = $value;
+                    }
+                }
+
+                $products[] = $productData;
+            }
 
             // Create documents
             $documents = [];
