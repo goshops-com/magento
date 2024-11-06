@@ -10,7 +10,7 @@ use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 
-class SearchEnginePlugin
+class SearchEngine
 {
     protected $logger;
     protected $httpRequest;
