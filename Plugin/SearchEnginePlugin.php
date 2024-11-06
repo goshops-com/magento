@@ -94,7 +94,7 @@ class SearchEnginePlugin
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3, 4, 7],
+                    'category_ids' => [3, 4, 20],
                     'size' => '166',      // XS
                 ],
                 [
@@ -102,7 +102,7 @@ class SearchEnginePlugin
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3, 4, 7],
+                    'category_ids' => [3, 11, 37],
 
                     'size' => '167',      // S
                 ]
@@ -193,19 +193,49 @@ class SearchEnginePlugin
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
             $this->logger->debug("Category counts from getValueCounts:", $categoryCounts);
-            
+
+            $this->logger->debug("About to create category values for IDs:", array_keys($categoryCounts));
+
             foreach ($categoryCounts as $value => $count) {
-                $categoryValues[] = new Value((string)$value, [
+                $valueMetrics = [
                     'value' => $value,
                     'count' => $count
-                ], 'category_bucket');
+                ];
+                
+                $this->logger->debug("Creating Value object for category:", [
+                    'category_id' => $value,
+                    'metrics' => $valueMetrics
+                ]);
+                
+                $categoryValues[] = new Value(
+                    (string)$value, 
+                    $valueMetrics,
+                    'category_bucket'
+                );
             }
-            $this->logger->debug("Created category values:", $categoryValues);
-            
+
+            $this->logger->debug("Created category values array:", array_map(function($value) {
+                return [
+                    'value' => $value->getValue(),
+                    'metrics' => $value->getMetrics()
+                ];
+            }, $categoryValues));
+
             $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'category_bucket',
                 $categoryValues
             );
+
+            $this->logger->debug("Final category bucket details:", [
+                'bucket_name' => $buckets['category_bucket']->getName(),
+                'values' => array_map(function($value) {
+                    return [
+                        'value' => $value->getValue(),
+                        'metrics' => $value->getMetrics(),
+                        'type' => get_class($value)
+                    ];
+                }, $buckets['category_bucket']->getValues())
+            ]);
 
             foreach ($filterableAttributes as $code => $attribute) {
                 if ($code === 'price') {
