@@ -35,7 +35,25 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            return $proceed($request);
+            $result = $proceed($request);
+            // Log original structure
+            if ($result instanceof QueryResponse) {
+                $this->logger->debug('Original response structure: ' . print_r([
+                    'aggregations' => array_map(function($bucket) {
+                        return [
+                            'name' => $bucket->getName(),
+                            'field' => property_exists($bucket, 'field') ? $bucket->getField() : 'unknown',
+                            'values' => array_map(function($value) {
+                                return [
+                                    'value' => $value->getValue(),
+                                    'metrics' => $value->getMetrics()
+                                ];
+                            }, $bucket->getValues())
+                        ];
+                    }, $result->getAggregations()->getBuckets())
+                ], true));
+            }
+            return $result;
         }
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
@@ -72,8 +90,7 @@ class SearchEnginePlugin
                     'status' => new Value(1, 'status'),
                     'visibility' => new Value(4, 'visibility'),
                     'store_id' => new Value(1, 'store_id'),
-                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids'),
-                    'category' => new Value(implode(',', $product['category_ids']), 'category')
+                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ]);
                 $documents[] = $document;
             }
@@ -89,51 +106,58 @@ class SearchEnginePlugin
                 }
             }
 
-            // Create buckets
-            $buckets = [
-                'price_bucket' => new \Magento\Framework\Search\Response\Bucket(
-                    'price_bucket',
-                    [
-                        new Value('90_100', [
-                            'from' => 90,
-                            'to' => 100,
-                            'count' => 1,
-                            'value' => '90_100'
-                        ], 'price_bucket'),
-                        new Value('140_150', [
-                            'from' => 140,
-                            'to' => 150,
-                            'count' => 1,
-                            'value' => '140_150'
-                        ], 'price_bucket')
-                    ]
-                ),
-                'category' => new \Magento\Framework\Search\Response\Bucket(
-                    'category',
-                    array_map(function($catId, $count) {
-                        return new Value($catId, [
-                            'value' => $catId,
-                            'count' => $count
-                        ], 'category');
-                    }, array_keys($categoryCounts), array_values($categoryCounts))
-                ),
-                'category_ids' => new \Magento\Framework\Search\Response\Bucket(
-                    'category_ids',
-                    array_map(function($catId, $count) {
-                        return new Value($catId, [
-                            'value' => $catId,
-                            'count' => $count
-                        ], 'category_ids');
-                    }, array_keys($categoryCounts), array_values($categoryCounts))
-                )
-            ];
+            // Create numerically indexed buckets array
+            $buckets = [];
+            
+            // Add price bucket at index 0
+            $buckets[0] = new \Magento\Framework\Search\Response\Bucket(
+                'price',  // Changed from price_bucket to price
+                [
+                    new Value('90_100', [
+                        'from' => 90,
+                        'to' => 100,
+                        'count' => 1,
+                        'value' => '90_100'
+                    ], 'price'),
+                    new Value('140_150', [
+                        'from' => 140,
+                        'to' => 150,
+                        'count' => 1,
+                        'value' => '140_150'
+                    ], 'price')
+                ]
+            );
+            
+            // Add category bucket at index 1
+            $categoryValues = [];
+            foreach ($categoryCounts as $catId => $count) {
+                $categoryValues[] = new Value($catId, [
+                    'value' => $catId,
+                    'count' => $count
+                ], 'category');
+            }
+            $buckets[1] = new \Magento\Framework\Search\Response\Bucket(
+                'category',
+                $categoryValues
+            );
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
-            $this->logger->debug('Created response with buckets: ' . print_r([
-                'bucket_names' => array_keys($buckets),
-                'category_counts' => $categoryCounts
+            // Log our response structure
+            $this->logger->debug('Custom response structure: ' . print_r([
+                'document_count' => count($documents),
+                'aggregations' => array_map(function($bucket) {
+                    return [
+                        'name' => $bucket->getName(),
+                        'values' => array_map(function($value) {
+                            return [
+                                'value' => $value->getValue(),
+                                'metrics' => $value->getMetrics()
+                            ];
+                        }, $bucket->getValues())
+                    ];
+                }, $aggregations->getBuckets())
             ], true));
 
             return $response;
