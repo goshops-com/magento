@@ -10,6 +10,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
+use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 
 class SearchEnginePlugin
 {
@@ -27,8 +28,42 @@ class SearchEnginePlugin
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
+        $this->filterableAttributeList = $filterableAttributeList;
     }
 
+    protected function getFilterableAttributes()
+    {
+        $attributes = [];
+        foreach ($this->filterableAttributeList->getList() as $attribute) {
+            $code = $attribute->getAttributeCode();
+            $options = [];
+            
+            // Get all options for this attribute
+            if ($attribute->usesSource()) {
+                foreach ($attribute->getSource()->getAllOptions() as $option) {
+                    if (!empty($option['value'])) {
+                        $options[$option['value']] = [
+                            'value' => $option['value'],
+                            'label' => $option['label']
+                        ];
+                    }
+                }
+            }
+
+            $attributes[$code] = [
+                'code' => $code,
+                'frontend_label' => $attribute->getFrontendLabel(),
+                'backend_type' => $attribute->getBackendType(),
+                'frontend_input' => $attribute->getFrontendInput(),
+                'options' => $options
+            ];
+        }
+
+        $this->logger->debug('Filterable attributes: ' . print_r($attributes, true));
+        
+        return $attributes;
+    }
+    
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -43,6 +78,9 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
+            // Get filterable attributes
+            $filterableAttributes = $this->getFilterableAttributes();
+            
             // Products with multiple categories and attributes
             $products = [
                 [
@@ -53,8 +91,6 @@ class SearchEnginePlugin
                     'category_ids' => [3, 9, 20],
                     'color' => '49',      // Black
                     'size' => '166',      // XS
-                    'gender' => '80',     // Men
-                    'material' => ['38']  // Polyester
                 ],
                 [
                     'entity_id' => '2',
@@ -64,8 +100,6 @@ class SearchEnginePlugin
                     'category_ids' => [3, 11, 37],
                     'color' => '50',      // Blue
                     'size' => '167',      // S
-                    'gender' => '81',     // Women
-                    'material' => ['33']  // Cotton
                 ]
             ];
 
@@ -83,8 +117,8 @@ class SearchEnginePlugin
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
 
-                // Add filterable attributes
-                foreach (['color', 'size', 'gender', 'material'] as $code) {
+                // Add filterable attributes dynamically
+                foreach ($filterableAttributes as $code => $attribute) {
                     if (isset($product[$code])) {
                         $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
                         $attributes[$code] = new Value($value, $code);
@@ -133,42 +167,24 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
-            // Add attribute buckets
-            $attributeConfigs = [
-                'color' => [
-                    'options' => [
-                        '49' => 'Black',
-                        '50' => 'Blue'
-                    ]
-                ],
-                'size' => [
-                    'options' => [
-                        '166' => 'XS',
-                        '167' => 'S'
-                    ]
-                ],
-                'gender' => [
-                    'options' => [
-                        '80' => 'Men',
-                        '81' => 'Women'
-                    ]
-                ],
-                'material' => [
-                    'options' => [
-                        '33' => 'Cotton',
-                        '38' => 'Polyester'
-                    ]
-                ]
-            ];
+            // Add attribute buckets dynamically
+            foreach ($filterableAttributes as $code => $attribute) {
+                // Skip price as we handle it separately
+                if ($code === 'price') {
+                    continue;
+                }
 
-            foreach ($attributeConfigs as $code => $config) {
-                $counts = $this->getValueCounts($products, $code);
+                $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
                 if (!empty($counts)) {
                     $values = [];
                     foreach ($counts as $value => $count) {
+                        $optionLabel = isset($attribute['options'][$value]) ? 
+                            $attribute['options'][$value]['label'] : 
+                            $value;
+
                         $values[] = new Value((string)$value, [
                             'value' => $value,
-                            'label' => $config['options'][$value] ?? $value,
+                            'label' => $optionLabel,
                             'count' => $count
                         ], $code . self::BUCKET_SUFFIX);
                     }
