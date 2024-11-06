@@ -94,7 +94,7 @@ class SearchEnginePlugin
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3, 9, 20],
+                    'category_ids' => [3, 4, 7],
                     'size' => '166',      // XS
                 ],
                 [
@@ -102,7 +102,7 @@ class SearchEnginePlugin
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3, 11, 37],
+                    'category_ids' => [3, 4, 7],
 
                     'size' => '167',      // S
                 ]
