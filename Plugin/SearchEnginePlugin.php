@@ -10,8 +10,6 @@ use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
-use Magento\Framework\Search\Request\Aggregation\TermBucket;
-use Magento\Framework\Search\Request\Aggregation\DynamicBucket;
 
 class SearchEnginePlugin
 {
@@ -50,14 +48,14 @@ class SearchEnginePlugin
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3, 9, 20]  // Multiple categories
+                    'category_ids' => [3, 9, 20]
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3, 11, 37]  // Multiple categories
+                    'category_ids' => [3, 11, 37]
                 ]
             ];
 
@@ -74,77 +72,68 @@ class SearchEnginePlugin
                     'status' => new Value(1, 'status'),
                     'visibility' => new Value(4, 'visibility'),
                     'store_id' => new Value(1, 'store_id'),
-                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
+                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids'),
+                    'category' => new Value(implode(',', $product['category_ids']), 'category')
                 ]);
                 $documents[] = $document;
             }
 
-            // Create buckets based on aggregation type
-            $buckets = [];
-            foreach ($request->getAggregation() as $index => $agg) {
-                if ($agg instanceof DynamicBucket && $agg->getName() === 'price_bucket') {
-                    // Price bucket
-                    $buckets[$index] = new \Magento\Framework\Search\Response\Bucket(
-                        'price_bucket',
-                        [
-                            new Value('90_100', [
-                                'from' => 90,
-                                'to' => 100,
-                                'count' => 1,
-                                'value' => '90_100'
-                            ], 'price_bucket'),
-                            new Value('140_150', [
-                                'from' => 140,
-                                'to' => 150,
-                                'count' => 1,
-                                'value' => '140_150'
-                            ], 'price_bucket')
-                        ]
-                    );
-                } elseif ($agg instanceof TermBucket && $agg->getName() === 'category_bucket') {
-                    // Get included categories from parameters
-                    $includedCategories = [];
-                    $parameters = $agg->getParameters();
-                    if (isset($parameters['include'])) {
-                        $includedCategories = $parameters['include'];
+            // Count products in each category
+            $categoryCounts = [];
+            foreach ($products as $product) {
+                foreach ($product['category_ids'] as $catId) {
+                    if (!isset($categoryCounts[$catId])) {
+                        $categoryCounts[$catId] = 0;
                     }
-
-                    // Count products in each category
-                    $categoryCounts = [];
-                    foreach ($products as $product) {
-                        foreach ($product['category_ids'] as $catId) {
-                            if (in_array($catId, $includedCategories)) {
-                                if (!isset($categoryCounts[$catId])) {
-                                    $categoryCounts[$catId] = 0;
-                                }
-                                $categoryCounts[$catId]++;
-                            }
-                        }
-                    }
-
-                    // Create category bucket values
-                    $categoryValues = [];
-                    foreach ($categoryCounts as $catId => $count) {
-                        $categoryValues[] = new Value($catId, [
-                            'value' => $catId,
-                            'count' => $count
-                        ], 'category_bucket');
-                    }
-
-                    $buckets[$index] = new \Magento\Framework\Search\Response\Bucket(
-                        'category_bucket',
-                        $categoryValues
-                    );
+                    $categoryCounts[$catId]++;
                 }
             }
+
+            // Create buckets
+            $buckets = [
+                'price_bucket' => new \Magento\Framework\Search\Response\Bucket(
+                    'price_bucket',
+                    [
+                        new Value('90_100', [
+                            'from' => 90,
+                            'to' => 100,
+                            'count' => 1,
+                            'value' => '90_100'
+                        ], 'price_bucket'),
+                        new Value('140_150', [
+                            'from' => 140,
+                            'to' => 150,
+                            'count' => 1,
+                            'value' => '140_150'
+                        ], 'price_bucket')
+                    ]
+                ),
+                'category' => new \Magento\Framework\Search\Response\Bucket(
+                    'category',
+                    array_map(function($catId, $count) {
+                        return new Value($catId, [
+                            'value' => $catId,
+                            'count' => $count
+                        ], 'category');
+                    }, array_keys($categoryCounts), array_values($categoryCounts))
+                ),
+                'category_ids' => new \Magento\Framework\Search\Response\Bucket(
+                    'category_ids',
+                    array_map(function($catId, $count) {
+                        return new Value($catId, [
+                            'value' => $catId,
+                            'count' => $count
+                        ], 'category_ids');
+                    }, array_keys($categoryCounts), array_values($categoryCounts))
+                )
+            ];
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
-            $this->logger->debug('Created response with structure: ' . print_r([
-                'document_count' => count($documents),
+            $this->logger->debug('Created response with buckets: ' . print_r([
                 'bucket_names' => array_keys($buckets),
-                'category_values' => isset($categoryCounts) ? $categoryCounts : []
+                'category_counts' => $categoryCounts
             ], true));
 
             return $response;
