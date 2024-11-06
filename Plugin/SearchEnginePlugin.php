@@ -5,7 +5,7 @@ use Magento\Framework\Search\RequestInterface;
 use Magento\Framework\Search\Response\QueryResponse;
 use Magento\Framework\Search\Response\Aggregation;
 use Magento\Framework\Search\Response\Aggregation\Value;
-use Magento\Framework\Search\Document as SearchDocument;
+use Magento\Framework\Api\Search\Document;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
@@ -61,19 +61,24 @@ class SearchEnginePlugin
             $documents = [];
             
             foreach ($products as $product) {
-                $documents[] = new SearchDocument(
-                    $product['entity_id'],
-                    [
-                        'entity_id' => new Value($product['entity_id']),
-                        'name' => new Value($product['name']),
-                        'price' => new Value($product['price']),
-                        'sku' => new Value($product['sku']),
-                        'status' => new Value(1),
-                        'visibility' => new Value(4),
-                        'store_id' => new Value(1),
-                        'score' => new Value(1)
-                    ]
-                );
+                // Create a document fields array
+                $fields = [
+                    'entity_id' => new Value($product['entity_id']),
+                    'name' => new Value($product['name']),
+                    'price' => new Value($product['price']),
+                    'sku' => new Value($product['sku']),
+                    'status' => new Value(1),
+                    'visibility' => new Value(4),
+                    'store_id' => new Value(1),
+                    'score' => new Value(1)
+                ];
+
+                // Create the document
+                $document = new Document();
+                $document->setId($product['entity_id']);
+                $document->setCustomAttributes($fields);
+
+                $documents[] = $document;
             }
 
             // Create proper bucket values
