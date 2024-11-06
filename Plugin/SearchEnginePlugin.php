@@ -42,19 +42,23 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Hardcoded test products
+            // Hardcoded test products with category data
             $products = [
                 [
                     'entity_id' => '1',
                     'name' => 'Test Product 1',
                     'price' => 99.99,
-                    'sku' => 'TEST-1'
+                    'sku' => 'TEST-1',
+                    'category_ids' => [3], // Adding category information
+                    'category_gear' => [3]  // Important for category filter
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
-                    'sku' => 'TEST-2'
+                    'sku' => 'TEST-2',
+                    'category_ids' => [3],
+                    'category_gear' => [3]
                 ]
             ];
 
@@ -70,7 +74,10 @@ class SearchEnginePlugin
                     'status' => new Value(1, 'status'),
                     'visibility' => new Value(4, 'visibility'),
                     'store_id' => new Value(1, 'store_id'),
-                    'score' => new Value(1, 'score')
+                    'score' => new Value(1, 'score'),
+                    'category_id' => new Value($product['category_ids'][0], 'category_id'),
+                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids'),
+                    'category_gear' => new Value($product['category_gear'][0], 'category_gear')
                 ];
 
                 // Create the document
@@ -103,10 +110,15 @@ class SearchEnginePlugin
                 ], 'price_bucket')
             ];
 
+            // Let's log what buckets are being requested
+            $this->logger->debug('Requested buckets: ' . print_r(array_keys($request->getAggregation()), true));
+            
             $categoryBucketValues = [
                 new Value(3, [
                     'value' => 3,
-                    'count' => 2
+                    'count' => 2,
+                    'title' => 'Category 3',  // Adding title
+                    'position' => 1           // Adding position
                 ], 'category_bucket')
             ];
 
@@ -119,13 +131,25 @@ class SearchEnginePlugin
                 'category_bucket' => new \Magento\Framework\Search\Response\Bucket(
                     'category_bucket',
                     $categoryBucketValues
+                ),
+                'category_gear_bucket' => new \Magento\Framework\Search\Response\Bucket(
+                    'category_gear_bucket',
+                    $categoryBucketValues
                 )
             ];
 
             // Create the aggregation object with the buckets
             $aggregations = new Aggregation($buckets);
 
-            return new QueryResponse($documents, $aggregations, count($documents));
+            $response = new QueryResponse($documents, $aggregations, count($documents));
+
+            // Log the response structure
+            $this->logger->debug('Response aggregations: ' . print_r([
+                'buckets' => array_keys($response->getAggregations()->getBuckets()),
+                'total_count' => $response->getTotal()
+            ], true));
+
+            return $response;
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
