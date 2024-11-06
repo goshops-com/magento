@@ -24,14 +24,13 @@ class SearchEnginePlugin
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager,
-        FilterableAttributeList $filterableAttributeList,
-        ProductCollectionFactory $productCollectionFactory
+        FilterableAttributeList $filterableAttributeList 
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
-        $this->productCollectionFactory = $productCollectionFactory;
+        
     }
 
     protected function getFilterableAttributes()
