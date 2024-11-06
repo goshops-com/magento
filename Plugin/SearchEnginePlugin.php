@@ -200,26 +200,21 @@ class SearchEnginePlugin
      * @param array $attribute
      * @return array
      */
-    protected function getAttributeCounts(array $products, string $attributeCode, array $attribute): array
+    protected function getAttributeCounts(array $products, string $attributeCode, array $attribute): array 
     {
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$attributeCode])) {
-                $value = $this->formatAttributeValue(
-                    $product[$attributeCode],
-                    $attributeCode,
-                    $attribute
-                );
-                
-                if (is_array($value)) {
-                    // Handle multiselect values
-                    foreach ($value as $subValue) {
-                        if (!isset($counts[$subValue])) {
-                            $counts[$subValue] = 0;
+                if (is_array($product[$attributeCode])) {
+                    // Handle multiselect attributes (like category_ids)
+                    foreach ($product[$attributeCode] as $value) {
+                        if (!isset($counts[$value])) {
+                            $counts[$value] = 0;
                         }
-                        $counts[$subValue]++;
+                        $counts[$value]++;
                     }
                 } else {
+                    $value = $product[$attributeCode];
                     if (!isset($counts[$value])) {
                         $counts[$value] = 0;
                     }
@@ -251,11 +246,9 @@ class SearchEnginePlugin
                     'price' => 99.99,
                     'sku' => 'TEST-1',
                     'category_ids' => [3, 9, 20],
-                    'size' => '166',
-                    'color' => '49',
-                    'material' => '38',
-                    'pattern' => '196',
-                    'style_general' => '135'
+                    'gender' => ['80'], // Men - showing multiselect handling
+                    'material' => ['38', '33'], // Multiple materials
+                    'color' => '49', // Black
                 ],
                 [
                     'entity_id' => '2',
@@ -263,15 +256,13 @@ class SearchEnginePlugin
                     'price' => 149.99,
                     'sku' => 'TEST-2',
                     'category_ids' => [3, 11, 37],
-                    'size' => '167',
-                    'color' => '50',
-                    'material' => '33',
-                    'pattern' => '198',
-                    'style_general' => '132'
+                    'gender' => ['81'], // Women
+                    'material' => ['33'], // Cotton
+                    'color' => '50', // Blue
                 ]
             ];
 
-            // Create documents
+            // Create documents (same as before)
             $documents = [];
             foreach ($products as $product) {
                 $attributes = [
@@ -285,12 +276,11 @@ class SearchEnginePlugin
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
 
+                // Add other filterable attributes
                 foreach ($filterableAttributes as $code => $attribute) {
                     if (isset($product[$code])) {
-                        $attributes[$code] = new Value(
-                            $this->formatAttributeValue($product[$code], $code, $attribute),
-                            $code
-                        );
+                        $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
+                        $attributes[$code] = new Value($value, $code);
                     }
                 }
 
@@ -300,16 +290,59 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Create buckets
+            // Start with mandatory buckets
             $buckets = [];
+
+            // Always add category bucket first (this is crucial)
+            $categoryValues = [];
+            $categoryCounts = $this->getAttributeCounts($products, 'category_ids', [
+                'code' => 'category_ids',
+                'frontend_input' => 'multiselect'
+            ]);
+            
+            foreach ($categoryCounts as $categoryId => $count) {
+                $categoryValues[] = new Value($categoryId, [
+                    'value' => $categoryId,
+                    'count' => $count
+                ], 'category');
+            }
+            
+            $buckets['category'] = new \Magento\Framework\Search\Response\Bucket(
+                'category',
+                $categoryValues
+            );
+
+            // Price bucket
+            $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
+                'price_bucket',
+                [
+                    new Value('90_100', [
+                        'from' => 90,
+                        'to' => 100,
+                        'count' => 1,
+                        'value' => '90_100'
+                    ], 'price_bucket'),
+                    new Value('140_150', [
+                        'from' => 140,
+                        'to' => 150,
+                        'count' => 1,
+                        'value' => '140_150'
+                    ], 'price_bucket')
+                ]
+            );
+
+            // Add other filterable attribute buckets
             foreach ($filterableAttributes as $code => $attribute) {
-                $values = $this->getAttributeCounts($products, $code, $attribute);
-                if (!empty($values)) {
-                    $buckets[$code . self::BUCKET_SUFFIX] = $this->createBucket($code, $values, $attribute);
+                if ($code !== 'price') { // Skip price as we handled it separately
+                    $values = $this->getAttributeCounts($products, $code, $attribute);
+                    if (!empty($values)) {
+                        $bucketName = $code . self::BUCKET_SUFFIX;
+                        $buckets[$bucketName] = $this->createBucket($code, $values, $attribute);
+                    }
                 }
             }
 
-            $this->logger->debug('Created buckets: ' . print_r(array_keys($buckets), true));
+            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
 
             $aggregations = new Aggregation($buckets);
             return new QueryResponse($documents, $aggregations, count($documents));
