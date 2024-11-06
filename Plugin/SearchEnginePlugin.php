@@ -116,7 +116,7 @@ class SearchEnginePlugin
 
             $products2 = [];
 
-            oreach ($collection as $product) {
+            foreach ($collection as $product) {
                 $productData = [
                     'entity_id' => $product->getId(),
                     'name' => $product->getName(),
