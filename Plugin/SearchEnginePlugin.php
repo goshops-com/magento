@@ -35,21 +35,37 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            $this->logger->debug("SearchEnginePlugin: USING DEFAULT MAGENTO SEARCH");
-            return $proceed($request);
+            $result = $proceed($request);
+            // Log the original response structure
+            if ($result instanceof QueryResponse) {
+                $this->logger->debug('Original search response structure: ' . print_r([
+                    'buckets' => array_keys($result->getAggregations()->getBuckets()),
+                ], true));
+            }
+            return $result;
         }
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Log the request details more safely
+            // Log detailed request information
             $this->logger->debug('Request details: ' . print_r([
                 'aggregations' => $request->getAggregation(),
-                'dimensions' => $request->getDimensions(),
-                'name' => $request->getName()
+                'name' => $request->getName(),
+                'dimension_data' => array_map(function($dimension) {
+                    return $dimension->getValue();
+                }, $request->getDimensions())
             ], true));
 
-            // Hardcoded test products with category data
+            // Get original response to see structure
+            $originalResponse = $proceed($request);
+            if ($originalResponse instanceof QueryResponse) {
+                $this->logger->debug('Original bucket structure: ' . print_r([
+                    'bucket_names' => array_keys($originalResponse->getAggregations()->getBuckets())
+                ], true));
+            }
+
+            // Products
             $products = [
                 [
                     'entity_id' => '1',
@@ -68,7 +84,6 @@ class SearchEnginePlugin
             ];
 
             $documents = [];
-            
             foreach ($products as $product) {
                 $document = new Document();
                 $document->setId($product['entity_id']);
@@ -82,57 +97,53 @@ class SearchEnginePlugin
                     'store_id' => new Value(1, 'store_id'),
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ]);
-
                 $documents[] = $document;
             }
 
-            // Get the aggregations from the request
+            // Create buckets matching requested aggregation names
             $requestedAggs = $request->getAggregation();
-            
-            // Create buckets based on requested aggregations
             $buckets = [];
             
-            // First bucket (usually price)
-            $buckets[0] = new \Magento\Framework\Search\Response\Bucket(
-                'price_bucket',
-                [
-                    new Value('90_100', [
-                        'from' => 90,
-                        'to' => 100,
-                        'count' => 1,
-                        'value' => '90_100'
-                    ], 'price'),
-                    new Value('140_150', [
-                        'from' => 140,
-                        'to' => 150,
-                        'count' => 1,
-                        'value' => '140_150'
-                    ], 'price')
-                ]
-            );
-            
-            // Second bucket (usually category)
-            $buckets[1] = new \Magento\Framework\Search\Response\Bucket(
-                'category_bucket',
-                [
-                    new Value(3, [
-                        'value' => 3,
-                        'count' => 2
-                    ], 'category')
-                ]
-            );
+            foreach ($requestedAggs as $name => $agg) {
+                $this->logger->debug("Processing aggregation: $name");
+                $bucketName = $agg->getName();
+                
+                if (strpos($bucketName, 'price') !== false) {
+                    $buckets[$bucketName] = new \Magento\Framework\Search\Response\Bucket(
+                        $bucketName,
+                        [
+                            new Value('90_100', [
+                                'from' => 90,
+                                'to' => 100,
+                                'count' => 1,
+                                'value' => '90_100'
+                            ], $bucketName),
+                            new Value('140_150', [
+                                'from' => 140,
+                                'to' => 150,
+                                'count' => 1,
+                                'value' => '140_150'
+                            ], $bucketName)
+                        ]
+                    );
+                } elseif (strpos($bucketName, 'category') !== false) {
+                    $buckets[$bucketName] = new \Magento\Framework\Search\Response\Bucket(
+                        $bucketName,
+                        [
+                            new Value(3, [
+                                'value' => 3,
+                                'count' => 2
+                            ], $bucketName)
+                        ]
+                    );
+                }
+            }
 
-            // Create the aggregation object with the buckets
+            // Log the buckets we're creating
+            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
+
             $aggregations = new Aggregation($buckets);
-
-            $response = new QueryResponse($documents, $aggregations, count($documents));
-
-            $this->logger->debug('Created response with buckets: ' . print_r([
-                'bucket_keys' => array_keys($buckets),
-                'document_count' => count($documents)
-            ], true));
-
-            return $response;
+            return new QueryResponse($documents, $aggregations, count($documents));
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
