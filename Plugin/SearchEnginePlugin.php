@@ -45,6 +45,20 @@ class SearchEnginePlugin
         $this->attributeRepository = $attributeRepository;
     }
 
+    protected function formatAttributeValue($value, string $attributeCode, array $attribute)
+    {
+        switch ($attributeCode) {
+            case 'price':
+                return number_format($value, 2, '_', '');
+            
+            case 'category_ids':
+                return (string)$value;
+                
+            default:
+                return (string)$value;
+        }
+    }
+
     /**
      * Get all filterable attributes
      *
@@ -66,6 +80,49 @@ class SearchEnginePlugin
         $this->logger->debug('Filterable attributes: ' . print_r($filterableAttributes, true));
         
         return $filterableAttributes;
+    }
+
+    protected function createBucket(string $attributeCode, array $values, array $attribute)
+    {
+        $bucketName = $attributeCode . self::BUCKET_SUFFIX;
+        
+        switch ($attributeCode) {
+            case 'price':
+                $bucketValues = [];
+                foreach ($values as $value => $count) {
+                    $rangeLower = floor($value / 10) * 10;
+                    $rangeUpper = $rangeLower + 10;
+                    $rangeKey = $rangeLower . '_' . $rangeUpper;
+                    
+                    if (!isset($bucketValues[$rangeKey])) {
+                        $bucketValues[$rangeKey] = [
+                            'value' => $rangeKey,
+                            'count' => 0,
+                            'from' => $rangeLower,
+                            'to' => $rangeUpper
+                        ];
+                    }
+                    $bucketValues[$rangeKey]['count'] += $count;
+                }
+                
+                return new \Magento\Framework\Search\Response\Bucket(
+                    $bucketName,
+                    array_map(function($range) use ($bucketName) {
+                        return new Value($range['value'], $range, $bucketName);
+                    }, array_values($bucketValues))
+                );
+                
+            default:
+                return new \Magento\Framework\Search\Response\Bucket(
+                    $bucketName,
+                    array_map(function($value, $count) use ($bucketName) {
+                        return new Value((string)$value, [
+                            'value' => $value,
+                            'count' => $count
+                        ], $bucketName);
+                    }, array_keys($values), array_values($values))
+                );
+        }
     }
 
     /**
@@ -256,18 +313,24 @@ class SearchEnginePlugin
     }
 
     /**
-     * Get attribute value counts from products
+     * Get attribute value counts from products with type handling
      *
      * @param array $products
      * @param string $attributeCode
+     * @param array $attribute
      * @return array
      */
-    protected function getAttributeCounts(array $products, string $attributeCode): array
+    protected function getAttributeCounts(array $products, string $attributeCode, array $attribute): array
     {
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$attributeCode])) {
-                $value = $product[$attributeCode];
+                $value = $this->formatAttributeValue(
+                    $product[$attributeCode],
+                    $attributeCode,
+                    $attribute
+                );
+                
                 if (!isset($counts[$value])) {
                     $counts[$value] = 0;
                 }
@@ -275,5 +338,89 @@ class SearchEnginePlugin
             }
         }
         return $counts;
+    }
+
+    public function aroundSearch(
+        SearchEngine $subject,
+        callable $proceed,
+        RequestInterface $request
+    ) {
+        if (!$this->httpRequest->getParam('gpSearchOverride')) {
+            return $proceed($request);
+        }
+
+        try {
+            // Get filterable attributes
+            $filterableAttributes = $this->getFilterableAttributes();
+            
+            // Your test products
+            $products = [
+                [
+                    'entity_id' => '1',
+                    'name' => 'Test Product 1',
+                    'price' => 99.99,
+                    'sku' => 'TEST-1',
+                    'category_ids' => [3, 9, 20],
+                    'size' => '166', // XS
+                    'color' => '49',  // Black
+                    'material' => '38' // Polyester
+                ],
+                [
+                    'entity_id' => '2',
+                    'name' => 'Test Product 2',
+                    'price' => 149.99,
+                    'sku' => 'TEST-2',
+                    'category_ids' => [3, 11, 37],
+                    'size' => '167', // S
+                    'color' => '50',  // Blue
+                    'material' => '33' // Cotton
+                ]
+            ];
+
+            // Create documents
+            $documents = [];
+            foreach ($products as $product) {
+                $attributes = [
+                    'entity_id' => new Value($product['entity_id'], 'entity_id'),
+                    'name' => new Value($product['name'], 'name'),
+                    'price' => new Value((string)$product['price'], 'price'),
+                    'sku' => new Value($product['sku'], 'sku'),
+                    'status' => new Value(1, 'status'),
+                    'visibility' => new Value(4, 'visibility'),
+                    'store_id' => new Value(1, 'store_id'),
+                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
+                ];
+
+                foreach ($filterableAttributes as $code => $attribute) {
+                    if (isset($product[$code])) {
+                        $attributes[$code] = new Value(
+                            $this->formatAttributeValue($product[$code], $code, $attribute),
+                            $code
+                        );
+                    }
+                }
+
+                $document = new Document();
+                $document->setId($product['entity_id']);
+                $document->setCustomAttributes($attributes);
+                $documents[] = $document;
+            }
+
+            // Create buckets
+            $buckets = [];
+            foreach ($filterableAttributes as $code => $attribute) {
+                $values = $this->getAttributeCounts($products, $code, $attribute);
+                if (!empty($values)) {
+                    $buckets[$code . self::BUCKET_SUFFIX] = $this->createBucket($code, $values, $attribute);
+                }
+            }
+
+            $aggregations = new Aggregation($buckets);
+            return new QueryResponse($documents, $aggregations, count($documents));
+
+        } catch (\Exception $e) {
+            $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
+            throw $e;
+        }
     }
 }
