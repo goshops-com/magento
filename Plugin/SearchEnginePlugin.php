@@ -116,15 +116,25 @@ class SearchEnginePlugin
 
             $products2 = [];
 
-            foreach ($collection as $product) {
-                $products2[] = [
+            oreach ($collection as $product) {
+                $productData = [
                     'entity_id' => $product->getId(),
                     'name' => $product->getName(),
                     'price' => $product->getPrice(),
                     'sku' => $product->getSku(),
-                    'category_ids' => $product->getCategoryIds(),
-                    'size' => $product->getData('size'),
+                    // Ensure category_ids are integers
+                    'category_ids' => array_map('intval', $product->getCategoryIds()),
                 ];
+            
+                // Loop over filterable attributes and add their values if available
+                foreach ($filterableAttributes as $code => $attribute) {
+                    $value = $product->getData($code);
+                    if ($value !== null) {
+                        $productData[$code] = $value;
+                    }
+                }
+            
+                $products2[] = $productData;
             }
 
             // Log the fetched products data
