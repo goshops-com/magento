@@ -36,13 +36,11 @@ class SearchEnginePlugin
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             $result = $proceed($request);
-            // Log original structure
             if ($result instanceof QueryResponse) {
-                $this->logger->debug('Original response structure: ' . print_r([
+                $this->logger->debug('Original response details: ' . print_r([
                     'aggregations' => array_map(function($bucket) {
                         return [
                             'name' => $bucket->getName(),
-                            'field' => property_exists($bucket, 'field') ? $bucket->getField() : 'unknown',
                             'values' => array_map(function($value) {
                                 return [
                                     'value' => $value->getValue(),
@@ -106,12 +104,12 @@ class SearchEnginePlugin
                 }
             }
 
-            // Create numerically indexed buckets array
+            // Create buckets array
             $buckets = [];
-            
-            // Add price bucket at index 0
+
+            // Price bucket
             $buckets[0] = new \Magento\Framework\Search\Response\Bucket(
-                'price',  // Changed from price_bucket to price
+                'price_bucket',
                 [
                     new Value('90_100', [
                         'from' => 90,
@@ -127,37 +125,32 @@ class SearchEnginePlugin
                     ], 'price')
                 ]
             );
-            
-            // Add category bucket at index 1
+
+            // Category bucket (using both 'category' name and 'category_ids' field)
             $categoryValues = [];
             foreach ($categoryCounts as $catId => $count) {
                 $categoryValues[] = new Value($catId, [
                     'value' => $catId,
                     'count' => $count
-                ], 'category');
+                ], 'category_ids');  // Using category_ids as the field name
             }
+            
             $buckets[1] = new \Magento\Framework\Search\Response\Bucket(
-                'category',
+                'category',  // Using 'category' as the bucket name
                 $categoryValues
             );
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
-            // Log our response structure
-            $this->logger->debug('Custom response structure: ' . print_r([
-                'document_count' => count($documents),
-                'aggregations' => array_map(function($bucket) {
+            $this->logger->debug('Created response buckets: ' . print_r([
+                'buckets' => array_map(function($bucket) {
                     return [
                         'name' => $bucket->getName(),
-                        'values' => array_map(function($value) {
-                            return [
-                                'value' => $value->getValue(),
-                                'metrics' => $value->getMetrics()
-                            ];
-                        }, $bucket->getValues())
+                        'values_count' => count($bucket->getValues()),
+                        'first_value' => $bucket->getValues()[0]->getValue()
                     ];
-                }, $aggregations->getBuckets())
+                }, $buckets)
             ], true));
 
             return $response;
