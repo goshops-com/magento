@@ -37,11 +37,14 @@ class SearchEnginePlugin
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             $result = $proceed($request);
             if ($result instanceof QueryResponse) {
-                $this->logger->debug('Original response details: ' . print_r([
+                // Log the complete structure of the default search response
+                $this->logger->debug('Default search response structure: ' . print_r([
+                    'total_count' => $result->getTotal(),
                     'aggregations' => array_map(function($bucket) {
                         return [
                             'name' => $bucket->getName(),
-                            'values' => array_map(function($value) {
+                            'field' => method_exists($bucket, 'getField') ? $bucket->getField() : 'N/A',
+                            'metrics' => array_map(function($value) {
                                 return [
                                     'value' => $value->getValue(),
                                     'metrics' => $value->getMetrics()
@@ -57,6 +60,12 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
+            // Get default response first to see its structure
+            $defaultResponse = $proceed($request);
+            if ($defaultResponse instanceof QueryResponse) {
+                $this->logger->debug('Default buckets in custom search: ' . print_r(array_keys($defaultResponse->getAggregations()->getBuckets()), true));
+            }
+
             // Products with multiple categories
             $products = [
                 [
@@ -75,7 +84,6 @@ class SearchEnginePlugin
                 ]
             ];
 
-            // Create documents
             $documents = [];
             foreach ($products as $product) {
                 $document = new Document();
@@ -93,64 +101,42 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Count products in each category
-            $categoryCounts = [];
-            foreach ($products as $product) {
-                foreach ($product['category_ids'] as $catId) {
-                    if (!isset($categoryCounts[$catId])) {
-                        $categoryCounts[$catId] = 0;
+            // Use the same buckets from default response
+            $buckets = [];
+            if ($defaultResponse instanceof QueryResponse) {
+                $originalBuckets = $defaultResponse->getAggregations()->getBuckets();
+                foreach ($originalBuckets as $key => $originalBucket) {
+                    if ($originalBucket->getName() === 'category') {
+                        // Create category values
+                        $categoryValues = [];
+                        foreach ($products as $product) {
+                            foreach ($product['category_ids'] as $catId) {
+                                $categoryValues[$catId] = new Value($catId, [
+                                    'value' => $catId,
+                                    'count' => 1
+                                ], 'category');
+                            }
+                        }
+                        $buckets[$key] = new \Magento\Framework\Search\Response\Bucket(
+                            'category',
+                            array_values($categoryValues)
+                        );
+                    } else {
+                        // Keep other buckets as they are
+                        $buckets[$key] = $originalBucket;
                     }
-                    $categoryCounts[$catId]++;
                 }
             }
-
-            // Create buckets array
-            $buckets = [];
-
-            // Price bucket
-            $buckets[0] = new \Magento\Framework\Search\Response\Bucket(
-                'price_bucket',
-                [
-                    new Value('90_100', [
-                        'from' => 90,
-                        'to' => 100,
-                        'count' => 1,
-                        'value' => '90_100'
-                    ], 'price'),
-                    new Value('140_150', [
-                        'from' => 140,
-                        'to' => 150,
-                        'count' => 1,
-                        'value' => '140_150'
-                    ], 'price')
-                ]
-            );
-
-            // Category bucket (using both 'category' name and 'category_ids' field)
-            $categoryValues = [];
-            foreach ($categoryCounts as $catId => $count) {
-                $categoryValues[] = new Value($catId, [
-                    'value' => $catId,
-                    'count' => $count
-                ], 'category_ids');  // Using category_ids as the field name
-            }
-            
-            $buckets[1] = new \Magento\Framework\Search\Response\Bucket(
-                'category',  // Using 'category' as the bucket name
-                $categoryValues
-            );
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
-            $this->logger->debug('Created response buckets: ' . print_r([
-                'buckets' => array_map(function($bucket) {
-                    return [
-                        'name' => $bucket->getName(),
-                        'values_count' => count($bucket->getValues()),
-                        'first_value' => $bucket->getValues()[0]->getValue()
-                    ];
-                }, $buckets)
+            // Log the final response structure
+            $this->logger->debug('Final custom response structure: ' . print_r([
+                'total_count' => $response->getTotal(),
+                'bucket_names' => array_map(function($bucket) {
+                    return $bucket->getName();
+                }, $response->getAggregations()->getBuckets())
             ], true));
 
             return $response;
