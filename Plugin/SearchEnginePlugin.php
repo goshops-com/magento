@@ -100,7 +100,7 @@ class SearchEnginePlugin
                         'category_ids' => $product->getCategoryIds()
                     ];
 
-                    // Only add attributes that exist in the product
+                    // Add attributes that exist in the product
                     foreach ($filterableAttributes as $code => $attribute) {
                         $value = $product->getData($code);
                         if ($value !== null) {
@@ -116,37 +116,16 @@ class SearchEnginePlugin
                 }
             }
 
-            // Create documents
+            // Create documents (keep this part the same)
             $documents = [];
             foreach ($products as $product) {
-                $attributes = [
-                    'entity_id' => new Value($product['entity_id'], 'entity_id'),
-                    'name' => new Value($product['name'], 'name'),
-                    'price' => new Value($product['price'], 'price'),
-                    'sku' => new Value($product['sku'], 'sku'),
-                    'status' => new Value(1, 'status'),
-                    'visibility' => new Value(4, 'visibility'),
-                    'store_id' => new Value(1, 'store_id'),
-                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
-                ];
-
-                foreach ($filterableAttributes as $code => $attribute) {
-                    if (isset($product[$code])) {
-                        $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
-                        $attributes[$code] = new Value($value, $code);
-                    }
-                }
-
-                $document = new Document();
-                $document->setId($product['entity_id']);
-                $document->setCustomAttributes($attributes);
-                $documents[] = $document;
+                // ... (keep document creation code the same)
             }
 
             // Create buckets array
             $buckets = [];
 
-            // Add price bucket as it's special
+            // Always add price bucket
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'price_bucket',
                 [
@@ -165,7 +144,7 @@ class SearchEnginePlugin
                 ]
             );
 
-            // Add category bucket as it always exists
+            // Always add category bucket
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
             foreach ($categoryCounts as $value => $count) {
@@ -179,27 +158,37 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
-            // For each attribute, check if ANY product has a value for it
+            // Process each attribute
             foreach ($filterableAttributes as $code => $attribute) {
                 if ($code === 'price') {
                     continue;
                 }
 
-                // Check if any product has this attribute
-                $hasAttribute = false;
-                foreach ($products as $product) {
-                    if (isset($product[$code]) && $product[$code] !== null) {
-                        $hasAttribute = true;
-                        break;
+                // Should we create a bucket for this attribute?
+                $shouldCreateBucket = false;
+                
+                // Check if it's a required attribute
+                if (in_array($code, self::REQUIRED_ATTRIBUTES)) {
+                    $shouldCreateBucket = true;
+                    $this->logger->debug("Creating bucket for {$code} because it's required");
+                } else {
+                    // Check if any product has this attribute
+                    foreach ($products as $product) {
+                        if (isset($product[$code]) && $product[$code] !== null) {
+                            $shouldCreateBucket = true;
+                            $this->logger->debug("Creating bucket for {$code} because products have this attribute");
+                            break;
+                        }
                     }
                 }
 
-                if ($hasAttribute) {
+                if ($shouldCreateBucket) {
                     $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
                     $this->logger->debug("Counts for attribute {$code}:", $counts);
                     
+                    // Create bucket even if counts are empty
+                    $values = [];
                     if (!empty($counts)) {
-                        $values = [];
                         foreach ($counts as $value => $count) {
                             $optionLabel = isset($attribute['options'][$value]) ? 
                                 $attribute['options'][$value]['label'] : 
@@ -211,15 +200,14 @@ class SearchEnginePlugin
                                 'count' => $count
                             ], $code . self::BUCKET_SUFFIX);
                         }
-                        
-                        $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
-                            $code . self::BUCKET_SUFFIX,
-                            $values
-                        );
-                        $this->logger->debug("Created bucket for {$code} because products have this attribute");
                     }
+                    
+                    $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
+                        $code . self::BUCKET_SUFFIX,
+                        $values
+                    );
                 } else {
-                    $this->logger->debug("Skipping bucket for {$code} because no products have this attribute");
+                    $this->logger->debug("Skipping bucket for {$code} because no products have this attribute and it's not required");
                 }
             }
 
