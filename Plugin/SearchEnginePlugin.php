@@ -108,7 +108,7 @@ class SearchEnginePlugin
                 ]
             ];
 
-            $this->logger->debug("Original products data for categories:", $products);
+            $this->logger->debug("Original products data for categories (" . gettype($products) . "):", $products);
 
             $collection = $this->productCollectionFactory->create()
                 ->addAttributeToSelect('*')
@@ -137,7 +137,7 @@ class SearchEnginePlugin
             }
 
             // Log the fetched products data
-            $this->logger->debug('Fetched products data2:', $products2);
+            $this->logger->debug('Fetched products data2 (' . gettype($products2) . '):', $products2);
 
             $products = $products2;
 
