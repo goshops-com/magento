@@ -95,6 +95,7 @@ class SearchEnginePlugin
                     'price' => 149.99,
                     'sku' => 'TEST-2',
                     'category_ids' => [3, 11, 37],
+
                     'size' => '167',      // S
                 ]
             ];
@@ -171,28 +172,30 @@ class SearchEnginePlugin
                 if ($code === 'price') {
                     continue;
                 }
-
+            
                 $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
+                $values = [];
                 if (!empty($counts)) {
-                    $values = [];
                     foreach ($counts as $value => $count) {
                         $optionLabel = isset($attribute['options'][$value]) ? 
                             $attribute['options'][$value]['label'] : 
                             $value;
-
+            
                         $values[] = new Value((string)$value, [
                             'value' => $value,
                             'label' => $optionLabel,
                             'count' => $count
                         ], $code . self::BUCKET_SUFFIX);
                     }
-                    
-                    $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
-                        $code . self::BUCKET_SUFFIX,
-                        $values
-                    );
                 }
+                
+                // Create the bucket regardless of counts
+                $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
+                    $code . self::BUCKET_SUFFIX,
+                    $values
+                );
             }
+            
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
