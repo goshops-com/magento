@@ -10,6 +10,8 @@ use Psr\Log\LoggerInterface;
 use Magento\Framework\App\RequestInterface as HttpRequestInterface;
 use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
+use Magento\Framework\Search\Request\Aggregation\TermBucket;
+use Magento\Framework\Search\Request\Aggregation\DynamicBucket;
 
 class SearchEnginePlugin
 {
@@ -35,54 +37,31 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            $result = $proceed($request);
-            // Log the original response structure
-            if ($result instanceof QueryResponse) {
-                $this->logger->debug('Original search response structure: ' . print_r([
-                    'buckets' => array_keys($result->getAggregations()->getBuckets()),
-                ], true));
-            }
-            return $result;
+            return $proceed($request);
         }
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Log detailed request information
-            $this->logger->debug('Request details: ' . print_r([
-                'aggregations' => $request->getAggregation(),
-                'name' => $request->getName(),
-                'dimension_data' => array_map(function($dimension) {
-                    return $dimension->getValue();
-                }, $request->getDimensions())
-            ], true));
-
-            // Get original response to see structure
-            $originalResponse = $proceed($request);
-            if ($originalResponse instanceof QueryResponse) {
-                $this->logger->debug('Original bucket structure: ' . print_r([
-                    'bucket_names' => array_keys($originalResponse->getAggregations()->getBuckets())
-                ], true));
-            }
-
-            // Products
+            // Products with multiple categories
             $products = [
                 [
                     'entity_id' => '1',
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3]
+                    'category_ids' => [3, 9, 20]  // Multiple categories
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3]
+                    'category_ids' => [3, 11, 37]  // Multiple categories
                 ]
             ];
 
+            // Create documents
             $documents = [];
             foreach ($products as $product) {
                 $document = new Document();
@@ -100,50 +79,75 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Create buckets matching requested aggregation names
-            $requestedAggs = $request->getAggregation();
+            // Create buckets based on aggregation type
             $buckets = [];
-            
-            foreach ($requestedAggs as $name => $agg) {
-                $this->logger->debug("Processing aggregation: $name");
-                $bucketName = $agg->getName();
-                
-                if (strpos($bucketName, 'price') !== false) {
-                    $buckets[$bucketName] = new \Magento\Framework\Search\Response\Bucket(
-                        $bucketName,
+            foreach ($request->getAggregation() as $index => $agg) {
+                if ($agg instanceof DynamicBucket && $agg->getName() === 'price_bucket') {
+                    // Price bucket
+                    $buckets[$index] = new \Magento\Framework\Search\Response\Bucket(
+                        'price_bucket',
                         [
                             new Value('90_100', [
                                 'from' => 90,
                                 'to' => 100,
                                 'count' => 1,
                                 'value' => '90_100'
-                            ], $bucketName),
+                            ], 'price_bucket'),
                             new Value('140_150', [
                                 'from' => 140,
                                 'to' => 150,
                                 'count' => 1,
                                 'value' => '140_150'
-                            ], $bucketName)
+                            ], 'price_bucket')
                         ]
                     );
-                } elseif (strpos($bucketName, 'category') !== false) {
-                    $buckets[$bucketName] = new \Magento\Framework\Search\Response\Bucket(
-                        $bucketName,
-                        [
-                            new Value(3, [
-                                'value' => 3,
-                                'count' => 2
-                            ], $bucketName)
-                        ]
+                } elseif ($agg instanceof TermBucket && $agg->getName() === 'category_bucket') {
+                    // Get included categories from parameters
+                    $includedCategories = [];
+                    $parameters = $agg->getParameters();
+                    if (isset($parameters['include'])) {
+                        $includedCategories = $parameters['include'];
+                    }
+
+                    // Count products in each category
+                    $categoryCounts = [];
+                    foreach ($products as $product) {
+                        foreach ($product['category_ids'] as $catId) {
+                            if (in_array($catId, $includedCategories)) {
+                                if (!isset($categoryCounts[$catId])) {
+                                    $categoryCounts[$catId] = 0;
+                                }
+                                $categoryCounts[$catId]++;
+                            }
+                        }
+                    }
+
+                    // Create category bucket values
+                    $categoryValues = [];
+                    foreach ($categoryCounts as $catId => $count) {
+                        $categoryValues[] = new Value($catId, [
+                            'value' => $catId,
+                            'count' => $count
+                        ], 'category_bucket');
+                    }
+
+                    $buckets[$index] = new \Magento\Framework\Search\Response\Bucket(
+                        'category_bucket',
+                        $categoryValues
                     );
                 }
             }
 
-            // Log the buckets we're creating
-            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
-
             $aggregations = new Aggregation($buckets);
-            return new QueryResponse($documents, $aggregations, count($documents));
+            $response = new QueryResponse($documents, $aggregations, count($documents));
+
+            $this->logger->debug('Created response with structure: ' . print_r([
+                'document_count' => count($documents),
+                'bucket_names' => array_keys($buckets),
+                'category_values' => isset($categoryCounts) ? $categoryCounts : []
+            ], true));
+
+            return $response;
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
