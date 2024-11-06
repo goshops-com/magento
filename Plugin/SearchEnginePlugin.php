@@ -42,11 +42,11 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Log the request details
+            // Log the request details more safely
             $this->logger->debug('Request details: ' . print_r([
                 'aggregations' => $request->getAggregation(),
-                'query' => $request->getQuery()->__toString(),
-                'dimensions' => $request->getDimensions()
+                'dimensions' => $request->getDimensions(),
+                'name' => $request->getName()
             ], true));
 
             // Hardcoded test products with category data
@@ -91,40 +91,46 @@ class SearchEnginePlugin
             
             // Create buckets based on requested aggregations
             $buckets = [];
-            foreach ($requestedAggs as $key => $agg) {
-                $this->logger->debug('Processing aggregation: ' . print_r($agg, true));
-                
-                if ($key == 0) {  // Price bucket
-                    $buckets[$key] = new \Magento\Framework\Search\Response\Bucket(
-                        'price_bucket',
-                        [
-                            new Value('90_100', [
-                                'from' => 90,
-                                'to' => 100,
-                                'count' => 1,
-                                'value' => '90_100'
-                            ], 'price')
-                        ]
-                    );
-                } elseif ($key == 1) {  // Category bucket
-                    $buckets[$key] = new \Magento\Framework\Search\Response\Bucket(
-                        'category_bucket',
-                        [
-                            new Value(3, [
-                                'value' => 3,
-                                'count' => 2
-                            ], 'category')
-                        ]
-                    );
-                }
-            }
+            
+            // First bucket (usually price)
+            $buckets[0] = new \Magento\Framework\Search\Response\Bucket(
+                'price_bucket',
+                [
+                    new Value('90_100', [
+                        'from' => 90,
+                        'to' => 100,
+                        'count' => 1,
+                        'value' => '90_100'
+                    ], 'price'),
+                    new Value('140_150', [
+                        'from' => 140,
+                        'to' => 150,
+                        'count' => 1,
+                        'value' => '140_150'
+                    ], 'price')
+                ]
+            );
+            
+            // Second bucket (usually category)
+            $buckets[1] = new \Magento\Framework\Search\Response\Bucket(
+                'category_bucket',
+                [
+                    new Value(3, [
+                        'value' => 3,
+                        'count' => 2
+                    ], 'category')
+                ]
+            );
 
             // Create the aggregation object with the buckets
             $aggregations = new Aggregation($buckets);
 
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
-            $this->logger->debug('Created response with buckets: ' . print_r(array_keys($buckets), true));
+            $this->logger->debug('Created response with buckets: ' . print_r([
+                'bucket_keys' => array_keys($buckets),
+                'document_count' => count($documents)
+            ], true));
 
             return $response;
 
