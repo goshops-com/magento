@@ -2,7 +2,13 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../lib/internal/Magento/Framework/ObjectManager/etc/config.xsd">
     
     <!-- Search Engine configuration -->
-    <preference for="Magento\Search\Model\SearchEngine" type="Gopersonal\Magento\Plugin\SearchEngine" />
+    <!-- <preference for="Magento\Search\Model\SearchEngine" type="Gopersonal\Magento\Plugin\SearchEngine" /> -->
+
+    <type name="Magento\Search\Model\SearchEngine">
+        <plugin name="gopersonal_search_engine" 
+                type="Gopersonal\Magento\Plugin\SearchEnginePlugin" 
+                sortOrder="1" />
+    </type>
 
     <!-- <type name="Magento\Catalog\Model\Layer">
         <plugin name="debug_layer_collection" type="Gopersonal\Magento\Plugin\LayerPlugin" />
