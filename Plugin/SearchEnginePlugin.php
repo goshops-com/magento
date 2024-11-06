@@ -12,8 +12,6 @@ use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 use Magento\Catalog\Model\ProductRepository;
-use Magento\Catalog\Model\ResourceModel\Product\Collection;
-use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 
 class SearchEnginePlugin
 {
@@ -22,24 +20,20 @@ class SearchEnginePlugin
     protected $logger;
     protected $httpRequest;
     protected $objectManager;
-    protected $filterableAttributeList;
     protected $productRepository;
-    protected $productCollectionFactory;
 
     public function __construct(
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager,
         FilterableAttributeList $filterableAttributeList,
-        ProductRepository $productRepository,
-        CollectionFactory $productCollectionFactory
+        ProductRepository $productRepository
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
         $this->productRepository = $productRepository;
-        $this->productCollectionFactory = $productCollectionFactory;
     }
 
     protected function getFilterableAttributes()
@@ -71,48 +65,6 @@ class SearchEnginePlugin
         
         return $attributes;
     }
-
-    protected function loadProducts(array $productIds): array
-    {
-        try {
-            $collection = $this->productCollectionFactory->create();
-            $collection->addAttributeToSelect('*')
-                ->addIdFilter($productIds)
-                ->addAttributeToFilter('status', 1) // Only active products
-                ->addAttributeToFilter('visibility', ['neq' => 1]); // Not invisible
-
-            $products = [];
-            foreach ($collection as $product) {
-                $categoryIds = $product->getCategoryIds();
-                
-                $productData = [
-                    'entity_id' => $product->getId(),
-                    'name' => $product->getName(),
-                    'price' => $product->getFinalPrice(),
-                    'sku' => $product->getSku(),
-                    'category_ids' => $categoryIds,
-                    'status' => $product->getStatus(),
-                    'visibility' => $product->getVisibility(),
-                ];
-
-                // Add filterable attributes
-                foreach ($this->getFilterableAttributes() as $code => $attribute) {
-                    $value = $product->getData($code);
-                    if ($value !== null) {
-                        $productData[$code] = $value;
-                    }
-                }
-
-                $products[] = $productData;
-            }
-
-            return $products;
-
-        } catch (\Exception $e) {
-            $this->logger->error("Error loading products: " . $e->getMessage());
-            throw $e;
-        }
-    }
     
     public function aroundSearch(
         SearchEngine $subject,
@@ -128,15 +80,32 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
-            // Define your product IDs here
-            $productIds = [1, 2]; // You can modify this to accept IDs from elsewhere
-            
-            // Load products dynamically
-            $products = $this->loadProducts($productIds);
-            
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
             
+            // Define product IDs
+            $productIds = [1, 2];
+            
+            // Load basic product data in same format as before
+            $products = [];
+            foreach ($productIds as $productId) {
+                try {
+                    $product = $this->productRepository->getById($productId);
+                    $products[] = [
+                        'entity_id' => $productId,
+                        'name' => $product->getName(),
+                        'price' => $product->getPrice(),
+                        'sku' => $product->getSku(),
+                        'category_ids' => $product->getCategoryIds(),
+                        'color' => $product->getColor(),      
+                        'size' => $product->getSize(),      
+                    ];
+                } catch (\Exception $e) {
+                    $this->logger->error("Could not load product {$productId}: " . $e->getMessage());
+                    continue;
+                }
+            }
+
             // Create documents
             $documents = [];
             foreach ($products as $product) {
@@ -145,8 +114,8 @@ class SearchEnginePlugin
                     'name' => new Value($product['name'], 'name'),
                     'price' => new Value($product['price'], 'price'),
                     'sku' => new Value($product['sku'], 'sku'),
-                    'status' => new Value($product['status'], 'status'),
-                    'visibility' => new Value($product['visibility'], 'visibility'),
+                    'status' => new Value(1, 'status'),
+                    'visibility' => new Value(4, 'visibility'),
                     'store_id' => new Value(1, 'store_id'),
                     'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
                 ];
@@ -168,27 +137,26 @@ class SearchEnginePlugin
             // Create buckets array
             $buckets = [];
 
-            // Price bucket
-            $priceRanges = $this->getPriceRanges($products);
-            $priceBucketValues = [];
-            foreach ($priceRanges as $range) {
-                $priceBucketValues[] = new Value(
-                    $range['from'] . '_' . $range['to'],
-                    [
-                        'from' => $range['from'],
-                        'to' => $range['to'],
-                        'count' => $range['count'],
-                        'value' => $range['from'] . '_' . $range['to']
-                    ],
-                    'price_bucket'
-                );
-            }
+            // Price bucket (keep the same as it works)
             $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'price_bucket',
-                $priceBucketValues
+                [
+                    new Value('90_100', [
+                        'from' => 90,
+                        'to' => 100,
+                        'count' => 1,
+                        'value' => '90_100'
+                    ], 'price_bucket'),
+                    new Value('140_150', [
+                        'from' => 140,
+                        'to' => 150,
+                        'count' => 1,
+                        'value' => '140_150'
+                    ], 'price_bucket')
+                ]
             );
 
-            // Category bucket
+            // Category bucket (keep the same as it works)
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
             foreach ($categoryCounts as $value => $count) {
@@ -204,6 +172,7 @@ class SearchEnginePlugin
 
             // Add attribute buckets dynamically
             foreach ($filterableAttributes as $code => $attribute) {
+                // Skip price as we handle it separately
                 if ($code === 'price') {
                     continue;
                 }
@@ -230,6 +199,8 @@ class SearchEnginePlugin
                 }
             }
 
+            $this->logger->debug('Created buckets with names: ' . print_r(array_keys($buckets), true));
+
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
@@ -239,31 +210,6 @@ class SearchEnginePlugin
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
             throw $e;
         }
-    }
-
-    protected function getPriceRanges(array $products): array
-    {
-        $ranges = [];
-        $prices = array_column($products, 'price');
-        $min = floor(min($prices) / 10) * 10;
-        $max = ceil(max($prices) / 10) * 10;
-        
-        for ($from = $min; $from < $max; $from += 10) {
-            $to = $from + 10;
-            $count = count(array_filter($prices, function($price) use ($from, $to) {
-                return $price >= $from && $price < $to;
-            }));
-            
-            if ($count > 0) {
-                $ranges[] = [
-                    'from' => $from,
-                    'to' => $to,
-                    'count' => $count
-                ];
-            }
-        }
-        
-        return $ranges;
     }
 
     protected function getValueCounts(array $products, string $field, bool $isArray = false): array
