@@ -54,6 +54,12 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
+
+            $this->logger->debug("Search request details:", [
+                'dimensions' => array_keys($request->getDimensions()),
+                'request_name' => $request->getName()
+            ]);
+            
             $productIds = [1, 2];
             
             // Get filterable attributes
