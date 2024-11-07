@@ -50,70 +50,93 @@ class SearchEnginePlugin
     }
 
     protected function getProductIds(array $queryParams, $gsSearchId = null): array
-    {
-        try {
-            $token = $this->cookieManager->getCookie('gopersonal_jwt');
-            if (!$token) {
-                $this->logger->debug("No JWT token found");
-                return [];
-            }
-
-            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-            
-            // Determine base URL
-            $baseUrl = strpos($clientId, 'D-') === 0 
-                ? 'https://go-discover-dev.goshops.ai'
-                : 'https://discover.gopersonal.ai';
-                
-            $url = $baseUrl . '/item/search?adapter=magento';
-
-            // Build query parameters
-            $urlParams = [];
-
-            // Add search term if exists
-            if (isset($queryParams['q'])) {
-                $urlParams['query'] = $queryParams['q'];
-                unset($queryParams['q']);
-            }
-
-            // Add gsSearchId if exists
-            if ($gsSearchId) {
-                $urlParams['_gsSearchId'] = $gsSearchId;
-            }
-
-            // Add remaining parameters as filters
-            if (!empty($queryParams)) {
-                $urlParams['filters'] = json_encode($queryParams);
-            }
-
-            // Build final URL
-            $finalUrl = $url . '&' . http_build_query($urlParams);
-
-            $this->logger->debug("Making request to:", ['url' => $finalUrl]);
-
-            // Make request
-            $this->httpClient->addHeader("Authorization", "Bearer " . $token);
-            $this->httpClient->get($finalUrl);
-            $response = $this->httpClient->getBody();
-
-            $result = json_decode($response, true);
-            
-            if (!is_array($result)) {
-                $this->logger->error("Invalid response format:", [
-                    'response' => $response
-                ]);
-                return [];
-            }
-
-            $this->logger->debug("Got product IDs from API:", $result);
-            
-            return $result;
-
-        } catch (\Exception $e) {
-            $this->logger->error("Error getting product IDs: " . $e->getMessage());
-            $this->logger->error($e->getTraceAsString());
+{
+    try {
+        $token = $this->cookieManager->getCookie('gopersonal_jwt');
+        if (!$token) {
+            $this->logger->debug("No JWT token found");
             return [];
         }
+
+        $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
+        
+        // Determine base URL
+        $baseUrl = strpos($clientId, 'D-') === 0 
+            ? 'https://go-discover-dev.goshops.ai'
+            : 'https://discover.gopersonal.ai';
+            
+        $url = $baseUrl . '/item/search?adapter=magento';
+
+        // Build query parameters
+        $urlParams = [];
+
+        // Add search term if exists
+        if (isset($queryParams['q'])) {
+            $urlParams['query'] = $queryParams['q'];
+            unset($queryParams['q']);
+        }
+
+        // Set default limit
+        // $urlParams['limit'] = 25;
+
+        // Convert remaining parameters to jsonFilter format
+        if (!empty($queryParams)) {
+            $jsonFilter = [];
+            foreach ($queryParams as $code => $value) {
+                if (!empty($value)) {
+                    // If value is already an array of values/labels, use it directly
+                    if (is_array($value) && isset($value[0]['value'])) {
+                        $jsonFilter[$code] = $value;
+                    } else {
+                        // Convert single value to filter format
+                        $jsonFilter[$code] = [
+                            [
+                                'value' => $value,
+                                'label' => $value
+                            ]
+                        ];
+                    }
+                }
+            }
+            if (!empty($jsonFilter)) {
+                $urlParams['jsonFilter'] = json_encode($jsonFilter);
+            }
+        }
+
+        // Add gsSearchId if exists
+        if ($gsSearchId) {
+            $urlParams['_gsSearchId'] = $gsSearchId;
+        }
+
+        // Build final URL
+        $finalUrl = $url . '&' . http_build_query($urlParams);
+
+        $this->logger->debug("Making request to:", ['url' => $finalUrl]);
+
+        // Make request
+        $this->httpClient->addHeader("Authorization", "Bearer " . $token);
+        $this->httpClient->addHeader("Content-Type", "application/json");
+        $this->httpClient->get($finalUrl);
+        $response = $this->httpClient->getBody();
+
+        $result = json_decode($response, true);
+        
+        if (!is_array($result)) {
+            $this->logger->error("Invalid response format:", [
+                'response' => $response
+            ]);
+            return [];
+        }
+
+        $this->logger->debug("Got product IDs from API:", $result);
+        
+        return $result;
+
+    } catch (\Exception $e) {
+        $this->logger->error("Error getting product IDs: " . $e->getMessage());
+        $this->logger->error($e->getTraceAsString());
+        return [];
+    }
 }
 
     protected function getFilterableAttributes()
