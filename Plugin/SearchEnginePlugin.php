@@ -74,11 +74,8 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
-            $result = $proceed($request);
-            $this->logger->debug("Original search results", ['result' => $result]);
-            return $result;
+            return $proceed($request);
         }
-
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
@@ -105,7 +102,8 @@ class SearchEnginePlugin
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3, 9, 20],
+                    'category_ids' => [3, 11, 37],
+
                     'size' => '167',      // S
                 ]
             ];
