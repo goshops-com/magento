@@ -81,7 +81,7 @@ class SearchEnginePlugin
         
         try {
 
-            $productIds = [1, 2];
+            $productIds = [1604, 1748];
 
             
             // Get filterable attributes
