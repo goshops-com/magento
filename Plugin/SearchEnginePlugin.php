@@ -52,7 +52,7 @@ class SearchEnginePlugin
         $this->cache = $cache;
     }
 
-    protected function getProductIds(array $queryParams, $gsSearchId = null): array 
+    protected function getProductIds(array $queryParams): array 
     {
         try {
             $token = $this->cookieManager->getCookie('gopersonal_jwt');
@@ -69,6 +69,7 @@ class SearchEnginePlugin
             $url = $baseUrl . '/item/search?adapter=magento';
             $urlParams = [];
 
+            $gsSearchId = queryParams['_gsSearchId']
             // Add search term if exists
             if (isset($queryParams['q'])) {
                 $urlParams['query'] = $queryParams['q'];
