@@ -148,47 +148,27 @@ class SearchEnginePlugin
 
     protected function getQueryParams(RequestInterface $request): array
     {
-        $queryParams = [];
+        // Read all query parameters from the request
+        $queryParams = $this->httpRequest->getParams();
+        
+        $this->logger->debug("Raw query params:", $queryParams);
 
-        // Get the query from search request
-        $query = $request->getQuery();
-        if ($query) {
-            // Get query text from BoolExpression
-            // We need to extract the 'must' clauses to find the search term
-            $mustClauses = $query->getMust();
-            foreach ($mustClauses as $clause) {
-                if (method_exists($clause, 'getName') && $clause->getName() === 'search_term') {
-                    $queryParams['q'] = $clause->getValue();
-                    break;
-                }
-            }
+        // Get the search term from the request
+        if (isset($queryParams['q'])) {
+            // Initialize filters array
+            $filters = $queryParams;
+            unset($filters['q']); // Remove 'q' parameter since we handle it separately
+            
+            // Log the parameters we'll send
+            $this->logger->debug("Search parameters:", [
+                'query' => $queryParams['q'],
+                'filters' => $filters
+            ]);
+            
+            return $queryParams;
         }
 
-        // Get filter params from request dimensions
-        $dimensions = $request->getDimensions();
-        foreach ($dimensions as $dimension) {
-            $name = $dimension->getName();
-            $value = $dimension->getValue();
-            $queryParams[$name] = $value;
-        }
-
-        // Get bucket filters from request
-        if (method_exists($request, 'getAggregation')) {
-            foreach ($request->getAggregation() as $bucket) {
-                $this->logger->debug("Processing bucket:", [
-                    'name' => $bucket->getName(),
-                    'type' => $bucket->getType()
-                ]);
-                
-                if ($bucket->getType() === 'termBucket') {
-                    $queryParams[$bucket->getName()] = $bucket->getValue();
-                }
-            }
-        }
-
-        $this->logger->debug("Extracted query parameters:", $queryParams);
-
-        return $queryParams;
+        return [];
     }
 
     public function aroundSearch(
