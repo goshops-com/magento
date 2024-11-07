@@ -447,7 +447,7 @@ class SearchEnginePlugin
                         $values[] = [
                             'value' => $value->getValue(),
                             'metrics' => $value->getMetrics(),
-                            'field' => $value->getField()
+                            'aggregation' => $bucket->getName()  // Use bucket name instead of field
                         ];
                     }
                     $bucketsToStore[$code] = [
