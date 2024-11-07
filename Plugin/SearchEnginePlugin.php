@@ -75,7 +75,7 @@ class SearchEnginePlugin
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             $result = $proceed($request);
-            $this->logger->debug("Original search results:", ['documents' => $result->getDocuments()]);
+            $this->logger->debug("Original search results", ['result' => $result]);
             return $result;
         }
 
