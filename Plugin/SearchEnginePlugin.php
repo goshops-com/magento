@@ -81,7 +81,7 @@ class SearchEnginePlugin
         
         try {
 
-            $productIds = [1604, 1748];
+            $productIds = [1604, 1748, 682];
 
             
             // Get filterable attributes
@@ -114,30 +114,30 @@ class SearchEnginePlugin
 
             $products2 = [];
 
-            foreach ($collection as $product) {
-                $productData = [
-                    'entity_id' => $product->getId(),
-                    'name' => $product->getName(),
-                    'price' => (float)$product->getPrice(),
-                    'sku' => $product->getSku(),
-                    'category_ids' => array_map('intval', $product->getCategoryIds()),
-                ];
+            // foreach ($collection as $product) {
+            //     $productData = [
+            //         'entity_id' => $product->getId(),
+            //         'name' => $product->getName(),
+            //         'price' => (float)$product->getPrice(),
+            //         'sku' => $product->getSku(),
+            //         'category_ids' => array_map('intval', $product->getCategoryIds()),
+            //     ];
             
-                // Loop over filterable attributes and add their values if available
-                foreach ($filterableAttributes as $code => $attribute) {
-                    $value = $product->getData($code);
-                    if ($value !== null && !isset($productData[$code])) {
-                        $productData[$code] = $value;
-                    }
-                }
+            //     // Loop over filterable attributes and add their values if available
+            //     foreach ($filterableAttributes as $code => $attribute) {
+            //         $value = $product->getData($code);
+            //         if ($value !== null && !isset($productData[$code])) {
+            //             $productData[$code] = $value;
+            //         }
+            //     }
             
-                $products2[] = $productData;
-            }
+            //     $products2[] = $productData;
+            // }
 
             // Log the fetched products data
             $this->logger->debug('Fetched products data2 (' . gettype($products2) . '):', $products2);
 
-            // $products = $products2;
+            $products = $products2;
 
             // Create documents
             $documents = [];
