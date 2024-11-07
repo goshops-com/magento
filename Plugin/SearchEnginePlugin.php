@@ -42,10 +42,10 @@ class SearchEnginePlugin
         RequestInterface $request
     ) {
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
-        $this->logger->debug("Request query details:", [
-            'query' => $request->getQuery()->__toString(),
-            'dimensions' => array_keys($request->getDimensions())
-        ]);
+        // $this->logger->debug("Request query details:", [
+        //     'query' => $request->getQuery()->__toString(),
+        //     'dimensions' => array_keys($request->getDimensions())
+        // ]);
         
         if (!$this->httpRequest->getParam('gpSearchOverride')) {
             return $proceed($request);
