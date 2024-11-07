@@ -28,6 +28,7 @@ class SearchEnginePlugin
     protected $cookieManager;
     protected $scopeConfig;
     protected $httpClient;
+    protected $cache;
 
     public function __construct(
         LoggerInterface $logger,
@@ -37,7 +38,8 @@ class SearchEnginePlugin
         ProductCollectionFactory $productCollectionFactory,
         CookieManagerInterface $cookieManager,
         ScopeConfigInterface $scopeConfig,
-        Curl $httpClient
+        Curl $httpClient,
+        \Magento\Framework\App\CacheInterface $cache
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
@@ -47,6 +49,7 @@ class SearchEnginePlugin
         $this->cookieManager = $cookieManager;
         $this->scopeConfig = $scopeConfig;
         $this->httpClient = $httpClient;
+        $this->cache = $cache;
     }
 
     protected function getProductIds(array $queryParams, $gsSearchId = null): array
@@ -423,6 +426,16 @@ class SearchEnginePlugin
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
+            if (isset($queryParams['_gsSearchId'])) {
+                // Store buckets associated with search ID
+                $this->cache->save(
+                    json_encode($buckets),
+                    'gp_buckets_' . $queryParams['_gsSearchId'],
+                    [],
+                    3600  // 1 hour cache
+                );
+            }
+            
             return $response;
 
         } catch (\Exception $e) {
