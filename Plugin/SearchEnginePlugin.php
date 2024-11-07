@@ -115,12 +115,29 @@ class SearchEnginePlugin
             }, $filterableAttributes));
             
 
-            $collection = $this->productCollectionFactory->create()
-                ->addAttributeToSelect('*', 'left')
-                ->addIdFilter($productIds);
-            
+            $collection = $this->productCollectionFactory->create();
+
+            // First add all attributes normally
+            $collection->addAttributeToSelect('*');
+
+            // Then add ID filter
+            $collection->addIdFilter($productIds);
+
+            // Adding store filter is important for attribute values
+            $collection->addStoreFilter();
+
+            // Add website filter to get proper visibility
+            $collection->addWebsiteFilter();
+
+            // Now force join for filterable attributes
             foreach ($filterableAttributes as $code => $attribute) {
-                $collection->addAttributeToSelect($code, 'left');
+                $collection->joinAttribute(
+                    $code,
+                    'catalog_product/' . $code,
+                    'entity_id',
+                    null,
+                    'left'
+                );
             }
 
             // Debug collection before ID filter
