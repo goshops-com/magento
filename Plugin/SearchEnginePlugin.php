@@ -12,6 +12,10 @@ use Magento\Search\Model\SearchEngine;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Catalog\Model\Layer\Category\FilterableAttributeList;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface;
+use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\HTTP\Client\Curl;
 
 class SearchEnginePlugin
 {
@@ -21,20 +25,96 @@ class SearchEnginePlugin
     protected $httpRequest;
     protected $objectManager;
     protected $productCollectionFactory;
+    protected $cookieManager;
+    protected $scopeConfig;
+    protected $httpClient;
 
     public function __construct(
         LoggerInterface $logger,
         HttpRequestInterface $httpRequest,
         ObjectManagerInterface $objectManager,
         FilterableAttributeList $filterableAttributeList, 
-        ProductCollectionFactory $productCollectionFactory
+        ProductCollectionFactory $productCollectionFactory,
+        CookieManagerInterface $cookieManager,
+        ScopeConfigInterface $scopeConfig,
+        Curl $httpClient
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
         $this->productCollectionFactory = $productCollectionFactory;
+        $this->cookieManager = $cookieManager;
+        $this->scopeConfig = $scopeConfig;
+        $this->httpClient = $httpClient;
     }
+
+    protected function getProductIds(array $queryParams, $gsSearchId = null): array
+    {
+        try {
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
+            if (!$token) {
+                $this->logger->debug("No JWT token found");
+                return [];
+            }
+
+            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
+            
+            // Determine base URL
+            $baseUrl = strpos($clientId, 'D-') === 0 
+                ? 'https://go-discover-dev.goshops.ai'
+                : 'https://discover.gopersonal.ai';
+                
+            $url = $baseUrl . '/item/search?adapter=magento';
+
+            // Build query parameters
+            $urlParams = [];
+
+            // Add search term if exists
+            if (isset($queryParams['q'])) {
+                $urlParams['query'] = $queryParams['q'];
+                unset($queryParams['q']);
+            }
+
+            // Add gsSearchId if exists
+            if ($gsSearchId) {
+                $urlParams['_gsSearchId'] = $gsSearchId;
+            }
+
+            // Add remaining parameters as filters
+            if (!empty($queryParams)) {
+                $urlParams['filters'] = json_encode($queryParams);
+            }
+
+            // Build final URL
+            $finalUrl = $url . '&' . http_build_query($urlParams);
+
+            $this->logger->debug("Making request to:", ['url' => $finalUrl]);
+
+            // Make request
+            $this->httpClient->addHeader("Authorization", "Bearer " . $token);
+            $this->httpClient->get($finalUrl);
+            $response = $this->httpClient->getBody();
+
+            $result = json_decode($response, true);
+            
+            if (!is_array($result)) {
+                $this->logger->error("Invalid response format:", [
+                    'response' => $response
+                ]);
+                return [];
+            }
+
+            $this->logger->debug("Got product IDs from API:", $result);
+            
+            return $result;
+
+        } catch (\Exception $e) {
+            $this->logger->error("Error getting product IDs: " . $e->getMessage());
+            $this->logger->error($e->getTraceAsString());
+            return [];
+        }
+}
 
     protected function getFilterableAttributes()
     {
@@ -65,7 +145,40 @@ class SearchEnginePlugin
         
         return $attributes;
     }
-    
+
+    protected function getQueryParams(RequestInterface $request): array
+    {
+        $queryParams = [];
+
+        // Get the query from search request
+        $query = $request->getQuery();
+        if ($query) {
+            $this->logger->debug("Raw search query:", ['query' => $query->__toString()]);
+            $queryParams['q'] = $query->__toString();
+        }
+
+        // Get filter params from request dimensions
+        $dimensions = $request->getDimensions();
+        foreach ($dimensions as $dimension) {
+            $name = $dimension->getName();
+            $value = $dimension->getValue();
+            $queryParams[$name] = $value;
+        }
+
+        // Get bucket filters from request
+        foreach ($request->getAggregation() as $bucket) {
+            $this->logger->debug("Processing bucket:", ['name' => $bucket->getName(), 'type' => $bucket->getType()]);
+            
+            if ($bucket->getType() === 'termBucket') {
+                $queryParams[$bucket->getName()] = $bucket->getValue();
+            }
+        }
+
+    $this->logger->debug("Extracted query parameters:", $queryParams);
+
+        return $queryParams;
+    }
+
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -84,20 +197,12 @@ class SearchEnginePlugin
             $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
             $productRepository = $objectManager->get(\Magento\Catalog\Api\ProductRepositoryInterface::class);
 
-            try {
-                $product = $productRepository->getById(682);
-                $this->logger->debug("Product 682 found via repository:", [
-                    'id' => $product->getId(),
-                    'name' => $product->getName(),
-                    'sku' => $product->getSku(),
-                    'status' => $product->getStatus(),
-                    'visibility' => $product->getVisibility()
-                ]);
-            } catch (\Exception $e) {
-                $this->logger->error("Error loading product 682: " . $e->getMessage());
-            }
+            // $productIds = [1604, 1748, 682];
+            $queryParams = $this->getQueryParams($request);
+            $this->logger->debug("Query parameters:", $queryParams);
 
-            $productIds = [1604, 1748, 682];
+            // Get product IDs
+            $productIds = $this->getProductIds($queryParams);
             
             // Debug the product IDs we're looking for
             $this->logger->debug("Searching for product IDs:", $productIds);
