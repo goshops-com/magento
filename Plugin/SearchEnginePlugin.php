@@ -97,14 +97,14 @@ class SearchEnginePlugin
                     'name' => 'Test Product 1',
                     'price' => 99.99,
                     'sku' => 'TEST-1',
-                    'category_ids' => [3]
+                    'category_ids' => [3, 9, 20]
                 ],
                 [
                     'entity_id' => '2',
                     'name' => 'Test Product 2',
                     'price' => 149.99,
                     'sku' => 'TEST-2',
-                    'category_ids' => [3]
+                    'category_ids' => [3, 9, 20]
                 ]
             ];
 
