@@ -456,7 +456,7 @@ class SearchEnginePlugin
                     ];
                 }
 
-                $bucketsJson = json_encode($buckets);
+                $bucketsJson = json_encode($bucketsToStore);
                 
                 $saved = $this->cache->save($bucketsJson, $cacheKey, [], 3600);
                 
