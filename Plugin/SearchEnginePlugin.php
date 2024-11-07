@@ -106,6 +106,15 @@ class SearchEnginePlugin
             $filterableAttributes = $this->getFilterableAttributes();
             $this->logger->debug("Loaded filterable attributes:", array_keys($filterableAttributes));
 
+            $this->logger->debug("Filterable attributes:", array_map(function($attr) {
+                return [
+                    'code' => $attr['code'],
+                    'frontend_label' => $attr['frontend_label'],
+                    'frontend_input' => $attr['frontend_input'],
+                ];
+            }, $filterableAttributes));
+            
+
             $collection = $this->productCollectionFactory->create()
                 ->addAttributeToSelect('*');
 
@@ -126,6 +135,13 @@ class SearchEnginePlugin
 
             $products = [];
             foreach ($collection as $product) {
+
+                $allData = $product->getData();
+                $this->logger->debug("Raw product data from collection:", [
+                    'product_id' => $product->getId(),
+                    'all_data' => $allData,  // This will show ALL attributes including color
+                ]);
+                
                 $categoryIds = $product->getCategoryIds();
                 
                 $this->logger->debug("Found product in collection:", [
