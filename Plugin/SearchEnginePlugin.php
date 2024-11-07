@@ -69,7 +69,7 @@ class SearchEnginePlugin
             $url = $baseUrl . '/item/search?adapter=magento';
             $urlParams = [];
 
-            $gsSearchId = queryParams['_gsSearchId'];
+            $gsSearchId = $queryParams['_gsSearchId'] ?? null;
             // Add search term if exists
             if (isset($queryParams['q'])) {
                 $urlParams['query'] = $queryParams['q'];
