@@ -153,8 +153,15 @@ class SearchEnginePlugin
         // Get the query from search request
         $query = $request->getQuery();
         if ($query) {
-            $this->logger->debug("Raw search query:", ['query' => $query->__toString()]);
-            $queryParams['q'] = $query->__toString();
+            // Get query text from BoolExpression
+            // We need to extract the 'must' clauses to find the search term
+            $mustClauses = $query->getMust();
+            foreach ($mustClauses as $clause) {
+                if (method_exists($clause, 'getName') && $clause->getName() === 'search_term') {
+                    $queryParams['q'] = $clause->getValue();
+                    break;
+                }
+            }
         }
 
         // Get filter params from request dimensions
@@ -166,15 +173,20 @@ class SearchEnginePlugin
         }
 
         // Get bucket filters from request
-        foreach ($request->getAggregation() as $bucket) {
-            $this->logger->debug("Processing bucket:", ['name' => $bucket->getName(), 'type' => $bucket->getType()]);
-            
-            if ($bucket->getType() === 'termBucket') {
-                $queryParams[$bucket->getName()] = $bucket->getValue();
+        if (method_exists($request, 'getAggregation')) {
+            foreach ($request->getAggregation() as $bucket) {
+                $this->logger->debug("Processing bucket:", [
+                    'name' => $bucket->getName(),
+                    'type' => $bucket->getType()
+                ]);
+                
+                if ($bucket->getType() === 'termBucket') {
+                    $queryParams[$bucket->getName()] = $bucket->getValue();
+                }
             }
         }
 
-    $this->logger->debug("Extracted query parameters:", $queryParams);
+        $this->logger->debug("Extracted query parameters:", $queryParams);
 
         return $queryParams;
     }
