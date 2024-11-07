@@ -116,7 +116,12 @@ class SearchEnginePlugin
             
 
             $collection = $this->productCollectionFactory->create()
-                ->addAttributeToSelect('*');
+                ->addAttributeToSelect('*', 'left')
+                ->addIdFilter($productIds);
+            
+            foreach ($filterableAttributes as $code => $attribute) {
+                $collection->addAttributeToSelect($code, 'left');
+            }
 
             // Debug collection before ID filter
             $this->logger->debug("Collection SQL before ID filter:", [
