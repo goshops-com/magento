@@ -80,68 +80,92 @@ class SearchEnginePlugin
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
         try {
+            // Test direct product load first
+            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+            $productRepository = $objectManager->get(\Magento\Catalog\Api\ProductRepositoryInterface::class);
+
+            try {
+                $product = $productRepository->getById(682);
+                $this->logger->debug("Product 682 found via repository:", [
+                    'id' => $product->getId(),
+                    'name' => $product->getName(),
+                    'sku' => $product->getSku(),
+                    'status' => $product->getStatus(),
+                    'visibility' => $product->getVisibility()
+                ]);
+            } catch (\Exception $e) {
+                $this->logger->error("Error loading product 682: " . $e->getMessage());
+            }
 
             $productIds = [1604, 1748, 682];
-
+            
+            // Debug the product IDs we're looking for
+            $this->logger->debug("Searching for product IDs:", $productIds);
             
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
-            
-            // Products with multiple categories and attributes
-            $products = [
-                [
-                    'entity_id' => '1',
-                    'name' => 'Test Product 1',
-                    'price' => 99.99,
-                    'sku' => 'TEST-1',
-                    'category_ids' => [9],
-                    'size' => '166',      // XS
-                ],
-                [
-                    'entity_id' => '2',
-                    'name' => 'Test Product 2',
-                    'price' => 149.99,
-                    'sku' => 'TEST-2',
-                    'category_ids' => [9]
-                ]
-            ];
-
-            $this->logger->debug("Original products data for categories (" . gettype($products) . "):", $products);
+            $this->logger->debug("Loaded filterable attributes:", array_keys($filterableAttributes));
 
             $collection = $this->productCollectionFactory->create()
-                ->addAttributeToSelect('*')
-                ->addIdFilter($productIds);
+                ->addAttributeToSelect('*');
 
-            $products2 = [];
-
-            // foreach ($collection as $product) {
-            //     $productData = [
-            //         'entity_id' => $product->getId(),
-            //         'name' => $product->getName(),
-            //         'price' => (float)$product->getPrice(),
-            //         'sku' => $product->getSku(),
-            //         'category_ids' => array_map('intval', $product->getCategoryIds()),
-            //     ];
+            // Debug collection before ID filter
+            $this->logger->debug("Collection SQL before ID filter:", [
+                'sql' => $collection->getSelect()->__toString()
+            ]);
             
-            //     // Loop over filterable attributes and add their values if available
-            //     foreach ($filterableAttributes as $code => $attribute) {
-            //         $value = $product->getData($code);
-            //         if ($value !== null && !isset($productData[$code])) {
-            //             $productData[$code] = $value;
-            //         }
-            //     }
-            
-            //     $products2[] = $productData;
-            // }
+            $collection->addIdFilter($productIds);
 
-            // Log the fetched products data
-            $this->logger->debug('Fetched products data2 (' . gettype($products2) . '):', $products2);
+            // Debug collection after ID filter
+            $this->logger->debug("Collection SQL after ID filter:", [
+                'sql' => $collection->getSelect()->__toString()
+            ]);
 
-            $products = $products2;
+            // Debug if collection has products
+            $this->logger->debug("Collection size: " . $collection->getSize());
+
+            $products = [];
+            foreach ($collection as $product) {
+                $categoryIds = $product->getCategoryIds();
+                
+                $this->logger->debug("Found product in collection:", [
+                    'id' => $product->getId(),
+                    'name' => $product->getName(),
+                    'sku' => $product->getSku(),
+                    'status' => $product->getStatus(),
+                    'visibility' => $product->getVisibility(),
+                    'categories' => $categoryIds
+                ]);
+
+                $productData = [
+                    'entity_id' => $product->getId(),
+                    'name' => $product->getName(),
+                    'price' => (float)$product->getPrice(),
+                    'sku' => $product->getSku(),
+                    'category_ids' => array_map('intval', $categoryIds),
+                ];
+
+                foreach ($filterableAttributes as $code => $attribute) {
+                    $value = $product->getData($code);
+                    if ($value !== null && !isset($productData[$code])) {
+                        $productData[$code] = $value;
+                    }
+                }
+
+                $products[] = $productData;
+            }
+
+            // Now log the products array after it's populated
+            $this->logger->debug("Final products array:", $products);
 
             // Create documents
             $documents = [];
             foreach ($products as $product) {
+                $this->logger->debug("Creating document for product:", [
+                    'id' => $product['entity_id'],
+                    'categories' => $product['category_ids']
+                ]);
+
                 $attributes = [
                     'entity_id' => new Value($product['entity_id'], 'entity_id'),
                     'name' => new Value($product['name'], 'name'),
@@ -190,16 +214,21 @@ class SearchEnginePlugin
             // Category bucket with logging
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
-            $this->logger->debug("Category counts from getValueCounts:", $categoryCounts);
-            
+            $this->logger->debug("Category counts:", $categoryCounts);
+
             foreach ($categoryCounts as $value => $count) {
-                $categoryValues[] = new Value((string)$value, [
+                $valueMetrics = [
                     'value' => $value,
                     'count' => $count
-                ], 'category_bucket');
+                ];
+                
+                $categoryValues[] = new Value(
+                    (string)$value, 
+                    $valueMetrics,
+                    'category_bucket'
+                );
             }
-            $this->logger->debug("Created category values:", $categoryValues);
-            
+
             $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
                 'category_bucket',
                 $categoryValues
@@ -232,7 +261,6 @@ class SearchEnginePlugin
                     $values
                 );
             }
-            
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse($documents, $aggregations, count($documents));
@@ -241,6 +269,7 @@ class SearchEnginePlugin
 
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
+            $this->logger->error($e->getTraceAsString());
             throw $e;
         }
     }
