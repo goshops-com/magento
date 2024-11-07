@@ -439,6 +439,23 @@ class SearchEnginePlugin
 
             if (isset($queryParams['_gsSearchId'])) {
                 $cacheKey = 'gp_buckets_' . $queryParams['_gsSearchId'];
+                // Convert buckets to a serializable format
+                $bucketsToStore = [];
+                foreach ($buckets as $code => $bucket) {
+                    $values = [];
+                    foreach ($bucket->getValues() as $value) {
+                        $values[] = [
+                            'value' => $value->getValue(),
+                            'metrics' => $value->getMetrics(),
+                            'field' => $value->getField()
+                        ];
+                    }
+                    $bucketsToStore[$code] = [
+                        'name' => $bucket->getName(),
+                        'values' => $values
+                    ];
+                }
+
                 $bucketsJson = json_encode($buckets);
                 
                 $saved = $this->cache->save($bucketsJson, $cacheKey, [], 3600);
