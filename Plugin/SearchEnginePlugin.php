@@ -76,16 +76,19 @@ class SearchEnginePlugin
             }
 
             // Handle filters
-            if (!empty(array_diff_key($queryParams, ['_gsSearchId' => '']))) {
+            if (!empty(array_diff_key($queryParams, ['_gsSearchId' => '', 'gpSearchOverride' => '']))) {
                 $jsonFilter = [];
                 
                 // Try to get stored buckets if search ID exists
                 $storedBuckets = null;
                 if ($gsSearchId) {
-                    $storedBuckets = json_decode(
-                        $this->cache->load('gp_buckets_' . $gsSearchId), 
-                        true
-                    );
+                    $cacheKey = 'gp_buckets_' . $gsSearchId;
+                    $storedBuckets = $this->cache->load($cacheKey);
+                    $this->logger->debug("Attempting to load buckets", [
+                        'cacheKey' => $cacheKey,
+                        'rawStoredBuckets' => $storedBuckets,
+                        'decodedBuckets' => $storedBuckets ? json_decode($storedBuckets, true) : null
+                    ]);
                 }
 
                 $this->logger->debug("Stored buckets:", ['storedBuckets' => $storedBuckets]);
@@ -289,21 +292,21 @@ class SearchEnginePlugin
             foreach ($collection as $product) {
 
                 $allData = $product->getData();
-                $this->logger->debug("Raw product data from collection:", [
-                    'product_id' => $product->getId(),
-                    'all_data' => $allData,  // This will show ALL attributes including color
-                ]);
+                // $this->logger->debug("Raw product data from collection:", [
+                //     'product_id' => $product->getId(),
+                //     'all_data' => $allData,  // This will show ALL attributes including color
+                // ]);
                 
                 $categoryIds = $product->getCategoryIds();
                 
-                $this->logger->debug("Found product in collection:", [
-                    'id' => $product->getId(),
-                    'name' => $product->getName(),
-                    'sku' => $product->getSku(),
-                    'status' => $product->getStatus(),
-                    'visibility' => $product->getVisibility(),
-                    'categories' => $categoryIds
-                ]);
+                // $this->logger->debug("Found product in collection:", [
+                //     'id' => $product->getId(),
+                //     'name' => $product->getName(),
+                //     'sku' => $product->getSku(),
+                //     'status' => $product->getStatus(),
+                //     'visibility' => $product->getVisibility(),
+                //     'categories' => $categoryIds
+                // ]);
 
                 $productData = [
                     'entity_id' => $product->getId(),
@@ -434,13 +437,17 @@ class SearchEnginePlugin
             $response = new QueryResponse($documents, $aggregations, count($documents));
 
             if (isset($queryParams['_gsSearchId'])) {
-                // Store buckets associated with search ID
-                $this->cache->save(
-                    json_encode($buckets),
-                    'gp_buckets_' . $queryParams['_gsSearchId'],
-                    [],
-                    3600  // 1 hour cache
-                );
+                $cacheKey = 'gp_buckets_' . $queryParams['_gsSearchId'];
+                $bucketsJson = json_encode($buckets);
+                
+                $saved = $this->cache->save($bucketsJson, $cacheKey, [], 3600);
+                
+                $this->logger->debug("Storing buckets:", [
+                    'cacheKey' => $cacheKey,
+                    'bucketsJson' => $bucketsJson,
+                    'saved' => $saved,
+                    'verifyLoad' => $this->cache->load($cacheKey)
+                ]);
             }
 
             return $response;
