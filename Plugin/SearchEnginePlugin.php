@@ -76,7 +76,7 @@ class SearchEnginePlugin
             }
 
             // Handle filters
-            if (!empty($queryParams)) {
+            if (!empty(array_diff_key($queryParams, ['_gsSearchId' => '']))) {
                 $jsonFilter = [];
                 
                 // Try to get stored buckets if search ID exists
@@ -88,6 +88,8 @@ class SearchEnginePlugin
                     );
                 }
 
+                $this->logger->debug("Stored buckets:", ['storedBuckets' => $storedBuckets]);
+                
                 foreach ($queryParams as $code => $value) {
                     if (!empty($value)) {
                         // Add filter
@@ -99,7 +101,7 @@ class SearchEnginePlugin
                         // Check stored buckets for limit
                         if ($storedBuckets) {
                             $bucketKey = $code . self::BUCKET_SUFFIX;
-                            $this->logger->debug("Checking bucket key:", ['bucketKey' => $bucketKey, 'value' => $value]);
+                            
                             if (isset($storedBuckets[$bucketKey])) {
                                 foreach ($storedBuckets[$bucketKey]['values'] as $bucketValue) {
                                     if ($bucketValue['value'] == $value) {
