@@ -99,6 +99,7 @@ class SearchEnginePlugin
                         // Check stored buckets for limit
                         if ($storedBuckets) {
                             $bucketKey = $code . self::BUCKET_SUFFIX;
+                            $this->logger->debug("Checking bucket key:", ['bucketKey' => $bucketKey, 'value' => $value]);
                             if (isset($storedBuckets[$bucketKey])) {
                                 foreach ($storedBuckets[$bucketKey]['values'] as $bucketValue) {
                                     if ($bucketValue['value'] == $value) {
@@ -136,6 +137,7 @@ class SearchEnginePlugin
                 return [];
             }
 
+            $this->logger->debug("API response:", ['result' => $result]);
             return $result;
 
         } catch (\Exception $e) {
@@ -267,16 +269,16 @@ class SearchEnginePlugin
             }
 
             // Debug collection before ID filter
-            $this->logger->debug("Collection SQL before ID filter:", [
-                'sql' => $collection->getSelect()->__toString()
-            ]);
+            // $this->logger->debug("Collection SQL before ID filter:", [
+            //     'sql' => $collection->getSelect()->__toString()
+            // ]);
             
             $collection->addIdFilter($productIds);
 
             // Debug collection after ID filter
-            $this->logger->debug("Collection SQL after ID filter:", [
-                'sql' => $collection->getSelect()->__toString()
-            ]);
+            // $this->logger->debug("Collection SQL after ID filter:", [
+            //     'sql' => $collection->getSelect()->__toString()
+            // ]);
 
             // Debug if collection has products
             $this->logger->debug("Collection size: " . $collection->getSize());
