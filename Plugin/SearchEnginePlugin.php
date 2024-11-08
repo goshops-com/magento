@@ -306,9 +306,14 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
     ) {
         $this->logger->debug("SearchEnginePlugin aroundSearch() called");
         
-        if (!$this->httpRequest->getParam('gpSearchOverride')) {
+        $pathInfo = $this->httpRequest->getPathInfo();
+        if (strpos($pathInfo, '/catalogsearch/result') === false) {
             return $proceed($request);
         }
+
+        // if (!$this->httpRequest->getParam('gpSearchOverride')) {
+        //     return $proceed($request);
+        // }
 
         $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
         
