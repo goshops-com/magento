@@ -311,6 +311,18 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
             return $proceed($request);
         }
 
+        // Check if the override_catalog_search setting is enabled
+        $isOverrideEnabled = $this->scopeConfig->getValue(
+            'gopersonal/general/override_catalog_search',
+            ScopeInterface::SCOPE_STORE
+        );
+
+        // If override is not enabled (not set to "1" or "Yes"), use default search
+        if (!$isOverrideEnabled) {
+            $this->logger->debug("SearchEnginePlugin: Custom search is disabled in configuration");
+            return $proceed($request);
+        }
+
         // if (!$this->httpRequest->getParam('gpSearchOverride')) {
         //     return $proceed($request);
         // }
