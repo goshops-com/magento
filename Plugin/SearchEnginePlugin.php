@@ -467,12 +467,12 @@ class SearchEnginePlugin
                 
                 $saved = $this->cache->save($bucketsJson, $cacheKey, [], 3600);
                 
-                $this->logger->debug("Storing buckets:", [
-                    'cacheKey' => $cacheKey,
-                    'bucketsJson' => $bucketsJson,
-                    'saved' => $saved,
-                    'verifyLoad' => $this->cache->load($cacheKey)
-                ]);
+                // $this->logger->debug("Storing buckets:", [
+                //     'cacheKey' => $cacheKey,
+                //     'bucketsJson' => $bucketsJson,
+                //     'saved' => $saved,
+                //     'verifyLoad' => $this->cache->load($cacheKey)
+                // ]);
             }
 
             return $response;
