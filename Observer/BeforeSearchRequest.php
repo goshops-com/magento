@@ -68,6 +68,7 @@ class BeforeSearchRequest implements ObserverInterface
             $queryParams['_gsSearchId'] = $gsSearchId;
             $this->request->setParam('_gsSearchId', $gsSearchId);
             $this->logger->info("Generated new _gsSearchId for catalog search:", ['gsSearchId' => $gsSearchId]);
+            return $this;
         }
         
         // Check if the 'q' parameter exists
