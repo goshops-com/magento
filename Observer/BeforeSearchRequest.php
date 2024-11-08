@@ -63,30 +63,11 @@ class BeforeSearchRequest implements ObserverInterface
         // Log the incoming URL
         $this->logger->info("Incoming URL: " . $this->request->getUriString());
 
-        if (strpos($pathInfo, '/catalogsearch/result') === 0) {
-            if (!isset($queryParams['_gsSearchId'])) {
-                $gsSearchId = $this->generateGsSearchId();
-                $this->logger->debug('Generated new gsSearchId: ' . $gsSearchId);
-
-                // Get all current query parameters
-                $params = $queryParams;
-                $params['_gsSearchId'] = $gsSearchId;
-
-                // Build the new URL with all parameters
-                $newUrl = $this->url->getUrl('catalogsearch/result', [
-                    '_query' => $params,
-                    '_secure' => $this->request->isSecure()
-                ]);
-
-                $this->logger->debug('Redirecting to URL with gsSearchId: ' . $newUrl);
-
-                // Perform the redirect
-                $this->response->setRedirect($newUrl);
-                $controllerAction = $observer->getEvent()->getControllerAction();
-                if ($controllerAction) {
-                    $controllerAction->getResponse()->setRedirect($newUrl);
-                }
-            }
+        if (strpos($pathInfo, '/catalogsearch/result') === 0 && !isset($queryParams['_gsSearchId'])) {
+            $gsSearchId = $this->generateGsSearchId();
+            $queryParams['_gsSearchId'] = $gsSearchId;
+            $this->request->setParam('_gsSearchId', $gsSearchId);
+            $this->logger->info("Generated new _gsSearchId for catalog search:", ['gsSearchId' => $gsSearchId]);
         }
         
         // Check if the 'q' parameter exists
