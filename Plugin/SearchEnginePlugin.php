@@ -16,6 +16,7 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\HTTP\Client\Curl;
+use Magento\Framework\Session\SessionManagerInterface;
 
 class SearchEnginePlugin
 {
