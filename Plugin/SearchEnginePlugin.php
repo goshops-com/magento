@@ -29,6 +29,7 @@ class SearchEnginePlugin
     protected $scopeConfig;
     protected $httpClient;
     protected $cache;
+    protected $sessionManager;
 
     public function __construct(
         LoggerInterface $logger,
@@ -39,7 +40,8 @@ class SearchEnginePlugin
         CookieManagerInterface $cookieManager,
         ScopeConfigInterface $scopeConfig,
         Curl $httpClient,
-        \Magento\Framework\App\CacheInterface $cache
+        \Magento\Framework\App\CacheInterface $cache,
+        SessionManagerInterface $sessionManager
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
@@ -50,139 +52,196 @@ class SearchEnginePlugin
         $this->scopeConfig = $scopeConfig;
         $this->httpClient = $httpClient;
         $this->cache = $cache;
+        $this->sessionManager = $sessionManager;
     }
 
     protected function getProductIds(array $queryParams): array 
     {
-        try {
-            $token = $this->cookieManager->getCookie('gopersonal_jwt');
-            if (!$token) {
-                $this->logger->debug("No JWT token found");
-                return [];
-            }
-
-            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-            $baseUrl = strpos($clientId, 'D-') === 0 
-                ? 'https://go-discover-dev.goshops.ai'
-                : 'https://discover.gopersonal.ai';
+        $maxAttempts = 2;
+        $attempts = 0;
+        
+        while ($attempts < $maxAttempts) {
+            try {
+                // Get JWT token and prepare session fallback flags
+                $token = $this->cookieManager->getCookie('gopersonal_jwt');
+                $useSessionFallback = false;
                 
-            $url = $baseUrl . '/item/search?adapter=magento';
-            $urlParams = [];
+                if (!$token) {
+                    $this->logger->debug("No JWT token found, will use session fallback");
+                    $useSessionFallback = true;
+                }
 
-            $gsSearchId = $queryParams['_gsSearchId'] ?? null;
-            // Add search term if exists
-            if (isset($queryParams['q'])) {
-                $urlParams['query'] = $queryParams['q'];
-                unset($queryParams['q']);
-            }
-
-            // Handle filters
-            if (!empty(array_diff_key($queryParams, ['_gsSearchId' => '', 'gpSearchOverride' => '']))) {
-                $jsonFilter = [];
+                // Build base URL
+                $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
+                $baseUrl = strpos($clientId, 'D-') === 0 
+                    ? 'https://go-discover-dev.goshops.ai'
+                    : 'https://discover.gopersonal.ai';
                 
-                // Try to get stored buckets if search ID exists
-                $storedBuckets = null;
-                if ($gsSearchId) {
-                    $cacheKey = 'gp_buckets_' . $gsSearchId;
-                    $storedBuckets = $this->cache->load($cacheKey);
-                    $decodedBuckets = json_decode($storedBuckets, true);
+                $url = $baseUrl . '/item/search?adapter=magento';
+                $urlParams = $this->buildUrlParameters($queryParams);
+                
+                // Add session fallback parameters if no token
+                if ($useSessionFallback) {
+                    $urlParams = $this->addSessionFallbackParams($urlParams, $clientId);
+                }
+                
+                // Make the request
+                $finalUrl = $url . '&' . http_build_query($urlParams);
+                $this->logger->debug("Making request to:", [
+                    'url' => $finalUrl,
+                    'using_session_fallback' => $useSessionFallback
+                ]);
+
+                $response = $this->makeRequest($finalUrl, $token);
+                
+                // Handle 401 unauthorized error - retry with session fallback if not already using it
+                if ($response['status'] === 401 && !$useSessionFallback) {
+                    $this->logger->debug("Received 401, attempting with session fallback");
+                    $urlParams = $this->addSessionFallbackParams($urlParams, $clientId);
+                    $finalUrl = $url . '&' . http_build_query($urlParams);
+                    $response = $this->makeRequest($finalUrl, $token);
+                }
+
+                if ($response['status'] === 200 && !empty($response['body'])) {
+                    $result = json_decode($response['body'], true);
+                    if (is_array($result)) {
+                        $this->logger->debug("API response:", ['result' => $result]);
+                        return $result;
+                    }
                     
-                    $this->logger->debug("Retrieved bucket data:", [
-                        'raw' => $storedBuckets,
-                        'decoded' => $decodedBuckets,
-                        'sale_bucket' => $decodedBuckets['sale_bucket'] ?? 'not found'
-                    ]);
-
-                    if ($decodedBuckets) {
-                        foreach ($queryParams as $code => $value) {
-                            if (!in_array($code, ['q', '_gsSearchId', 'gpSearchOverride']) && !empty($value)) {
-                                $bucketKey = $code . '_bucket';
-                                
-                                if (isset($decodedBuckets[$bucketKey])) {
-                                    foreach ($decodedBuckets[$bucketKey]['values'] as $bucketValue) {
-                                        if ((string)$bucketValue['value'] === (string)$value) {
-                                            $urlParams['limit'] = $bucketValue['metrics']['count'];
-                                            $this->logger->debug("Found limit for filter:", [
-                                                'code' => $code,
-                                                'value' => $value,
-                                                'limit' => $bucketValue['metrics']['count']
-                                            ]);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    $this->logger->error("Invalid response format:", ['response' => $response['body']]);
                 }
 
+                $attempts++;
+                if ($attempts < $maxAttempts) {
+                    $this->logger->debug("Retrying request, attempt {$attempts} of {$maxAttempts}");
+                    continue;
+                }
                 
-                
-                foreach ($queryParams as $code => $value) {
-                    if (!empty($value)) {
-                        // Skip non-filter params
-                        if (in_array($code, ['q', '_gsSearchId', 'gpSearchOverride'])) {
-                            continue;
-                        }
-            
-                        $jsonFilter[$code] = [[
-                            'value' => $value,
-                            'label' => $value
-                        ]];
-            
-                        // Check bucket count
-                        if ($storedBuckets) {
-                            $bucketKey = $code . '_bucket';  // Fix: Added _bucket suffix
-                            if (isset($storedBuckets[$bucketKey]['values'])) {
-                                foreach ($storedBuckets[$bucketKey]['values'] as $bucketValue) {
-                                    if ($bucketValue['value'] === $value) {
-                                        $urlParams['limit'] = $bucketValue['metrics']['count'];
-                                        $this->logger->debug("Setting limit for $code", [
-                                            'value' => $value,
-                                            'limit' => $bucketValue['metrics']['count']
-                                        ]);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!empty($jsonFilter)) {
-                    $urlParams['jsonFilter'] = json_encode($jsonFilter);
-                }
-            }
-
-            // Add gsSearchId if exists
-            if ($gsSearchId) {
-                $urlParams['_gsSearchId'] = $gsSearchId;
-            }
-
-            // Build final URL and make request
-            $finalUrl = $url . '&' . http_build_query($urlParams);
-            $this->logger->debug("Making request to:", ['url' => $finalUrl]);
-
-            $this->httpClient->addHeader("Authorization", "Bearer " . $token);
-            $this->httpClient->addHeader("Content-Type", "application/json");
-            $this->httpClient->get($finalUrl);
-            $response = $this->httpClient->getBody();
-
-            $result = json_decode($response, true);
-            if (!is_array($result)) {
-                $this->logger->error("Invalid response format:", ['response' => $response]);
                 return [];
+
+            } catch (\Exception $e) {
+                $this->logger->error("Error getting product IDs: " . $e->getMessage());
+                $this->logger->error($e->getTraceAsString());
+                
+                $attempts++;
+                if ($attempts >= $maxAttempts) {
+                    return [];
+                }
             }
+        }
 
-            $this->logger->debug("API response:", ['result' => $result]);
-            return $result;
+        return [];
+    }
 
-        } catch (\Exception $e) {
-            $this->logger->error("Error getting product IDs: " . $e->getMessage());
-            $this->logger->error($e->getTraceAsString());
-            return [];
+    protected function buildUrlParameters(array $queryParams): array
+{
+    $urlParams = [];
+    $gsSearchId = $queryParams['_gsSearchId'] ?? null;
+
+    // Add search term if exists
+    if (isset($queryParams['q'])) {
+        $urlParams['query'] = $queryParams['q'];
+        unset($queryParams['q']);
+    }
+
+    // Handle filters
+    if (!empty(array_diff_key($queryParams, ['_gsSearchId' => '', 'gpSearchOverride' => '']))) {
+        $jsonFilter = $this->processFilters($queryParams, $gsSearchId, $urlParams);
+        if (!empty($jsonFilter)) {
+            $urlParams['jsonFilter'] = json_encode($jsonFilter);
         }
     }
+
+    // Add gsSearchId if exists
+    if ($gsSearchId) {
+        $urlParams['_gsSearchId'] = $gsSearchId;
+    }
+
+    return $urlParams;
+}
+
+protected function processFilters(array $queryParams, ?string $gsSearchId, array &$urlParams): array
+{
+    $jsonFilter = [];
+    $storedBuckets = $this->getStoredBuckets($gsSearchId);
+
+    foreach ($queryParams as $code => $value) {
+        if (empty($value) || in_array($code, ['q', '_gsSearchId', 'gpSearchOverride'])) {
+            continue;
+        }
+
+        $jsonFilter[$code] = [[
+            'value' => $value,
+            'label' => $value
+        ]];
+
+        if ($storedBuckets) {
+            $this->processBucketLimit($code, $value, $storedBuckets, $urlParams);
+        }
+    }
+
+    return $jsonFilter;
+}
+
+protected function getStoredBuckets(?string $gsSearchId): ?array
+{
+    if (!$gsSearchId) {
+        return null;
+    }
+
+    $cacheKey = 'gp_buckets_' . $gsSearchId;
+    $storedBuckets = $this->cache->load($cacheKey);
+    $decodedBuckets = json_decode($storedBuckets, true);
+
+    $this->logger->debug("Retrieved bucket data:", [
+        'raw' => $storedBuckets,
+        'decoded' => $decodedBuckets
+    ]);
+
+    return $decodedBuckets;
+}
+
+protected function processBucketLimit(string $code, $value, array $storedBuckets, array &$urlParams): void
+{
+    $bucketKey = $code . '_bucket';
+    if (isset($storedBuckets[$bucketKey]['values'])) {
+        foreach ($storedBuckets[$bucketKey]['values'] as $bucketValue) {
+            if ((string)$bucketValue['value'] === (string)$value) {
+                $urlParams['limit'] = $bucketValue['metrics']['count'];
+                $this->logger->debug("Setting limit for $code", [
+                    'value' => $value,
+                    'limit' => $bucketValue['metrics']['count']
+                ]);
+                break;
+            }
+        }
+    }
+}
+
+protected function makeRequest(string $url, string $token = ''): array
+{
+    if ($token) {
+        $this->httpClient->addHeader("Authorization", "Bearer " . $token);
+    }
+    $this->httpClient->addHeader("Content-Type", "application/json");
+    $this->httpClient->get($url);
+    
+    return [
+        'status' => $this->httpClient->getStatus(),
+        'body' => $this->httpClient->getBody()
+    ];
+}
+
+protected function addSessionFallbackParams(array $urlParams, string $clientId): array
+{
+    $sessionId = $this->sessionManager->getSessionId();
+    $urlParams['externalSessionId'] = $sessionId;
+    $urlParams['clientId'] = $clientId;
+    $urlParams['sessionFallback'] = 'true';
+    
+    return $urlParams;
+}
 
     protected function getFilterableAttributes()
     {
