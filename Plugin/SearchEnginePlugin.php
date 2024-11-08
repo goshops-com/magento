@@ -336,25 +336,25 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
 
             // $productIds = [1604, 1748, 682];
             $queryParams = $this->getQueryParams($request);
-            $this->logger->debug("Query parameters:", $queryParams);
+            // $this->logger->debug("Query parameters:", $queryParams);
 
             // Get product IDs
             $productIds = $this->getProductIds($queryParams);
             
             // Debug the product IDs we're looking for
-            $this->logger->debug("Searching for product IDs:", $productIds);
+            // $this->logger->debug("Searching for product IDs:", $productIds);
             
             // Get filterable attributes
             $filterableAttributes = $this->getFilterableAttributes();
-            $this->logger->debug("Loaded filterable attributes:", array_keys($filterableAttributes));
+            // $this->logger->debug("Loaded filterable attributes:", array_keys($filterableAttributes));
 
-            $this->logger->debug("Filterable attributes:", array_map(function($attr) {
-                return [
-                    'code' => $attr['code'],
-                    'frontend_label' => $attr['frontend_label'],
-                    'frontend_input' => $attr['frontend_input'],
-                ];
-            }, $filterableAttributes));
+            // $this->logger->debug("Filterable attributes:", array_map(function($attr) {
+            //     return [
+            //         'code' => $attr['code'],
+            //         'frontend_label' => $attr['frontend_label'],
+            //         'frontend_input' => $attr['frontend_input'],
+            //     ];
+            // }, $filterableAttributes));
             
 
             $collection = $this->productCollectionFactory->create();
@@ -395,7 +395,7 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
             // ]);
 
             // Debug if collection has products
-            $this->logger->debug("Collection size: " . $collection->getSize());
+            // $this->logger->debug("Collection size: " . $collection->getSize());
 
             $products = [];
             foreach ($collection as $product) {
@@ -436,15 +436,15 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
             }
 
             // Now log the products array after it's populated
-            $this->logger->debug("Final products array:", $products);
+            // $this->logger->debug("Final products array:", $products);
 
             // Create documents
             $documents = [];
             foreach ($products as $product) {
-                $this->logger->debug("Creating document for product:", [
-                    'id' => $product['entity_id'],
-                    'categories' => $product['category_ids']
-                ]);
+                // $this->logger->debug("Creating document for product:", [
+                //     'id' => $product['entity_id'],
+                //     'categories' => $product['category_ids']
+                // ]);
 
                 $attributes = [
                     'entity_id' => new Value($product['entity_id'], 'entity_id'),
@@ -494,7 +494,7 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
             // Category bucket with logging
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
-            $this->logger->debug("Category counts:", $categoryCounts);
+            // $this->logger->debug("Category counts:", $categoryCounts);
 
             foreach ($categoryCounts as $value => $count) {
                 $valueMetrics = [
