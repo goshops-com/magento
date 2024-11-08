@@ -45,6 +45,13 @@ class BeforeSearchRequest implements ObserverInterface
         $this->cache = $cache;
     }
 
+    protected function generateGsSearchId(): string 
+    {
+        $sessionId = $this->sessionManager->getSessionId();
+        $timestamp = time();
+        return $sessionId . '_' . $timestamp;
+    }
+
     public function execute(Observer $observer)
     {
         $pathInfo = $this->request->getPathInfo();
@@ -56,6 +63,13 @@ class BeforeSearchRequest implements ObserverInterface
         // Log the incoming URL
         $this->logger->info("Incoming URL: " . $this->request->getUriString());
 
+        if (strpos($pathInfo, '/catalogsearch/result') === 0 && !isset($queryParams['_gsSearchId'])) {
+            $gsSearchId = $this->generateGsSearchId();
+            $queryParams['_gsSearchId'] = $gsSearchId;
+            $this->request->setParam('_gsSearchId', $gsSearchId);
+            $this->logger->info("Generated new _gsSearchId for catalog search:", ['gsSearchId' => $gsSearchId]);
+        }
+        
         // Check if the 'q' parameter exists
         if (strpos($pathInfo, '/gpsearch') !== 0 || !isset($queryParams['q'])) {
             // Log the ignored request

@@ -6,6 +6,18 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../lib/internal/Magento/Framework/ObjectManager/etc/config.xsd">
     <!-- Define virtual types for the classes that may not exist -->
     
+    <type name="Magento\Search\Model\SearchEngine">
+        <plugin name="gopersonal_search_engine" 
+                type="Gopersonal\Magento\Plugin\SearchEnginePlugin" 
+                sortOrder="1" />
+    </type>
+
+    <type name="Gopersonal\Magento\Plugin\SearchEnginePlugin">
+        <arguments>
+            <argument name="filterableAttributeList" xsi:type="object">Magento\Catalog\Model\Layer\Category\FilterableAttributeList</argument>
+        </arguments>
+    </type>
+    
     <!-- Here custom layer class extends the default Magento layer class.
          That class instantiates a number of interfaces. -->
     <preference for="Magento\Catalog\Model\Layer" type="Gopersonal\Magento\Model\Layer" />
