@@ -85,14 +85,38 @@ class SearchEnginePlugin
                 if ($gsSearchId) {
                     $cacheKey = 'gp_buckets_' . $gsSearchId;
                     $storedBuckets = $this->cache->load($cacheKey);
-                    $this->logger->debug("Attempting to load buckets", [
-                        'cacheKey' => $cacheKey,
-                        'rawStoredBuckets' => $storedBuckets,
-                        'decodedBuckets' => $storedBuckets ? json_decode($storedBuckets, true) : null
+                    $decodedBuckets = json_decode($storedBuckets, true);
+                    
+                    $this->logger->debug("Retrieved bucket data:", [
+                        'raw' => $storedBuckets,
+                        'decoded' => $decodedBuckets,
+                        'sale_bucket' => $decodedBuckets['sale_bucket'] ?? 'not found'
                     ]);
+
+                    if ($decodedBuckets) {
+                        foreach ($queryParams as $code => $value) {
+                            if (!in_array($code, ['q', '_gsSearchId', 'gpSearchOverride']) && !empty($value)) {
+                                $bucketKey = $code . '_bucket';
+                                
+                                if (isset($decodedBuckets[$bucketKey])) {
+                                    foreach ($decodedBuckets[$bucketKey]['values'] as $bucketValue) {
+                                        if ((string)$bucketValue['value'] === (string)$value) {
+                                            $urlParams['limit'] = $bucketValue['metrics']['count'];
+                                            $this->logger->debug("Found limit for filter:", [
+                                                'code' => $code,
+                                                'value' => $value,
+                                                'limit' => $bucketValue['metrics']['count']
+                                            ]);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
-                $this->logger->debug("Stored buckets:", ['storedBuckets' => $storedBuckets]);
+                
                 
                 foreach ($queryParams as $code => $value) {
                     if (!empty($value)) {
