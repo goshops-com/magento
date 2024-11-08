@@ -2,7 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
         <section id="gopersonal" translate="label" type="text" sortOrder="300" showInDefault="1" showInWebsite="1" showInStore="1">
-            <label>GoPersonal Configuration</label>
+            <label>Gopersonal Configuration</label>
             <tab>general</tab>
             <resource>Gopersonal_Magento::config_gopersonal</resource>
 
@@ -13,6 +13,11 @@
                     <label>Client ID</label>
                     <comment>Enter the Client ID for GoPersonal.</comment>
                     <validate>required-entry</validate>
+                </field>
+
+                <field id="override_catalog_search" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Override Catalog Search</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
             </group>
         </section>
