@@ -96,20 +96,27 @@ class SearchEnginePlugin
                 
                 foreach ($queryParams as $code => $value) {
                     if (!empty($value)) {
-                        // Add filter
+                        // Skip non-filter params
+                        if (in_array($code, ['q', '_gsSearchId', 'gpSearchOverride'])) {
+                            continue;
+                        }
+            
                         $jsonFilter[$code] = [[
                             'value' => $value,
                             'label' => $value
                         ]];
-
-                        // Check stored buckets for limit
+            
+                        // Check bucket count
                         if ($storedBuckets) {
-                            $bucketKey = $code . self::BUCKET_SUFFIX;
-                            
-                            if (isset($storedBuckets[$bucketKey])) {
+                            $bucketKey = $code . '_bucket';  // Fix: Added _bucket suffix
+                            if (isset($storedBuckets[$bucketKey]['values'])) {
                                 foreach ($storedBuckets[$bucketKey]['values'] as $bucketValue) {
-                                    if ($bucketValue['value'] == $value) {
+                                    if ($bucketValue['value'] === $value) {
                                         $urlParams['limit'] = $bucketValue['metrics']['count'];
+                                        $this->logger->debug("Setting limit for $code", [
+                                            'value' => $value,
+                                            'limit' => $bucketValue['metrics']['count']
+                                        ]);
                                         break;
                                     }
                                 }
