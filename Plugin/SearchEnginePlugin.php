@@ -437,10 +437,13 @@ class SearchEnginePlugin
                 );
 
                 $attributes = [
+                    '_id' => new Value($product['entity_id'], '_id'),
+                    '_score' => new Value(1, '_score'),
                     'entity_id' => new Value(
                         $product['entity_id'],
                         'entity_id'
                     ),
+                    'score' => new Value(1, 'score'),
                     'name' => new Value($product['name'], 'name'),
                     'price' => new Value($product['price'], 'price'),
                     'sku' => new Value($product['sku'], 'sku'),
@@ -454,11 +457,6 @@ class SearchEnginePlugin
                 ];
 
                 foreach ($filterableAttributes as $code => $attribute) {
-                    $this->logger->debug('Processing filterable attribute:', [
-                        'code' => $code,
-                        'product_id' => $product['entity_id'],
-                    ]);
-
                     if (isset($product[$code])) {
                         $value = is_array($product[$code])
                             ? implode(',', $product[$code])
