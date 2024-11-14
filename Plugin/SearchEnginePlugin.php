@@ -317,61 +317,32 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
             ScopeInterface::SCOPE_STORE
         );
 
-        // If override is not enabled (not set to "1" or "Yes"), use default search
         if (!$isOverrideEnabled) {
             $this->logger->debug("SearchEnginePlugin: Custom search is disabled in configuration");
             return $proceed($request);
         }
 
-        // if (!$this->httpRequest->getParam('gpSearchOverride')) {
-        //     return $proceed($request);
-        // }
-
-        $this->logger->debug("SearchEnginePlugin: USING CUSTOM SEARCH ENGINE");
-        
         try {
-            // Test direct product load first
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $productRepository = $objectManager->get(\Magento\Catalog\Api\ProductRepositoryInterface::class);
-
-            // $productIds = [1604, 1748, 682];
             $queryParams = $this->getQueryParams($request);
-            // $this->logger->debug("Query parameters:", $queryParams);
-
-            // Get product IDs
             $productIds = $this->getProductIds($queryParams);
             
-            // Debug the product IDs we're looking for
-            // $this->logger->debug("Searching for product IDs:", $productIds);
-            
-            // Get filterable attributes
+            if (empty($productIds)) {
+                // If no products found, return empty response with proper structure
+                return new QueryResponse(
+                    [],
+                    new Aggregation([]),
+                    0
+                );
+            }
+
             $filterableAttributes = $this->getFilterableAttributes();
-            // $this->logger->debug("Loaded filterable attributes:", array_keys($filterableAttributes));
-
-            // $this->logger->debug("Filterable attributes:", array_map(function($attr) {
-            //     return [
-            //         'code' => $attr['code'],
-            //         'frontend_label' => $attr['frontend_label'],
-            //         'frontend_input' => $attr['frontend_input'],
-            //     ];
-            // }, $filterableAttributes));
-            
-
             $collection = $this->productCollectionFactory->create();
+            $collection->addAttributeToSelect('*')
+                      ->addIdFilter($productIds)
+                      ->addStoreFilter()
+                      ->addWebsiteFilter();
 
-            // First add all attributes normally
-            $collection->addAttributeToSelect('*');
-
-            // Then add ID filter
-            $collection->addIdFilter($productIds);
-
-            // Adding store filter is important for attribute values
-            $collection->addStoreFilter();
-
-            // Add website filter to get proper visibility
-            $collection->addWebsiteFilter();
-
-            // Now force join for filterable attributes
+            // Join attributes needed by WeltPixel
             foreach ($filterableAttributes as $code => $attribute) {
                 $collection->joinAttribute(
                     $code,
@@ -382,198 +353,48 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
                 );
             }
 
-            // Debug collection before ID filter
-            // $this->logger->debug("Collection SQL before ID filter:", [
-            //     'sql' => $collection->getSelect()->__toString()
-            // ]);
-            
-            $collection->addIdFilter($productIds);
-
-            // Debug collection after ID filter
-            // $this->logger->debug("Collection SQL after ID filter:", [
-            //     'sql' => $collection->getSelect()->__toString()
-            // ]);
-
-            // Debug if collection has products
-            // $this->logger->debug("Collection size: " . $collection->getSize());
-
-            $products = [];
+            // Create documents with required structure for WeltPixel
+            $documents = [];
             foreach ($collection as $product) {
-
-                $allData = $product->getData();
-                // $this->logger->debug("Raw product data from collection:", [
-                //     'product_id' => $product->getId(),
-                //     'all_data' => $allData,  // This will show ALL attributes including color
-                // ]);
-                
-                $categoryIds = $product->getCategoryIds();
-                
-                // $this->logger->debug("Found product in collection:", [
-                //     'id' => $product->getId(),
-                //     'name' => $product->getName(),
-                //     'sku' => $product->getSku(),
-                //     'status' => $product->getStatus(),
-                //     'visibility' => $product->getVisibility(),
-                //     'categories' => $categoryIds
-                // ]);
-
-                $productData = [
-                    'entity_id' => $product->getId(),
-                    'name' => $product->getName(),
-                    'price' => (float)$product->getPrice(),
-                    'sku' => $product->getSku(),
-                    'category_ids' => array_map('intval', $categoryIds),
+                $attributes = [
+                    'entity_id' => new Value($product->getId(), 'entity_id'),
+                    'score' => new Value(1, 'score'), // Required by WeltPixel
+                    '_score' => new Value(1, '_score'), // Required by WeltPixel
+                    'name' => new Value($product->getName(), 'name'),
+                    'price' => new Value($product->getPrice(), 'price'),
+                    'sku' => new Value($product->getSku(), 'sku'),
+                    'status' => new Value($product->getStatus(), 'status'),
+                    'visibility' => new Value($product->getVisibility(), 'visibility'),
+                    'store_id' => new Value($product->getStoreId(), 'store_id'),
+                    'category_ids' => new Value(implode(',', $product->getCategoryIds()), 'category_ids')
                 ];
 
+                // Add filterable attributes
                 foreach ($filterableAttributes as $code => $attribute) {
                     $value = $product->getData($code);
-                    if ($value !== null && !isset($productData[$code])) {
-                        $productData[$code] = $value;
-                    }
-                }
-
-                $products[] = $productData;
-            }
-
-            // Now log the products array after it's populated
-            // $this->logger->debug("Final products array:", $products);
-
-            // Create documents
-            $documents = [];
-            foreach ($products as $product) {
-                // $this->logger->debug("Creating document for product:", [
-                //     'id' => $product['entity_id'],
-                //     'categories' => $product['category_ids']
-                // ]);
-
-                $attributes = [
-                    'entity_id' => new Value($product['entity_id'], 'entity_id'),
-                    'name' => new Value($product['name'], 'name'),
-                    'price' => new Value($product['price'], 'price'),
-                    'sku' => new Value($product['sku'], 'sku'),
-                    'status' => new Value(1, 'status'),
-                    'visibility' => new Value(4, 'visibility'),
-                    'store_id' => new Value(1, 'store_id'),
-                    'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
-                ];
-
-                foreach ($filterableAttributes as $code => $attribute) {
-                    if (isset($product[$code])) {
-                        $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
+                    if ($value !== null) {
                         $attributes[$code] = new Value($value, $code);
                     }
                 }
 
                 $document = new Document();
-                $document->setId($product['entity_id']);
+                $document->setId($product->getId());
                 $document->setCustomAttributes($attributes);
                 $documents[] = $document;
             }
 
-            // Create buckets array
-            $buckets = [];
-
-            $buckets['price_bucket'] = new \Magento\Framework\Search\Response\Bucket(
-                'price_bucket',
-                [
-                    new Value('90_100', [
-                        'from' => 90,
-                        'to' => 100,
-                        'count' => 1,
-                        'value' => '90_100'
-                    ], 'price_bucket'),
-                    new Value('140_150', [
-                        'from' => 140,
-                        'to' => 150,
-                        'count' => 1,
-                        'value' => '140_150'
-                    ], 'price_bucket')
-                ]
+            // Create buckets with required structure
+            $buckets = $this->createBuckets($collection, $filterableAttributes, $queryParams);
+            
+            $response = new QueryResponse(
+                $documents,
+                new Aggregation($buckets),
+                count($documents)
             );
 
-            // Category bucket with logging
-            $categoryValues = [];
-            $categoryCounts = $this->getValueCounts($products, 'category_ids', true);
-            // $this->logger->debug("Category counts:", $categoryCounts);
-
-            foreach ($categoryCounts as $value => $count) {
-                $valueMetrics = [
-                    'value' => $value,
-                    'count' => $count
-                ];
-                
-                $categoryValues[] = new Value(
-                    (string)$value, 
-                    $valueMetrics,
-                    'category_bucket'
-                );
-            }
-
-            $buckets['category_bucket'] = new \Magento\Framework\Search\Response\Bucket(
-                'category_bucket',
-                $categoryValues
-            );
-
-            foreach ($filterableAttributes as $code => $attribute) {
-                if ($code === 'price') {
-                    continue;
-                }
-            
-                $counts = $this->getValueCounts($products, $code, $attribute['frontend_input'] === 'multiselect');
-                $values = [];
-                if (!empty($counts)) {
-                    foreach ($counts as $value => $count) {
-                        $optionLabel = isset($attribute['options'][$value]) ? 
-                            $attribute['options'][$value]['label'] : 
-                            $value;
-            
-                        $values[] = new Value((string)$value, [
-                            'value' => $value,
-                            'label' => $optionLabel,
-                            'count' => $count
-                        ], $code . self::BUCKET_SUFFIX);
-                    }
-                }
-                
-                // Create the bucket regardless of counts
-                $buckets[$code . self::BUCKET_SUFFIX] = new \Magento\Framework\Search\Response\Bucket(
-                    $code . self::BUCKET_SUFFIX,
-                    $values
-                );
-            }
-
-            $aggregations = new Aggregation($buckets);
-            $response = new QueryResponse($documents, $aggregations, count($documents));
-
+            // Store bucket data if needed
             if (isset($queryParams['_gsSearchId'])) {
-                $cacheKey = 'gp_buckets_' . $queryParams['_gsSearchId'];
-                // Convert buckets to a serializable format
-                $bucketsToStore = [];
-                foreach ($buckets as $code => $bucket) {
-                    $values = [];
-                    foreach ($bucket->getValues() as $value) {
-                        $values[] = [
-                            'value' => $value->getValue(),
-                            'metrics' => $value->getMetrics(),
-                            'aggregation' => $bucket->getName()  // Use bucket name instead of field
-                        ];
-                    }
-                    $bucketsToStore[$code] = [
-                        'name' => $bucket->getName(),
-                        'values' => $values
-                    ];
-                }
-
-                $bucketsJson = json_encode($bucketsToStore);
-                
-                $saved = $this->cache->save($bucketsJson, $cacheKey, [], 3600);
-                
-                // $this->logger->debug("Storing buckets:", [
-                //     'cacheKey' => $cacheKey,
-                //     'bucketsJson' => $bucketsJson,
-                //     'saved' => $saved,
-                //     'verifyLoad' => $this->cache->load($cacheKey)
-                // ]);
+                $this->storeBuckets($buckets, $queryParams['_gsSearchId']);
             }
 
             return $response;
@@ -581,7 +402,7 @@ protected function addSessionFallbackParams(array $urlParams, string $clientId):
         } catch (\Exception $e) {
             $this->logger->error("SearchEnginePlugin Error: " . $e->getMessage());
             $this->logger->error($e->getTraceAsString());
-            throw $e;
+            return $proceed($request); // Fallback to original search on error
         }
     }
 
