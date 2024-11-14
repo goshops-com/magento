@@ -544,12 +544,27 @@ class SearchEnginePlugin
                     $code,
                     $attribute['frontend_input'] === 'multiselect'
                 );
+
+                $this->logger->debug('Bucket counts for attribute:', [
+                    'code' => $code,
+                    'counts' => $counts,
+                    'frontend_input' => $attribute['frontend_input'],
+                    'frontend_label' => $attribute['frontend_label'],
+                ]);
+
                 $values = [];
                 if (!empty($counts)) {
                     foreach ($counts as $value => $count) {
                         $optionLabel = isset($attribute['options'][$value])
                             ? $attribute['options'][$value]['label']
                             : $value;
+
+                        $this->logger->debug('Creating bucket value:', [
+                            'code' => $code,
+                            'value' => $value,
+                            'count' => $count,
+                            'label' => $optionLabel,
+                        ]);
 
                         $values[] = new Value(
                             (string) $value,
@@ -562,6 +577,11 @@ class SearchEnginePlugin
                         );
                     }
                 }
+
+                $this->logger->debug('Final bucket created:', [
+                    'code' => $code,
+                    'values_count' => count($values),
+                ]);
 
                 // Create the bucket regardless of counts
                 $buckets[
@@ -644,6 +664,13 @@ class SearchEnginePlugin
                 }
             }
         }
+
+        $this->logger->debug('Value counts computed:', [
+            'field' => $field,
+            'counts' => $counts,
+            'product_count' => count($products),
+        ]);
+
         return $counts;
     }
 }
