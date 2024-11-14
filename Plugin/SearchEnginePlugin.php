@@ -17,6 +17,7 @@ use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\HTTP\Client\Curl;
 use Magento\Framework\Session\SessionManagerInterface;
+use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 
 class SearchEnginePlugin
 {
@@ -42,7 +43,8 @@ class SearchEnginePlugin
         ScopeConfigInterface $scopeConfig,
         Curl $httpClient,
         \Magento\Framework\App\CacheInterface $cache,
-        SessionManagerInterface $sessionManager
+        SessionManagerInterface $sessionManager,
+        Configurable $configurableType
     ) {
         $this->logger = $logger;
         $this->httpRequest = $httpRequest;
@@ -54,6 +56,7 @@ class SearchEnginePlugin
         $this->httpClient = $httpClient;
         $this->cache = $cache;
         $this->sessionManager = $sessionManager;
+        $this->configurableType = $configurableType;
     }
 
     protected function getProductIds(array $queryParams): array
@@ -352,6 +355,36 @@ class SearchEnginePlugin
         return [];
     }
 
+    protected function getProductAttributeValues($product, $attributeCode)
+    {
+        $values = [];
+
+        // If it's a configurable product, get values from all child products
+        if ($product->getTypeId() === Configurable::TYPE_CODE) {
+            $childProducts = $this->configurableType->getUsedProducts($product);
+            foreach ($childProducts as $childProduct) {
+                $value = $childProduct->getData($attributeCode);
+                if ($value !== null) {
+                    $values[] = $value;
+                }
+            }
+            // Also include the configurable product's own value if it exists
+            $parentValue = $product->getData($attributeCode);
+            if ($parentValue !== null) {
+                $values[] = $parentValue;
+            }
+        } else {
+            // For simple products, just get the direct value
+            $value = $product->getData($attributeCode);
+            if ($value !== null) {
+                $values[] = $value;
+            }
+        }
+
+        // Remove duplicates and return
+        return array_unique($values);
+    }
+
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -392,7 +425,7 @@ class SearchEnginePlugin
                 ->addStoreFilter()
                 ->addWebsiteFilter();
 
-            // Now force join for filterable attributes
+            // Join attributes and load child products for configurable products
             foreach ($filterableAttributes as $code => $attribute) {
                 $collection->joinAttribute(
                     $code,
@@ -402,8 +435,6 @@ class SearchEnginePlugin
                     'left'
                 );
             }
-
-            $collection->addIdFilter($productIds);
 
             $products = [];
             foreach ($collection as $product) {
@@ -418,13 +449,23 @@ class SearchEnginePlugin
                 ];
 
                 foreach ($filterableAttributes as $code => $attribute) {
-                    $value = $product->getData($code);
-                    if ($value !== null && !isset($productData[$code])) {
-                        $productData[$code] = $value;
+                    $values = $this->getProductAttributeValues($product, $code);
+                    if (!empty($values)) {
+                        $productData[$code] =
+                            count($values) === 1 ? reset($values) : $values;
                     }
                 }
 
                 $products[] = $productData;
+
+                $this->logger->debug('Processed product data:', [
+                    'product_id' => $product->getId(),
+                    'type' => $product->getTypeId(),
+                    'attributes' => array_intersect_key(
+                        $productData,
+                        $filterableAttributes
+                    ),
+                ]);
             }
 
             // Create documents with logging
@@ -648,19 +689,16 @@ class SearchEnginePlugin
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$field])) {
-                if ($isArray || is_array($product[$field])) {
-                    foreach ((array) $product[$field] as $value) {
+                $values = is_array($product[$field])
+                    ? $product[$field]
+                    : [$product[$field]];
+                foreach ($values as $value) {
+                    if ($value !== null && $value !== '') {
                         if (!isset($counts[$value])) {
                             $counts[$value] = 0;
                         }
                         $counts[$value]++;
                     }
-                } else {
-                    $value = $product[$field];
-                    if (!isset($counts[$value])) {
-                        $counts[$value] = 0;
-                    }
-                    $counts[$value]++;
                 }
             }
         }
