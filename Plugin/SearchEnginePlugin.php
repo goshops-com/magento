@@ -433,7 +433,6 @@ class SearchEnginePlugin
                     'Processing product for document creation:',
                     [
                         'product_id' => $product['entity_id'],
-                        'raw_data' => $product,
                     ]
                 );
 
@@ -454,26 +453,10 @@ class SearchEnginePlugin
                     ),
                 ];
 
-                $this->logger->debug('Base attributes created:', [
-                    'product_id' => $product['entity_id'],
-                    'attributes' => array_map(function ($value) {
-                        return [
-                            'value' => $value->getValue(),
-                            'type' => $value->getValueType(),
-                        ];
-                    }, $attributes),
-                ]);
-
                 foreach ($filterableAttributes as $code => $attribute) {
                     $this->logger->debug('Processing filterable attribute:', [
-                        'product_id' => $product['entity_id'],
                         'code' => $code,
-                        'product_value' => $product[$code] ?? 'not_set',
-                        'attribute_info' => [
-                            'frontend_input' => $attribute['frontend_input'],
-                            'backend_type' => $attribute['backend_type'],
-                            'has_options' => !empty($attribute['options']),
-                        ],
+                        'product_id' => $product['entity_id'],
                     ]);
 
                     if (isset($product[$code])) {
@@ -482,14 +465,10 @@ class SearchEnginePlugin
                             : $product[$code];
                         $attributes[$code] = new Value($value, $code);
 
-                        $this->logger->debug(
-                            'Added filterable attribute value:',
-                            [
-                                'product_id' => $product['entity_id'],
-                                'code' => $code,
-                                'final_value' => $value,
-                            ]
-                        );
+                        $this->logger->debug('Added attribute value:', [
+                            'code' => $code,
+                            'value' => $value,
+                        ]);
                     }
                 }
 
@@ -497,17 +476,6 @@ class SearchEnginePlugin
                 $document->setId($product['entity_id']);
                 $document->setCustomAttributes($attributes);
                 $documents[] = $document;
-
-                $this->logger->debug('Final document created:', [
-                    'product_id' => $product['entity_id'],
-                    'attribute_count' => count($attributes),
-                    'custom_attributes' => array_map(function ($value) {
-                        return [
-                            'value' => $value->getValue(),
-                            'type' => $value->getValueType(),
-                        ];
-                    }, $document->getCustomAttributes()),
-                ]);
             }
 
             // Create buckets array
