@@ -493,44 +493,90 @@ class SearchEnginePlugin
             // $this->logger->debug("Final products array:", $products);
 
             // Create documents
-            $documents = [];
-            foreach ($products as $product) {
-                // $this->logger->debug("Creating document for product:", [
-                //     'id' => $product['entity_id'],
-                //     'categories' => $product['category_ids']
-                // ]);
-
-                $attributes = [
-                    'entity_id' => new Value(
-                        $product['entity_id'],
-                        'entity_id'
-                    ),
-                    'name' => new Value($product['name'], 'name'),
-                    'price' => new Value($product['price'], 'price'),
-                    'sku' => new Value($product['sku'], 'sku'),
-                    'status' => new Value(1, 'status'),
-                    'visibility' => new Value(4, 'visibility'),
-                    'store_id' => new Value(1, 'store_id'),
-                    'category_ids' => new Value(
-                        implode(',', $product['category_ids']),
-                        'category_ids'
-                    ),
-                ];
-
-                foreach ($filterableAttributes as $code => $attribute) {
-                    if (isset($product[$code])) {
-                        $value = is_array($product[$code])
-                            ? implode(',', $product[$code])
-                            : $product[$code];
-                        $attributes[$code] = new Value($value, $code);
+            public function aroundSearch(
+                SearchEngine $subject,
+                callable $proceed,
+                RequestInterface $request
+            ) {
+                
+                try {            
+                    // Create documents
+                    $documents = [];
+                    foreach ($products as $product) {
+                        $this->logger->debug("Processing product for document creation:", [
+                            'product_id' => $product['entity_id'],
+                            'raw_data' => $product
+                        ]);
+            
+                        $attributes = [
+                            'entity_id' => new Value($product['entity_id'], 'entity_id'),
+                            'name' => new Value($product['name'], 'name'),
+                            'price' => new Value($product['price'], 'price'),
+                            'sku' => new Value($product['sku'], 'sku'),
+                            'status' => new Value(1, 'status'),
+                            'visibility' => new Value(4, 'visibility'),
+                            'store_id' => new Value(1, 'store_id'),
+                            'category_ids' => new Value(implode(',', $product['category_ids']), 'category_ids')
+                        ];
+            
+                        $this->logger->debug("Base attributes created:", [
+                            'product_id' => $product['entity_id'],
+                            'attributes' => array_map(function($value) {
+                                return [
+                                    'value' => $value->getValue(),
+                                    'field' => $value->getField()
+                                ];
+                            }, $attributes)
+                        ]);
+            
+                        foreach ($filterableAttributes as $code => $attribute) {
+                            $this->logger->debug("Processing filterable attribute:", [
+                                'product_id' => $product['entity_id'],
+                                'code' => $code,
+                                'product_value' => $product[$code] ?? 'not_set',
+                                'attribute_info' => [
+                                    'frontend_input' => $attribute['frontend_input'],
+                                    'backend_type' => $attribute['backend_type'],
+                                    'has_options' => !empty($attribute['options'])
+                                ]
+                            ]);
+            
+                            if (isset($product[$code])) {
+                                $value = is_array($product[$code]) ? implode(',', $product[$code]) : $product[$code];
+                                $attributes[$code] = new Value($value, $code);
+                                
+                                $this->logger->debug("Added filterable attribute value:", [
+                                    'product_id' => $product['entity_id'],
+                                    'code' => $code,
+                                    'final_value' => $value
+                                ]);
+                            }
+                        }
+            
+                        $document = new Document();
+                        $document->setId($product['entity_id']);
+                        $document->setCustomAttributes($attributes);
+                        $documents[] = $document;
+            
+                        $this->logger->debug("Final document created:", [
+                            'product_id' => $product['entity_id'],
+                            'attribute_count' => count($attributes),
+                            'custom_attributes' => array_map(function($value) {
+                                return [
+                                    'value' => $value->getValue(),
+                                    'field' => $value->getField()
+                                ];
+                            }, $document->getCustomAttributes())
+                        ]);
                     }
-                }
-
-                $document = new Document();
-                $document->setId($product['entity_id']);
-                $document->setCustomAttributes($attributes);
-                $documents[] = $document;
-            }
+            
+                    // Additional logging for the final documents array
+                    $this->logger->debug("Created documents array:", [
+                        'count' => count($documents),
+                        'document_ids' => array_map(function($doc) {
+                            return $doc->getId();
+                        }, $documents)
+                    ]);
 
             // Create buckets array
             $buckets = [];
