@@ -863,7 +863,9 @@ class SearchEnginePlugin
     ): array {
         $counts = [];
         foreach ($products as $product) {
-            if (isset($product[$field])) {
+            // Special handling for Yes/No attributes
+            if (array_key_exists($field, $product)) {
+                // Use array_key_exists instead of isset
                 if ($isArray || is_array($product[$field])) {
                     foreach ((array) $product[$field] as $value) {
                         if (!isset($counts[$value])) {
@@ -873,11 +875,18 @@ class SearchEnginePlugin
                     }
                 } else {
                     $value = $product[$field];
+                    // Ensure we count '0' values
                     if (!isset($counts[$value])) {
                         $counts[$value] = 0;
                     }
                     $counts[$value]++;
                 }
+            } else {
+                // Count null/unset values as "No" (0)
+                if (!isset($counts['0'])) {
+                    $counts['0'] = 0;
+                }
+                $counts['0']++;
             }
         }
         return $counts;
