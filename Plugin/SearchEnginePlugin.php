@@ -459,7 +459,7 @@ class SearchEnginePlugin
                     'attributes' => array_map(function ($value) {
                         return [
                             'value' => $value->getValue(),
-                            'field' => $value->getField(),
+                            'type' => $value->getValueType(),
                         ];
                     }, $attributes),
                 ]);
@@ -504,7 +504,7 @@ class SearchEnginePlugin
                     'custom_attributes' => array_map(function ($value) {
                         return [
                             'value' => $value->getValue(),
-                            'field' => $value->getField(),
+                            'type' => $value->getValueType(),
                         ];
                     }, $document->getCustomAttributes()),
                 ]);
