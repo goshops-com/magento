@@ -319,6 +319,7 @@ class SearchEnginePlugin
                 'frontend_label' => $attribute->getFrontendLabel(),
                 'backend_type' => $attribute->getBackendType(),
                 'frontend_input' => $attribute->getFrontendInput(),
+                'source_model' => $attribute->getSourceModel(),
                 'options' => $options,
             ];
         }
