@@ -33,9 +33,10 @@ class GetToken extends Action
     public function execute()
     {
         $requestId = uniqid('request_', true);
-        
+
         $result = $this->resultJsonFactory->create();
-        $readFromCookie = $this->getRequest()->getParam('readFromCookie') == 'true';
+        $readFromCookie =
+            $this->getRequest()->getParam('readFromCookie') == 'true';
 
         // Retrieve the JWT token based on the presence of the query parameter
         $token = $this->cookieManager->getCookie('gopersonal_jwt');
@@ -44,13 +45,17 @@ class GetToken extends Action
         $data = [
             'token' => $token ? $token : 'No token is stored.',
             'readFrom' => $readFromCookie ? 'cookie' : 'session',
-            'version' => '1.0.17'
+            'version' => '1.0.19',
         ];
 
         // Check if the customer is logged in
         if ($this->customerSession->isLoggedIn()) {
-            $data['customer_id'] = $this->customerSession->getCustomer()->getId();
-            $data['customer_email'] = $this->customerSession->getCustomer()->getEmail();
+            $data[
+                'customer_id'
+            ] = $this->customerSession->getCustomer()->getId();
+            $data[
+                'customer_email'
+            ] = $this->customerSession->getCustomer()->getEmail();
         } else {
             $data['customer_id'] = null;
             $data['customer_email'] = null;
