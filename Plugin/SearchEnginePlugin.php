@@ -677,7 +677,8 @@ class SearchEnginePlugin
                 'SearchEnginePlugin Error: ' . $e->getMessage()
             );
             $this->logger->error($e->getTraceAsString());
-            throw $e;
+            return $proceed($request);
+            // throw $e;
         }
     }
 
