@@ -272,7 +272,7 @@ class SearchEnginePlugin
         }
     }
 
-    protected function makeRequest(string $url, string $token = ''): array
+    protected function makeRequest(string $url, ?string $token = null): array
     {
         if ($token) {
             $this->httpClient->addHeader('Authorization', 'Bearer ' . $token);
