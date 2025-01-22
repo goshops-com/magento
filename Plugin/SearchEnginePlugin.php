@@ -403,7 +403,7 @@ class SearchEnginePlugin
             ScopeInterface::SCOPE_STORE
         );
 
-        // If override is not enabled (not set to "1" or "Yes"), use default search
+        // If override is not enabled, use default search
         if (!$isOverrideEnabled) {
             $this->logger->debug(
                 'SearchEnginePlugin: Custom search is disabled in configuration'
@@ -419,13 +419,23 @@ class SearchEnginePlugin
             $filterableAttributes = $this->getFilterableAttributes();
 
             $collection = $this->productCollectionFactory->create();
+
+            // Add the basic filters
             $collection
                 ->addAttributeToSelect('*')
                 ->addIdFilter($productIds)
                 ->addStoreFilter()
                 ->addWebsiteFilter();
 
-            // Join attributes and load child products for configurable products
+            // Add ORDER BY FIELD to maintain original order
+            if (!empty($productIds)) {
+                $connection = $collection->getConnection();
+                $orderByField = new \Zend_Db_Expr(
+                    sprintf('FIELD(e.entity_id, %s)', implode(',', $productIds))
+                );
+                $collection->getSelect()->order($orderByField);
+            }
+
             foreach ($filterableAttributes as $code => $attribute) {
                 $collection->joinAttribute(
                     $code,
@@ -468,7 +478,7 @@ class SearchEnginePlugin
                 ]);
             }
 
-            // Create documents with logging
+            // Create documents
             $documents = [];
             foreach ($products as $product) {
                 $this->logger->debug(
@@ -504,11 +514,6 @@ class SearchEnginePlugin
                             ? implode(',', $product[$code])
                             : $product[$code];
                         $attributes[$code] = new Value($value, $code);
-
-                        $this->logger->debug('Added attribute value:', [
-                            'code' => $code,
-                            'value' => $value,
-                        ]);
                     }
                 }
 
@@ -521,6 +526,7 @@ class SearchEnginePlugin
             // Create buckets array
             $buckets = [];
 
+            // Price bucket
             $buckets[
                 'price_bucket'
             ] = new \Magento\Framework\Search\Response\Bucket('price_bucket', [
@@ -546,14 +552,13 @@ class SearchEnginePlugin
                 ),
             ]);
 
-            // Category bucket with logging
+            // Category bucket
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts(
                 $products,
                 'category_ids',
                 true
             );
-            // $this->logger->debug("Category counts:", $categoryCounts);
 
             foreach ($categoryCounts as $value => $count) {
                 $valueMetrics = [
@@ -575,6 +580,7 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
+            // Create buckets for filterable attributes
             foreach ($filterableAttributes as $code => $attribute) {
                 if ($code === 'price') {
                     continue;
@@ -586,26 +592,12 @@ class SearchEnginePlugin
                     $attribute['frontend_input'] === 'multiselect'
                 );
 
-                $this->logger->debug('Bucket counts for attribute:', [
-                    'code' => $code,
-                    'counts' => $counts,
-                    'frontend_input' => $attribute['frontend_input'],
-                    'frontend_label' => $attribute['frontend_label'],
-                ]);
-
                 $values = [];
                 if (!empty($counts)) {
                     foreach ($counts as $value => $count) {
                         $optionLabel = isset($attribute['options'][$value])
                             ? $attribute['options'][$value]['label']
                             : $value;
-
-                        $this->logger->debug('Creating bucket value:', [
-                            'code' => $code,
-                            'value' => $value,
-                            'count' => $count,
-                            'label' => $optionLabel,
-                        ]);
 
                         $values[] = new Value(
                             (string) $value,
@@ -619,12 +611,6 @@ class SearchEnginePlugin
                     }
                 }
 
-                $this->logger->debug('Final bucket created:', [
-                    'code' => $code,
-                    'values_count' => count($values),
-                ]);
-
-                // Create the bucket regardless of counts
                 $buckets[
                     $code . self::BUCKET_SUFFIX
                 ] = new \Magento\Framework\Search\Response\Bucket(
@@ -640,35 +626,12 @@ class SearchEnginePlugin
                 count($documents)
             );
 
+            // Store buckets in cache if needed
             if (isset($queryParams['_gsSearchId'])) {
-                $cacheKey = 'gp_buckets_' . $queryParams['_gsSearchId'];
-                // Convert buckets to a serializable format
-                $bucketsToStore = [];
-                foreach ($buckets as $code => $bucket) {
-                    $values = [];
-                    foreach ($bucket->getValues() as $value) {
-                        $values[] = [
-                            'value' => $value->getValue(),
-                            'metrics' => $value->getMetrics(),
-                            'aggregation' => $bucket->getName(), // Use bucket name instead of field
-                        ];
-                    }
-                    $bucketsToStore[$code] = [
-                        'name' => $bucket->getName(),
-                        'values' => $values,
-                    ];
-                }
-
-                $bucketsJson = json_encode($bucketsToStore);
-
-                $saved = $this->cache->save($bucketsJson, $cacheKey, [], 3600);
-
-                // $this->logger->debug("Storing buckets:", [
-                //     'cacheKey' => $cacheKey,
-                //     'bucketsJson' => $bucketsJson,
-                //     'saved' => $saved,
-                //     'verifyLoad' => $this->cache->load($cacheKey)
-                // ]);
+                $this->storeBucketsInCache(
+                    $buckets,
+                    $queryParams['_gsSearchId']
+                );
             }
 
             return $response;
@@ -678,8 +641,33 @@ class SearchEnginePlugin
             );
             $this->logger->error($e->getTraceAsString());
             return $proceed($request);
-            // throw $e;
         }
+    }
+
+    protected function storeBucketsInCache(
+        array $buckets,
+        string $gsSearchId
+    ): void {
+        $cacheKey = 'gp_buckets_' . $gsSearchId;
+        $bucketsToStore = [];
+
+        foreach ($buckets as $code => $bucket) {
+            $values = [];
+            foreach ($bucket->getValues() as $value) {
+                $values[] = [
+                    'value' => $value->getValue(),
+                    'metrics' => $value->getMetrics(),
+                    'aggregation' => $bucket->getName(),
+                ];
+            }
+            $bucketsToStore[$code] = [
+                'name' => $bucket->getName(),
+                'values' => $values,
+            ];
+        }
+
+        $bucketsJson = json_encode($bucketsToStore);
+        $this->cache->save($bucketsJson, $cacheKey, [], 3600);
     }
 
     protected function getValueCounts(
