@@ -102,3 +102,18 @@ If you encounter any issues or have questions about this module, please:
 ## Contributing
 
 We welcome contributions to improve this module. Please submit pull requests to our GitHub repository.
+
+## Versioning
+
+We use semantic versioning for this module. The version number follows the format `MAJOR.MINOR.PATCH`.
+
+- `MAJOR` changes indicate significant changes in the module's functionality or architecture.
+- `MINOR` changes indicate new features or improvements that do not break compatibility with previous versions.
+- `PATCH` changes indicate bug fixes or minor improvements that do not change the module's functionality.
+
+# Create a local tag
+git tag -a 1.0.21 -m "Version 1.0.21"
+
+# Push the tag to remote
+git push origin 1.0.21
+
