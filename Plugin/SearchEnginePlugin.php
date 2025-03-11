@@ -411,7 +411,6 @@ class SearchEnginePlugin
         $this->cache->save($bucketsJson, $cacheKey, [], 3600);
     }
 
-    // Replace the original aroundSearch method with this one:
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -463,7 +462,11 @@ class SearchEnginePlugin
                 $collection->getSelect()->order($orderByField);
             }
 
+            // Join attributes but skip category_ids
             foreach ($filterableAttributes as $code => $attribute) {
+                if ($code === 'category_ids') {
+                    continue;
+                }
                 $collection->joinAttribute(
                     $code,
                     'catalog_product/' . $code,
@@ -475,9 +478,9 @@ class SearchEnginePlugin
 
             $products = [];
             foreach ($collection as $product) {
+                // Get category IDs correctly using the product's method
                 $categoryIds = $product->getCategoryIds();
 
-                // Log category IDs for each product
                 $this->logger->debug(
                     'Category IDs for product ' . $product->getId() . ':',
                     [
@@ -494,6 +497,9 @@ class SearchEnginePlugin
                 ];
 
                 foreach ($filterableAttributes as $code => $attribute) {
+                    if ($code === 'category_ids') {
+                        continue;
+                    }
                     $values = $this->getProductAttributeValues($product, $code);
                     if (!empty($values)) {
                         $productData[$code] =
@@ -506,6 +512,7 @@ class SearchEnginePlugin
                 $this->logger->debug('Processed product data:', [
                     'product_id' => $product->getId(),
                     'type' => $product->getTypeId(),
+                    'category_ids' => $categoryIds,
                     'attributes' => array_intersect_key(
                         $productData,
                         $filterableAttributes
@@ -544,6 +551,9 @@ class SearchEnginePlugin
                 ];
 
                 foreach ($filterableAttributes as $code => $attribute) {
+                    if ($code === 'category_ids') {
+                        continue;
+                    }
                     if (isset($product[$code])) {
                         $value = is_array($product[$code])
                             ? implode(',', $product[$code])
@@ -614,7 +624,7 @@ class SearchEnginePlugin
                 );
             }
 
-            // Try with different bucket names to see which one works
+            // Try with different bucket names that Magento might be expecting
             $buckets[
                 'category_id'
             ] = new \Magento\Framework\Search\Response\Bucket(
@@ -622,7 +632,7 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
-            // Also create with original name as backup
+            // Also include with original bucket name
             $buckets[
                 'category_bucket'
             ] = new \Magento\Framework\Search\Response\Bucket(
@@ -630,17 +640,15 @@ class SearchEnginePlugin
                 $categoryValues
             );
 
-            // Try alternate name format
-            $buckets[
-                'categories'
-            ] = new \Magento\Framework\Search\Response\Bucket(
-                'categories',
+            // Also try with cat_ids
+            $buckets['cat_id'] = new \Magento\Framework\Search\Response\Bucket(
+                'cat_id',
                 $categoryValues
             );
 
             // Create buckets for filterable attributes
             foreach ($filterableAttributes as $code => $attribute) {
-                if ($code === 'price') {
+                if ($code === 'price' || $code === 'category_ids') {
                     continue;
                 }
 
