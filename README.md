@@ -26,7 +26,7 @@ composer require gopersonal/magento-plugin:dev-main
    If you prefer to install a specific version, you can specify the version number instead:
 
 ```bash
-composer require gopersonal/magento-plugin:1.0.21
+composer require gopersonal/magento-plugin:1.0.22
 ```
 
    Replace `1.0.16` with the desired version number.
@@ -112,8 +112,8 @@ We use semantic versioning for this module. The version number follows the forma
 - `PATCH` changes indicate bug fixes or minor improvements that do not change the module's functionality.
 
 # Create a local tag
-git tag -a 1.0.21 -m "Version 1.0.21"
+git tag -a 1.0.22 -m "Version 1.0.22"
 
 # Push the tag to remote
-git push origin 1.0.21
+git push origin 1.0.22
 
