@@ -385,6 +385,33 @@ class SearchEnginePlugin
         return array_unique($values);
     }
 
+    protected function storeBucketsInCache(
+        array $buckets,
+        string $gsSearchId
+    ): void {
+        $cacheKey = 'gp_buckets_' . $gsSearchId;
+        $bucketsToStore = [];
+
+        foreach ($buckets as $code => $bucket) {
+            $values = [];
+            foreach ($bucket->getValues() as $value) {
+                $values[] = [
+                    'value' => $value->getValue(),
+                    'metrics' => $value->getMetrics(),
+                    'aggregation' => $bucket->getName(),
+                ];
+            }
+            $bucketsToStore[$code] = [
+                'name' => $bucket->getName(),
+                'values' => $values,
+            ];
+        }
+
+        $bucketsJson = json_encode($bucketsToStore);
+        $this->cache->save($bucketsJson, $cacheKey, [], 3600);
+    }
+
+    // Replace the original aroundSearch method with this one:
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -449,6 +476,14 @@ class SearchEnginePlugin
             $products = [];
             foreach ($collection as $product) {
                 $categoryIds = $product->getCategoryIds();
+
+                // Log category IDs for each product
+                $this->logger->debug(
+                    'Category IDs for product ' . $product->getId() . ':',
+                    [
+                        'category_ids' => $categoryIds,
+                    ]
+                );
 
                 $productData = [
                     'entity_id' => $product->getId(),
@@ -552,13 +587,19 @@ class SearchEnginePlugin
                 ),
             ]);
 
-            // Category bucket
+            // Category bucket - log before creating
             $categoryValues = [];
             $categoryCounts = $this->getValueCounts(
                 $products,
                 'category_ids',
                 true
             );
+
+            $this->logger->debug('Category counts before bucket creation:', [
+                'category_counts' => $categoryCounts,
+                'count_for_category_17' => $categoryCounts[17] ?? 'not found',
+                'categories_found' => array_keys($categoryCounts),
+            ]);
 
             foreach ($categoryCounts as $value => $count) {
                 $valueMetrics = [
@@ -569,14 +610,31 @@ class SearchEnginePlugin
                 $categoryValues[] = new Value(
                     (string) $value,
                     $valueMetrics,
-                    'category_bucket'
+                    'category_id'
                 );
             }
 
+            // Try with different bucket names to see which one works
+            $buckets[
+                'category_id'
+            ] = new \Magento\Framework\Search\Response\Bucket(
+                'category_id',
+                $categoryValues
+            );
+
+            // Also create with original name as backup
             $buckets[
                 'category_bucket'
             ] = new \Magento\Framework\Search\Response\Bucket(
                 'category_bucket',
+                $categoryValues
+            );
+
+            // Try alternate name format
+            $buckets[
+                'categories'
+            ] = new \Magento\Framework\Search\Response\Bucket(
+                'categories',
                 $categoryValues
             );
 
@@ -619,12 +677,24 @@ class SearchEnginePlugin
                 );
             }
 
+            // Log all bucket names
+            $this->logger->debug('All bucket names:', [
+                'buckets' => array_keys($buckets),
+            ]);
+
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse(
                 $documents,
                 $aggregations,
                 count($documents)
             );
+
+            // Log the final response structure
+            $this->logger->debug('QueryResponse structure:', [
+                'document_count' => count($documents),
+                'aggregation_buckets' => array_keys($buckets),
+                'response_class' => get_class($response),
+            ]);
 
             // Store buckets in cache if needed
             if (isset($queryParams['_gsSearchId'])) {
@@ -644,32 +714,7 @@ class SearchEnginePlugin
         }
     }
 
-    protected function storeBucketsInCache(
-        array $buckets,
-        string $gsSearchId
-    ): void {
-        $cacheKey = 'gp_buckets_' . $gsSearchId;
-        $bucketsToStore = [];
-
-        foreach ($buckets as $code => $bucket) {
-            $values = [];
-            foreach ($bucket->getValues() as $value) {
-                $values[] = [
-                    'value' => $value->getValue(),
-                    'metrics' => $value->getMetrics(),
-                    'aggregation' => $bucket->getName(),
-                ];
-            }
-            $bucketsToStore[$code] = [
-                'name' => $bucket->getName(),
-                'values' => $values,
-            ];
-        }
-
-        $bucketsJson = json_encode($bucketsToStore);
-        $this->cache->save($bucketsJson, $cacheKey, [], 3600);
-    }
-
+    // Replace the original getValueCounts method with this one:
     protected function getValueCounts(
         array $products,
         string $field,
@@ -701,6 +746,15 @@ class SearchEnginePlugin
                     }
                 }
             }
+        }
+
+        // Add special logging for category_ids
+        if ($field === 'category_ids') {
+            $this->logger->debug('Detailed category counts:', [
+                'counts' => $counts,
+                'products_processed' => count($products),
+                'category_17_count' => $counts[17] ?? 'not found',
+            ]);
         }
 
         $this->logger->debug('Value counts computed:', [
