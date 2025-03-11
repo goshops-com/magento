@@ -678,11 +678,22 @@ class SearchEnginePlugin
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$field])) {
-                $values = is_array($product[$field])
-                    ? $product[$field]
-                    : [$product[$field]];
+                // Handle the case where the value is already a comma-separated string
+                if (
+                    !is_array($product[$field]) &&
+                    strpos($product[$field], ',') !== false
+                ) {
+                    $values = explode(',', $product[$field]);
+                } else {
+                    $values = is_array($product[$field])
+                        ? $product[$field]
+                        : [$product[$field]];
+                }
+
                 foreach ($values as $value) {
                     if ($value !== null && $value !== '') {
+                        // Trim spaces that might occur from explode
+                        $value = trim($value);
                         if (!isset($counts[$value])) {
                             $counts[$value] = 0;
                         }
