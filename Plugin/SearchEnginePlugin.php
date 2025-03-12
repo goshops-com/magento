@@ -1050,7 +1050,7 @@ class SearchEnginePlugin
             );
 
             // Log the final response structure
-            $this->logger->debug('QueryResponse structure:', [
+            $this->logger->debug('Gopersonal QueryResponse structure:', [
                 'document_count' => count($documents),
                 'aggregation_buckets' => array_keys($buckets),
                 'response_class' => get_class($response),
