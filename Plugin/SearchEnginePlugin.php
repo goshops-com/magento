@@ -531,63 +531,121 @@ class SearchEnginePlugin
         ]);
 
         // Get the parent category IDs that should appear in navigation (level 2)
-        // These must have both is_anchor=1 AND include_in_menu=1
         $categoryResource = $this->objectManager->get(
             \Magento\Catalog\Model\ResourceModel\Category::class
         );
         $connection = $categoryResource->getConnection();
 
-        // Query to get only parent categories with is_anchor=1 AND include_in_menu=1
+        // Simplified query that should find all level 2 categories with is_anchor=1
+        // This query avoids the complex joins from the previous version which may have been causing issues
         $select = $connection
             ->select()
             ->from(['e' => $categoryResource->getEntityTable()], ['entity_id'])
-            ->joinLeft(
-                [
-                    'a' => $categoryResource->getTable(
-                        'catalog_category_entity_int'
-                    ),
-                ],
-                "e.entity_id = a.entity_id AND a.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = 'is_anchor' AND entity_type_id = 3)",
-                []
-            )
-            ->joinLeft(
-                [
-                    'i' => $categoryResource->getTable(
-                        'catalog_category_entity_int'
-                    ),
-                ],
-                "e.entity_id = i.entity_id AND i.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = 'include_in_menu' AND entity_type_id = 3)",
-                []
-            )
-            ->joinLeft(
-                [
-                    's' => $categoryResource->getTable(
-                        'catalog_category_entity_int'
-                    ),
-                ],
-                "e.entity_id = s.entity_id AND s.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = 'is_active' AND entity_type_id = 3)",
-                []
-            )
-            ->joinLeft(
-                [
-                    'l' => $categoryResource->getTable(
-                        'catalog_category_entity_int'
-                    ),
-                ],
-                "e.entity_id = l.entity_id AND l.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = 'level' AND entity_type_id = 3)",
-                []
-            )
-            ->where('a.value = ?', 1) // is_anchor = 1
-            ->where('i.value = ?', 1) // include_in_menu = 1
-            ->where('s.value = ?', 1) // is_active = 1
-            ->where('l.value = ?', 2); // parent categories (level 2)
+            ->where('e.level = ?', 2); // Select level 2 categories (parent categories)
 
-        $validCategoryIds = $connection->fetchCol($select);
+        // Get all level 2 categories first
+        $categoryIds = $connection->fetchCol($select);
 
-        $this->logger->debug('Valid parent category IDs matching criteria:', [
+        $this->logger->debug('All level 2 categories:', [
+            'category_ids' => $categoryIds,
+        ]);
+
+        // Now for each category, check if it meets our criteria
+        $validCategoryIds = [];
+        foreach ($categoryIds as $categoryId) {
+            // Check is_anchor attribute
+            $isAnchorSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        'a' => $categoryResource->getTable(
+                            'catalog_category_entity_int'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('a.entity_id = ?', $categoryId)
+                ->where(
+                    'a.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'is_anchor'
+                );
+
+            $isAnchor = $connection->fetchOne($isAnchorSelect);
+
+            // Check include_in_menu attribute
+            $includeInMenuSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        'm' => $categoryResource->getTable(
+                            'catalog_category_entity_int'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('m.entity_id = ?', $categoryId)
+                ->where(
+                    'm.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'include_in_menu'
+                );
+
+            $includeInMenu = $connection->fetchOne($includeInMenuSelect);
+
+            // Check is_active attribute
+            $isActiveSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        's' => $categoryResource->getTable(
+                            'catalog_category_entity_int'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('s.entity_id = ?', $categoryId)
+                ->where(
+                    's.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'is_active'
+                );
+
+            $isActive = $connection->fetchOne($isActiveSelect);
+
+            // Get category name for logging
+            $nameSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        'n' => $categoryResource->getTable(
+                            'catalog_category_entity_varchar'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('n.entity_id = ?', $categoryId)
+                ->where(
+                    'n.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'name'
+                );
+
+            $name = $connection->fetchOne($nameSelect);
+
+            $this->logger->debug("Checking category $categoryId ($name):", [
+                'is_anchor' => $isAnchor,
+                'include_in_menu' => $includeInMenu,
+                'is_active' => $isActive,
+            ]);
+
+            // If it meets all criteria, add it to valid categories
+            if ($isAnchor == 1 && $includeInMenu == 1 && $isActive == 1) {
+                $validCategoryIds[] = $categoryId;
+                $this->logger->debug(
+                    "Category $categoryId ($name) meets all criteria"
+                );
+            }
+        }
+
+        $this->logger->debug('Final valid category IDs matching criteria:', [
             'valid_categories' => $validCategoryIds,
-            'criteria' =>
-                'is_anchor=1, include_in_menu=1, is_active=1, level=2',
         ]);
 
         // Check if we have any valid categories
