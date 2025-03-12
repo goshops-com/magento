@@ -536,21 +536,18 @@ class SearchEnginePlugin
         );
         $connection = $categoryResource->getConnection();
 
-        // Simplified query that should find all level 2 categories with is_anchor=1
-        // This query avoids the complex joins from the previous version which may have been causing issues
+        // Simplified query that should find all level 2 categories (parent categories)
         $select = $connection
             ->select()
             ->from(['e' => $categoryResource->getEntityTable()], ['entity_id'])
-            ->where('e.level = ?', 2); // Select level 2 categories (parent categories)
-
-        // Get all level 2 categories first
+            ->where('e.level = ?', 2);
         $categoryIds = $connection->fetchCol($select);
 
         $this->logger->debug('All level 2 categories:', [
             'category_ids' => $categoryIds,
         ]);
 
-        // Now for each category, check if it meets our criteria
+        // Now for each level 2 category, check if it meets our criteria
         $validCategoryIds = [];
         foreach ($categoryIds as $categoryId) {
             // Check is_anchor attribute
@@ -569,7 +566,6 @@ class SearchEnginePlugin
                     'a.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
                     'is_anchor'
                 );
-
             $isAnchor = $connection->fetchOne($isAnchorSelect);
 
             // Check include_in_menu attribute
@@ -588,7 +584,6 @@ class SearchEnginePlugin
                     'm.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
                     'include_in_menu'
                 );
-
             $includeInMenu = $connection->fetchOne($includeInMenuSelect);
 
             // Check is_active attribute
@@ -607,7 +602,6 @@ class SearchEnginePlugin
                     's.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
                     'is_active'
                 );
-
             $isActive = $connection->fetchOne($isActiveSelect);
 
             // Get category name for logging
@@ -626,7 +620,6 @@ class SearchEnginePlugin
                     'n.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
                     'name'
                 );
-
             $name = $connection->fetchOne($nameSelect);
 
             $this->logger->debug("Checking category $categoryId ($name):", [
@@ -635,7 +628,6 @@ class SearchEnginePlugin
                 'is_active' => $isActive,
             ]);
 
-            // If it meets all criteria, add it to valid categories
             if ($isAnchor == 1 && $includeInMenu == 1 && $isActive == 1) {
                 $validCategoryIds[] = $categoryId;
                 $this->logger->debug(
@@ -648,13 +640,40 @@ class SearchEnginePlugin
             'valid_categories' => $validCategoryIds,
         ]);
 
+        // --- NEW: Aggregate counts from subcategories into their top-level (level 2) category
+        $aggregatedCategoryCounts = [];
+        foreach ($categoryCounts as $subCatId => $count) {
+            // Retrieve the full category path for the subcategory.
+            // The path is typically stored as a string like "1/2/10/25" where:
+            // 1 is the root, 2 is the default category, and 10 (for example) is a level 2 category.
+            $selectPath = $connection
+                ->select()
+                ->from($categoryResource->getEntityTable(), ['path'])
+                ->where('entity_id = ?', $subCatId);
+            $path = $connection->fetchOne($selectPath);
+
+            if ($path) {
+                $parts = explode('/', $path);
+                // Check if there is a level 2 category in the path.
+                // Usually, index 0 is root, index 1 is default, so index 2 is our level 2 category.
+                if (isset($parts[2])) {
+                    $topCatId = $parts[2];
+                    if (!isset($aggregatedCategoryCounts[$topCatId])) {
+                        $aggregatedCategoryCounts[$topCatId] = 0;
+                    }
+                    $aggregatedCategoryCounts[$topCatId] += (int) $count;
+                }
+            }
+        }
+        $this->logger->debug('Aggregated category counts:', [
+            'aggregated_counts' => $aggregatedCategoryCounts,
+        ]);
+
         // Check if we have any valid categories
         if (empty($validCategoryIds)) {
             $this->logger->warning(
                 'No valid categories found matching layered navigation criteria'
             );
-
-            // If we have no valid categories, create an empty bucket to avoid errors
             $categoryValues[] = new Value(
                 '0',
                 [
@@ -664,11 +683,10 @@ class SearchEnginePlugin
                 'category_bucket'
             );
         } else {
-            // Create bucket values for all valid categories
+            // Create bucket values for all valid (level 2) categories using the aggregated counts
             foreach ($validCategoryIds as $catId) {
-                // Use actual count if available, otherwise use a default count of 0
-                $count = isset($categoryCounts[$catId])
-                    ? (int) $categoryCounts[$catId]
+                $count = isset($aggregatedCategoryCounts[$catId])
+                    ? (int) $aggregatedCategoryCounts[$catId]
                     : 0;
 
                 $categoryValues[] = new Value(
@@ -683,9 +701,7 @@ class SearchEnginePlugin
                 $this->logger->debug('Added category to bucket:', [
                     'category_id' => $catId,
                     'count' => $count,
-                    'has_products' => isset($categoryCounts[$catId])
-                        ? 'yes'
-                        : 'no',
+                    'has_products' => $count > 0 ? 'yes' : 'no',
                 ]);
             }
         }
