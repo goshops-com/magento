@@ -1,41 +1,84 @@
-<?xml version="1.0"?>
+<?xml version="1.0" ?>
 <!--
  * @package   Gopersonal_Magento
  * @author    Shahid Taj
  -->
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../../lib/internal/Magento/Framework/ObjectManager/etc/config.xsd">
+<config
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="../../../../../lib/internal/Magento/Framework/ObjectManager/etc/config.xsd"
+>
     <!-- Define virtual types for the classes that may not exist -->
     
     <type name="Magento\Search\Model\SearchEngine">
-        <plugin name="gopersonal_search_engine" 
-                type="Gopersonal\Magento\Plugin\SearchEnginePlugin" 
-                sortOrder="1" />
+        <plugin
+      name="gopersonal_search_engine"
+      type="Gopersonal\Magento\Plugin\SearchEnginePlugin"
+      sortOrder="1"
+    />
     </type>
 
     <type name="Gopersonal\Magento\Plugin\SearchEnginePlugin">
         <arguments>
-            <argument name="filterableAttributeList" xsi:type="object">Magento\Catalog\Model\Layer\Category\FilterableAttributeList</argument>
+            <argument
+        name="filterableAttributeList"
+        xsi:type="object"
+      >Magento\Catalog\Model\Layer\Category\FilterableAttributeList</argument>
         </arguments>
     </type>
     
     <!-- Here custom layer class extends the default Magento layer class.
          That class instantiates a number of interfaces. -->
-    <preference for="Magento\Catalog\Model\Layer" type="Gopersonal\Magento\Model\Layer" />
-    <preference for="Magento\Catalog\Model\Layer\ContextInterface" type="Magento\Catalog\Model\Layer\Context" />
-    <preference for="Magento\Catalog\Model\Layer\ItemCollectionProviderInterface" type="Magento\Catalog\Model\Layer\Category\ItemCollectionProvider" />
-    <preference for="Magento\Catalog\Model\Layer\StateKeyInterface" type="Magento\Catalog\Model\Layer\Category\StateKey" />
-    <preference for="Magento\Catalog\Model\Layer\CollectionFilterInterface" type="Magento\Catalog\Model\Layer\Category\CollectionFilter" />
-    <preference for="Magento\Catalog\Model\Layer\FilterableAttributeListInterface" type="Magento\Catalog\Model\Layer\Category\FilterableAttributeList" />
-    <preference for="Magento\Catalog\Model\Layer\AvailabilityFlagInterface" type="Magento\Catalog\Model\Layer\Category\AvailabilityFlag" />
+    <preference
+    for="Magento\Catalog\Model\Layer"
+    type="Gopersonal\Magento\Model\Layer"
+  />
+    <preference
+    for="Magento\Catalog\Model\Layer\ContextInterface"
+    type="Magento\Catalog\Model\Layer\Context"
+  />
+    <preference
+    for="Magento\Catalog\Model\Layer\ItemCollectionProviderInterface"
+    type="Magento\Catalog\Model\Layer\Category\ItemCollectionProvider"
+  />
+    <preference
+    for="Magento\Catalog\Model\Layer\StateKeyInterface"
+    type="Magento\Catalog\Model\Layer\Category\StateKey"
+  />
+    <preference
+    for="Magento\Catalog\Model\Layer\CollectionFilterInterface"
+    type="Magento\Catalog\Model\Layer\Category\CollectionFilter"
+  />
+    <preference
+    for="Magento\Catalog\Model\Layer\FilterableAttributeListInterface"
+    type="Magento\Catalog\Model\Layer\Category\FilterableAttributeList"
+  />
+    <preference
+    for="Magento\Catalog\Model\Layer\AvailabilityFlagInterface"
+    type="Magento\Catalog\Model\Layer\Category\AvailabilityFlag"
+  />
     <!-- <preference for="Magento\Catalog\Model\ResourceModel\Layer\Filter\Price" type="Gopersonal\Magento\Model\ResourceModel\Layer\Filter\PriceFilter" /> -->
         
     <type name="Gopersonal\Magento\Observer\BeforeSearchRequest">
         <arguments>
-            <argument name="request" xsi:type="object">Magento\Framework\App\RequestInterface</argument>
+            <argument
+        name="request"
+        xsi:type="object"
+      >Magento\Framework\App\RequestInterface</argument>
         </arguments>
     </type>
 
     <type name="Magento\Catalog\Model\Product">
-        <plugin name="gopersonal_product_url" type="Gopersonal\Magento\Plugin\ProductUrlPlugin" />
+        <plugin
+      name="gopersonal_product_url"
+      type="Gopersonal\Magento\Plugin\ProductUrlPlugin"
+    />
     </type>
+
+    <type name="Magento\Framework\Search\Response\QueryResponse">
+        <plugin
+      name="debug_search_result_buckets"
+      type="Gopersonal\Magento\Plugin\SearchResultPlugin"
+    />
+    </type>
+
 </config>
