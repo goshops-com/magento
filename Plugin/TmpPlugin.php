@@ -4,7 +4,7 @@ namespace Gopersonal\Magento\Plugin;
 use Magento\Framework\Search\Response\QueryResponse;
 use Psr\Log\LoggerInterface;
 
-class SearchResultPlugin
+class TmpPlugin
 {
     protected $logger;
 
