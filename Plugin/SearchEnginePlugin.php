@@ -372,10 +372,8 @@ class SearchEnginePlugin
         foreach ($this->filterableAttributeList->getList() as $attribute) {
             $code = $attribute->getAttributeCode();
             $options = [];
-
             if ($attribute->usesSource()) {
                 foreach ($attribute->getSource()->getAllOptions() as $option) {
-                    // Changed from !empty() to isset() to include zero values
                     if (isset($option['value']) && $option['value'] !== '') {
                         $options[$option['value']] = [
                             'value' => $option['value'],
@@ -384,7 +382,6 @@ class SearchEnginePlugin
                     }
                 }
             }
-
             $attributes[$code] = [
                 'code' => $code,
                 'frontend_label' => $attribute->getFrontendLabel(),
@@ -394,19 +391,45 @@ class SearchEnginePlugin
                 'options' => $options,
             ];
         }
-
-        // Always ensure category_ids is included even if not in filterable list
-        if (!isset($attributes['category_ids'])) {
-            $attributes['category_ids'] = [
-                'code' => 'category_ids',
-                'frontend_label' => 'Categories',
-                'backend_type' => 'static',
-                'frontend_input' => 'multiselect',
-                'source_model' => null,
-                'options' => [],
-            ];
+        // Ensure that category_ids is defined and has options.
+        if (
+            !isset($attributes['category_ids']) ||
+            empty($attributes['category_ids']['options'])
+        ) {
+            $this->logger->debug('Loading category options for category_ids');
+            try {
+                $categoryCollectionFactory = $this->objectManager->get(
+                    \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory::class
+                );
+                $categoryCollection = $categoryCollectionFactory
+                    ->create()
+                    ->addAttributeToSelect('name')
+                    ->addAttributeToFilter('is_active', 1)
+                    ->setOrder('position', 'ASC');
+                $categoryOptions = [];
+                foreach ($categoryCollection as $category) {
+                    $categoryOptions[$category->getId()] = [
+                        'value' => $category->getId(),
+                        'label' => $category->getName(),
+                    ];
+                }
+                $attributes['category_ids'] = [
+                    'code' => 'category_ids',
+                    'frontend_label' => 'Categories',
+                    'backend_type' => 'static',
+                    'frontend_input' => 'multiselect',
+                    'source_model' => null,
+                    'options' => $categoryOptions,
+                ];
+                $this->logger->debug('Category options loaded', [
+                    'options' => $categoryOptions,
+                ]);
+            } catch (\Exception $e) {
+                $this->logger->error(
+                    'Error loading category options: ' . $e->getMessage()
+                );
+            }
         }
-
         return $attributes;
     }
 
@@ -821,7 +844,7 @@ class SearchEnginePlugin
         );
 
         foreach ($categoryCounts as $value => $count) {
-            // Cast the value to integer for consistency
+            // Ensure consistency by casting the value to integer
             $intValue = (int) $value;
             try {
                 $category = $categoryRepository->get($intValue);
@@ -838,7 +861,7 @@ class SearchEnginePlugin
                 );
             }
 
-            // Build metrics with both value and label
+            // Build metrics including the label
             $valueMetrics = [
                 'value' => $intValue,
                 'count' => (int) $count,
@@ -850,14 +873,14 @@ class SearchEnginePlugin
                 'metrics' => $valueMetrics,
             ]);
 
-            $categoryValues[] = new Value(
-                (string) $intValue, // Magento expects a string representation
+            $categoryValues[] = new \Magento\Framework\Search\Response\Aggregation\Value(
+                (string) $intValue,
                 $valueMetrics,
                 'category_bucket'
             );
         }
 
-        // Create the main category_bucket with labels
+        // Build the main category bucket using our enriched values
         $buckets[
             'category_bucket'
         ] = new \Magento\Framework\Search\Response\Bucket(
@@ -865,7 +888,7 @@ class SearchEnginePlugin
             $categoryValues
         );
 
-        // Duplicate the bucket under additional names for compatibility
+        // Duplicate the bucket under alternative keys so that Magento layered navigation finds them
         $categoryBucketNames = [
             'category_filter',
             'category_id',
