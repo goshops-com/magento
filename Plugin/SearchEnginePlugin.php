@@ -253,6 +253,19 @@ class SearchEnginePlugin
         return $jsonFilter;
     }
 
+    public function afterGetAggregations(QueryResponse $subject, $result)
+    {
+        $bucketNames = [];
+        foreach ($result->getBuckets() as $bucket) {
+            $bucketNames[] = $bucket->getName();
+        }
+        $this->logger->debug(
+            'Available bucket names in search response: ' .
+                json_encode($bucketNames)
+        );
+        return $result;
+    }
+
     protected function getStoredBuckets(?string $gsSearchId): ?array
     {
         if (!$gsSearchId) {
