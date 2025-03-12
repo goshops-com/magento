@@ -531,7 +531,7 @@ class SearchEnginePlugin
         );
         $connection = $categoryResource->getConnection();
 
-        // Query to get parent categories with is_anchor=1 and include_in_menu=1
+        // Modified query to be less restrictive - include all categories with is_anchor=1
         $select = $connection
             ->select()
             ->from(['e' => $categoryResource->getEntityTable()], ['entity_id'])
@@ -544,23 +544,13 @@ class SearchEnginePlugin
                 "e.entity_id = a.entity_id AND a.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = 'is_anchor' AND entity_type_id = 3)",
                 []
             )
-            ->joinLeft(
-                [
-                    'i' => $categoryResource->getTable(
-                        'catalog_category_entity_int'
-                    ),
-                ],
-                "e.entity_id = i.entity_id AND i.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = 'include_in_menu' AND entity_type_id = 3)",
-                []
-            )
             ->where('a.value = ?', 1)
-            ->where('i.value = ?', 1)
-            ->where('e.level <= ?', 2); // Only parent categories (level 2 or less)
+            ->where('e.level > ?', 1); // Include all categories except root
 
         $parentCategoryIds = $connection->fetchCol($select);
 
-        $this->logger->debug('Parent category IDs for filtering:', [
-            'parent_categories' => $parentCategoryIds,
+        $this->logger->debug('Category IDs for filtering:', [
+            'categories' => $parentCategoryIds,
         ]);
 
         // Get counts for parent categories only
@@ -573,25 +563,45 @@ class SearchEnginePlugin
             }
         }
 
-        // If no parent categories found, don't create category buckets
+        // If no parent categories found, create with empty values to avoid bucket doesn't exist error
         if (empty($parentCategoryCounts)) {
             $this->logger->debug(
-                'No parent categories found, skipping category bucket creation'
+                'No matching categories found, creating empty buckets'
             );
-            return;
-        }
-
-        // Create bucket values for parent categories
-        foreach ($parentCategoryCounts as $catId => $count) {
+            // Create at least one empty value to avoid errors
             $categoryValues[] = new Value(
-                $catId,
+                '0',
                 [
-                    'value' => $catId,
-                    'count' => (int) $count,
+                    'value' => '0',
+                    'count' => 0,
                 ],
                 'category_bucket'
             );
+        } else {
+            // Create bucket values for parent categories
+            foreach ($parentCategoryCounts as $catId => $count) {
+                $categoryValues[] = new Value(
+                    $catId,
+                    [
+                        'value' => $catId,
+                        'count' => (int) $count,
+                    ],
+                    'category_bucket'
+                );
+            }
         }
+
+        // Define all possible category bucket names that Magento might request
+        $categoryBucketNames = [
+            'category_bucket',
+            'category_filter',
+            'category_id',
+            'cat',
+            'cat_id',
+            'category',
+            'category_ids',
+            'category_ids_bucket',
+        ];
 
         // Create buckets in correct order
         $newBuckets = [];
@@ -599,23 +609,7 @@ class SearchEnginePlugin
             $newBuckets['price_bucket'] = $buckets['price_bucket'];
         }
 
-        $newBuckets[
-            'category_bucket'
-        ] = new \Magento\Framework\Search\Response\Bucket(
-            'category_bucket',
-            $categoryValues
-        );
-
-        // Also add compatibility bucket names
-        $categoryBucketNames = [
-            'category_filter',
-            'category_id',
-            'cat_id',
-            'category_ids_bucket',
-            'category',
-            'category_ids',
-        ];
-
+        // Create buckets for all possible category filter names
         foreach ($categoryBucketNames as $name) {
             $newBuckets[$name] = new \Magento\Framework\Search\Response\Bucket(
                 $name,
@@ -627,7 +621,6 @@ class SearchEnginePlugin
         foreach ($buckets as $key => $bucket) {
             if (
                 $key !== 'price_bucket' &&
-                $key !== 'category_bucket' &&
                 !in_array($key, $categoryBucketNames)
             ) {
                 $newBuckets[$key] = $bucket;
@@ -636,13 +629,10 @@ class SearchEnginePlugin
 
         $buckets = $newBuckets;
 
-        $this->logger->debug(
-            'Final category buckets created with parent categories only',
-            [
-                'bucket_names' => array_keys($buckets),
-                'category_values_count' => count($categoryValues),
-            ]
-        );
+        $this->logger->debug('Final category buckets created', [
+            'bucket_names' => array_keys($buckets),
+            'category_values_count' => count($categoryValues),
+        ]);
     }
 
     /**
