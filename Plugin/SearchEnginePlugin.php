@@ -525,6 +525,11 @@ class SearchEnginePlugin
             true
         );
 
+        $this->logger->debug('Raw category counts from products:', [
+            'category_counts' => $categoryCounts,
+            'total_products' => count($products),
+        ]);
+
         // Get the parent category IDs that should appear in navigation (level 2)
         // These must have both is_anchor=1 AND include_in_menu=1
         $categoryResource = $this->objectManager->get(
@@ -579,36 +584,52 @@ class SearchEnginePlugin
 
         $validCategoryIds = $connection->fetchCol($select);
 
-        $this->logger->debug('Valid parent category IDs for filtering:', [
+        $this->logger->debug('Valid parent category IDs matching criteria:', [
             'valid_categories' => $validCategoryIds,
+            'criteria' =>
+                'is_anchor=1, include_in_menu=1, is_active=1, level=2',
         ]);
 
-        // Always include these known working category IDs
-        $fallbackCategoryIds = [3, 7, 11, 20];
-        $allCategoryIds = array_unique(
-            array_merge($validCategoryIds, $fallbackCategoryIds)
-        );
+        // Check if we have any valid categories
+        if (empty($validCategoryIds)) {
+            $this->logger->warning(
+                'No valid categories found matching layered navigation criteria'
+            );
 
-        // Create bucket values for all valid categories
-        foreach ($allCategoryIds as $catId) {
-            // Use actual count if available, otherwise use a default count of 5
-            $count = isset($categoryCounts[$catId])
-                ? (int) $categoryCounts[$catId]
-                : 5;
-
+            // If we have no valid categories, create an empty bucket to avoid errors
             $categoryValues[] = new Value(
-                $catId,
+                '0',
                 [
-                    'value' => $catId,
-                    'count' => $count,
+                    'value' => '0',
+                    'count' => 0,
                 ],
                 'category_bucket'
             );
+        } else {
+            // Create bucket values for all valid categories
+            foreach ($validCategoryIds as $catId) {
+                // Use actual count if available, otherwise use a default count of 0
+                $count = isset($categoryCounts[$catId])
+                    ? (int) $categoryCounts[$catId]
+                    : 0;
 
-            $this->logger->debug('Added category to bucket:', [
-                'category_id' => $catId,
-                'count' => $count,
-            ]);
+                $categoryValues[] = new Value(
+                    $catId,
+                    [
+                        'value' => $catId,
+                        'count' => $count,
+                    ],
+                    'category_bucket'
+                );
+
+                $this->logger->debug('Added category to bucket:', [
+                    'category_id' => $catId,
+                    'count' => $count,
+                    'has_products' => isset($categoryCounts[$catId])
+                        ? 'yes'
+                        : 'no',
+                ]);
+            }
         }
 
         // Create buckets in correct order
@@ -628,6 +649,13 @@ class SearchEnginePlugin
             'category_ids',
             'category_ids_bucket',
         ];
+
+        $this->logger->debug(
+            'Creating buckets for all possible category names',
+            [
+                'bucket_names' => $categoryBucketNames,
+            ]
+        );
 
         foreach ($categoryBucketNames as $name) {
             $newBuckets[$name] = new \Magento\Framework\Search\Response\Bucket(
@@ -651,7 +679,9 @@ class SearchEnginePlugin
         $this->logger->debug('Final category buckets created', [
             'bucket_names' => array_keys($buckets),
             'category_values_count' => count($categoryValues),
-            'category_ids_included' => array_column($categoryValues, 'value'),
+            'category_ids_included' => array_map(function ($value) {
+                return $value->getValue();
+            }, $categoryValues),
         ]);
     }
 
