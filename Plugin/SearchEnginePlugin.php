@@ -803,7 +803,6 @@ class SearchEnginePlugin
         array $products,
         array &$buckets
     ): void {
-        // Category bucket - log before creating
         $categoryValues = [];
         $categoryCounts = $this->getValueCounts(
             $products,
@@ -811,34 +810,37 @@ class SearchEnginePlugin
             true
         );
 
-        $this->logger->debug('Category counts before bucket creation:', [
-            'category_counts' => $categoryCounts,
-            'count_for_category_17' => $categoryCounts[17] ?? 'not found',
-            'categories_found' => array_keys($categoryCounts),
-        ]);
-
         foreach ($categoryCounts as $value => $count) {
+            // This is the key change - format metrics exactly like Magento does
             $valueMetrics = [
-                'value' => $value,
+                'value' => $value, // Include value in metrics
                 'count' => $count,
             ];
 
+            // Create value with correct structure
             $categoryValues[] = new Value(
                 (string) $value,
                 $valueMetrics,
-                'category_filter' // Use category_filter for the value name
+                'category_bucket' // Use specifically 'category_bucket'
             );
         }
 
-        // Create with ALL possible bucket names to ensure compatibility
+        // In original Magento, it's just 'category_bucket'
+        $buckets[
+            'category_bucket'
+        ] = new \Magento\Framework\Search\Response\Bucket(
+            'category_bucket',
+            $categoryValues
+        );
+
+        // You can keep these for compatibility, but the primary one should be 'category_bucket'
         $categoryBucketNames = [
-            'category_filter', // Most commonly used by Magento's layered navigation
-            'category_id', // Used by some layered navigation implementations
-            'category_bucket', // Your original implementation
-            'cat_id', // Another common variation
-            'category_ids_bucket', // Your original implementation
-            'category', // Simple name that might be used
-            'category_ids', // Direct match with attribute name
+            'category_filter',
+            'category_id',
+            'cat_id',
+            'category_ids_bucket',
+            'category',
+            'category_ids',
         ];
 
         foreach ($categoryBucketNames as $bucketName) {
