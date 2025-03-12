@@ -205,6 +205,11 @@ class SearchEnginePlugin
         $jsonFilter = [];
         $storedBuckets = $this->getStoredBuckets($gsSearchId);
 
+        // Log all filter parameters for debugging
+        $this->logger->debug('Processing filters with params:', [
+            'query_params' => $queryParams,
+        ]);
+
         foreach ($queryParams as $code => $value) {
             if (
                 empty($value) ||
@@ -213,18 +218,22 @@ class SearchEnginePlugin
                 continue;
             }
 
-            // Special handling for category_ids
+            // Special handling for any category-related parameter names
             if (
-                $code === 'category_ids' ||
-                $code === 'cat_id' ||
-                $code === 'category_id'
+                in_array($code, [
+                    'category_id',
+                    'cat_id',
+                    'category',
+                    'category_filter',
+                    'category_ids',
+                ])
             ) {
                 $this->logger->debug('Processing category filter:', [
                     'code' => $code,
                     'value' => $value,
                 ]);
 
-                // Ensure category filter is properly formatted
+                // Ensure we use a consistent key for category filters
                 $jsonFilter['category_ids'] = [
                     [
                         'value' => $value,
@@ -251,6 +260,45 @@ class SearchEnginePlugin
         }
 
         return $jsonFilter;
+    }
+
+    public function debugLayeredNavigation()
+    {
+        try {
+            // Get a reference to the layer filter factory
+            $filterList = $this->objectManager->get(
+                \Magento\Catalog\Model\Layer\FilterList::class
+            );
+            $layer = $this->objectManager->get(
+                \Magento\Catalog\Model\Layer\Category::class
+            );
+
+            $filters = $filterList->getFilters($layer);
+            $filterInfo = [];
+
+            foreach ($filters as $filter) {
+                $filterInfo[] = [
+                    'class' => get_class($filter),
+                    'request_var' => method_exists($filter, 'getRequestVar')
+                        ? $filter->getRequestVar()
+                        : 'unknown',
+                    'filter_items_count' => method_exists(
+                        $filter,
+                        'getItemsCount'
+                    )
+                        ? $filter->getItemsCount()
+                        : 0,
+                ];
+            }
+
+            $this->logger->debug('Available layered navigation filters:', [
+                'filters' => $filterInfo,
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error(
+                'Error in debug layered navigation: ' . $e->getMessage()
+            );
+        }
     }
 
     protected function getStoredBuckets(?string $gsSearchId): ?array
@@ -735,42 +783,29 @@ class SearchEnginePlugin
             $categoryValues[] = new Value(
                 (string) $value,
                 $valueMetrics,
-                'category_id'
+                'category_filter' // Use category_filter for the value name
             );
         }
 
-        // Create buckets using all possible naming conventions that Magento might use
-        $buckets['category_id'] = new \Magento\Framework\Search\Response\Bucket(
-            'category_id',
-            $categoryValues
-        );
+        // Create with ALL possible bucket names to ensure compatibility
+        $categoryBucketNames = [
+            'category_filter', // Most commonly used by Magento's layered navigation
+            'category_id', // Used by some layered navigation implementations
+            'category_bucket', // Your original implementation
+            'cat_id', // Another common variation
+            'category_ids_bucket', // Your original implementation
+            'category', // Simple name that might be used
+            'category_ids', // Direct match with attribute name
+        ];
 
-        $buckets[
-            'category_bucket'
-        ] = new \Magento\Framework\Search\Response\Bucket(
-            'category_bucket',
-            $categoryValues
-        );
-
-        $buckets['cat_id'] = new \Magento\Framework\Search\Response\Bucket(
-            'cat_id',
-            $categoryValues
-        );
-
-        // Add category_ids_bucket for consistency with other attributes
-        $buckets[
-            'category_ids_bucket'
-        ] = new \Magento\Framework\Search\Response\Bucket(
-            'category_ids_bucket',
-            $categoryValues
-        );
-
-        $buckets[
-            'category_filter'
-        ] = new \Magento\Framework\Search\Response\Bucket(
-            'category_filter',
-            $categoryValues
-        );
+        foreach ($categoryBucketNames as $bucketName) {
+            $buckets[
+                $bucketName
+            ] = new \Magento\Framework\Search\Response\Bucket(
+                $bucketName,
+                $categoryValues
+            );
+        }
     }
 
     protected function getValueCounts(
