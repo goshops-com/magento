@@ -810,22 +810,28 @@ class SearchEnginePlugin
             true
         );
 
+        $this->logger->debug('Category counts before bucket creation:', [
+            'category_counts' => $categoryCounts,
+            'count_for_category_17' => $categoryCounts[17] ?? 'not found',
+            'categories_found' => array_keys($categoryCounts),
+        ]);
+
         foreach ($categoryCounts as $value => $count) {
-            // This is the key change - format metrics exactly like Magento does
+            // This is the critical change - format metrics exactly like in original Magento
             $valueMetrics = [
-                'value' => $value, // Include value in metrics
-                'count' => $count,
+                'value' => (int) $value, // Include value in metrics, ensure it's an integer
+                'count' => (int) $count, // Ensure count is an integer
             ];
 
-            // Create value with correct structure
+            // Create value with exactly the same structure as original Magento
             $categoryValues[] = new Value(
-                (string) $value,
-                $valueMetrics,
-                'category_bucket' // Use specifically 'category_bucket'
+                (string) $value, // Value as string
+                $valueMetrics, // Metrics with both value and count
+                'category_bucket' // Use specifically 'category_bucket' in constructor
             );
         }
 
-        // In original Magento, it's just 'category_bucket'
+        // Put category_bucket first as in original Magento
         $buckets[
             'category_bucket'
         ] = new \Magento\Framework\Search\Response\Bucket(
@@ -833,7 +839,7 @@ class SearchEnginePlugin
             $categoryValues
         );
 
-        // You can keep these for compatibility, but the primary one should be 'category_bucket'
+        // Keep the other bucket names for compatibility
         $categoryBucketNames = [
             'category_filter',
             'category_id',
