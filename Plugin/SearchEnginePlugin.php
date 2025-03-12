@@ -213,12 +213,32 @@ class SearchEnginePlugin
                 continue;
             }
 
-            $jsonFilter[$code] = [
-                [
+            // Special handling for category_ids
+            if (
+                $code === 'category_ids' ||
+                $code === 'cat_id' ||
+                $code === 'category_id'
+            ) {
+                $this->logger->debug('Processing category filter:', [
+                    'code' => $code,
                     'value' => $value,
-                    'label' => $value,
-                ],
-            ];
+                ]);
+
+                // Ensure category filter is properly formatted
+                $jsonFilter['category_ids'] = [
+                    [
+                        'value' => $value,
+                        'label' => $value,
+                    ],
+                ];
+            } else {
+                $jsonFilter[$code] = [
+                    [
+                        'value' => $value,
+                        'label' => $value,
+                    ],
+                ];
+            }
 
             if ($storedBuckets) {
                 $this->processBucketLimit(
@@ -324,6 +344,18 @@ class SearchEnginePlugin
                 'frontend_input' => $attribute->getFrontendInput(),
                 'source_model' => $attribute->getSourceModel(),
                 'options' => $options,
+            ];
+        }
+
+        // Always ensure category_ids is included even if not in filterable list
+        if (!isset($attributes['category_ids'])) {
+            $attributes['category_ids'] = [
+                'code' => 'category_ids',
+                'frontend_label' => 'Categories',
+                'backend_type' => 'static',
+                'frontend_input' => 'multiselect',
+                'source_model' => null,
+                'options' => [],
             ];
         }
 
@@ -462,10 +494,10 @@ class SearchEnginePlugin
                 $collection->getSelect()->order($orderByField);
             }
 
-            // Join attributes but skip category_ids
+            // Join attributes but handle category_ids separately
             foreach ($filterableAttributes as $code => $attribute) {
                 if ($code === 'category_ids') {
-                    continue;
+                    continue; // We'll handle category_ids differently
                 }
                 $collection->joinAttribute(
                     $code,
@@ -478,7 +510,7 @@ class SearchEnginePlugin
 
             $products = [];
             foreach ($collection as $product) {
-                // Get category IDs correctly using the product's method
+                // Always get category IDs for every product
                 $categoryIds = $product->getCategoryIds();
 
                 $this->logger->debug(
@@ -493,7 +525,7 @@ class SearchEnginePlugin
                     'name' => $product->getName(),
                     'price' => (float) $product->getPrice(),
                     'sku' => $product->getSku(),
-                    'category_ids' => array_map('intval', $categoryIds),
+                    'category_ids' => array_map('intval', $categoryIds), // Always include category_ids
                 ];
 
                 foreach ($filterableAttributes as $code => $attribute) {
@@ -597,54 +629,8 @@ class SearchEnginePlugin
                 ),
             ]);
 
-            // Category bucket - log before creating
-            $categoryValues = [];
-            $categoryCounts = $this->getValueCounts(
-                $products,
-                'category_ids',
-                true
-            );
-
-            $this->logger->debug('Category counts before bucket creation:', [
-                'category_counts' => $categoryCounts,
-                'count_for_category_17' => $categoryCounts[17] ?? 'not found',
-                'categories_found' => array_keys($categoryCounts),
-            ]);
-
-            foreach ($categoryCounts as $value => $count) {
-                $valueMetrics = [
-                    'value' => $value,
-                    'count' => $count,
-                ];
-
-                $categoryValues[] = new Value(
-                    (string) $value,
-                    $valueMetrics,
-                    'category_id'
-                );
-            }
-
-            // Try with different bucket names that Magento might be expecting
-            $buckets[
-                'category_id'
-            ] = new \Magento\Framework\Search\Response\Bucket(
-                'category_id',
-                $categoryValues
-            );
-
-            // Also include with original bucket name
-            $buckets[
-                'category_bucket'
-            ] = new \Magento\Framework\Search\Response\Bucket(
-                'category_bucket',
-                $categoryValues
-            );
-
-            // Also try with cat_ids
-            $buckets['cat_id'] = new \Magento\Framework\Search\Response\Bucket(
-                'cat_id',
-                $categoryValues
-            );
+            // Always create category buckets regardless of filterable attributes
+            $this->createCategoryBuckets($products, $buckets);
 
             // Create buckets for filterable attributes
             foreach ($filterableAttributes as $code => $attribute) {
@@ -722,7 +708,64 @@ class SearchEnginePlugin
         }
     }
 
-    // Replace the original getValueCounts method with this one:
+    protected function createCategoryBuckets(
+        array $products,
+        array &$buckets
+    ): void {
+        // Category bucket - log before creating
+        $categoryValues = [];
+        $categoryCounts = $this->getValueCounts(
+            $products,
+            'category_ids',
+            true
+        );
+
+        $this->logger->debug('Category counts before bucket creation:', [
+            'category_counts' => $categoryCounts,
+            'count_for_category_17' => $categoryCounts[17] ?? 'not found',
+            'categories_found' => array_keys($categoryCounts),
+        ]);
+
+        foreach ($categoryCounts as $value => $count) {
+            $valueMetrics = [
+                'value' => $value,
+                'count' => $count,
+            ];
+
+            $categoryValues[] = new Value(
+                (string) $value,
+                $valueMetrics,
+                'category_id'
+            );
+        }
+
+        // Create buckets using all possible naming conventions that Magento might use
+        $buckets['category_id'] = new \Magento\Framework\Search\Response\Bucket(
+            'category_id',
+            $categoryValues
+        );
+
+        $buckets[
+            'category_bucket'
+        ] = new \Magento\Framework\Search\Response\Bucket(
+            'category_bucket',
+            $categoryValues
+        );
+
+        $buckets['cat_id'] = new \Magento\Framework\Search\Response\Bucket(
+            'cat_id',
+            $categoryValues
+        );
+
+        // Add category_ids_bucket for consistency with other attributes
+        $buckets[
+            'category_ids_bucket'
+        ] = new \Magento\Framework\Search\Response\Bucket(
+            'category_ids_bucket',
+            $categoryValues
+        );
+    }
+
     protected function getValueCounts(
         array $products,
         string $field,
@@ -731,16 +774,23 @@ class SearchEnginePlugin
         $counts = [];
         foreach ($products as $product) {
             if (isset($product[$field])) {
+                // Handle different scenarios for array values
+                $values = [];
+
                 // Handle the case where the value is already a comma-separated string
                 if (
                     !is_array($product[$field]) &&
                     strpos($product[$field], ',') !== false
                 ) {
-                    $values = explode(',', $product[$field]);
-                } else {
-                    $values = is_array($product[$field])
-                        ? $product[$field]
-                        : [$product[$field]];
+                    $values = array_map('trim', explode(',', $product[$field]));
+                }
+                // Handle the case where it's already an array
+                elseif (is_array($product[$field])) {
+                    $values = $product[$field];
+                }
+                // Handle single value
+                else {
+                    $values = [$product[$field]];
                 }
 
                 foreach ($values as $value) {
