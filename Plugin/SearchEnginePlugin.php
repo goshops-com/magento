@@ -514,6 +514,98 @@ class SearchEnginePlugin
         $this->cache->save($bucketsJson, $cacheKey, [], 3600);
     }
 
+    /**
+     * Create category bucket values with proper formatting to match Magento's default
+     */
+    protected function createCategoryBuckets(
+        array $products,
+        array &$buckets
+    ): void {
+        $categoryValues = [];
+        $categoryCounts = $this->getValueCounts(
+            $products,
+            'category_ids',
+            true
+        );
+
+        $this->logger->debug('Category counts before bucket creation', [
+            'category_counts' => $categoryCounts,
+            'products_processed' => count($products),
+        ]);
+
+        // Get the category repository to fetch category names
+        $categoryRepository = $this->objectManager->get(
+            \Magento\Catalog\Api\CategoryRepositoryInterface::class
+        );
+
+        foreach ($categoryCounts as $value => $count) {
+            // Ensure consistency by casting the value to integer
+            $intValue = (int) $value;
+            try {
+                $category = $categoryRepository->get($intValue);
+                $categoryLabel = $category->getName();
+                $this->logger->debug(
+                    "Fetched label for category ID {$intValue}",
+                    ['label' => $categoryLabel]
+                );
+            } catch (\Exception $e) {
+                $categoryLabel = 'Category ' . $intValue;
+                $this->logger->error(
+                    "Error fetching category name for ID {$intValue}: " .
+                        $e->getMessage()
+                );
+            }
+
+            // Build metrics exactly as Magento does it
+            $valueMetrics = [
+                'value' => $intValue,
+                'count' => (int) $count,
+            ];
+
+            $this->logger->debug('Created category value', [
+                'value' => (string) $intValue,
+                'metrics' => $valueMetrics,
+            ]);
+
+            $categoryValues[] = new Value(
+                (string) $intValue,
+                $valueMetrics,
+                'category_bucket'
+            );
+        }
+
+        // Preserve existing buckets, but reorder to match Magento's
+        $newBuckets = [];
+        if (isset($buckets['price_bucket'])) {
+            $newBuckets['price_bucket'] = $buckets['price_bucket'];
+        }
+
+        // Add the primary category bucket with exact Magento naming
+        $newBuckets[
+            'category_bucket'
+        ] = new \Magento\Framework\Search\Response\Bucket(
+            'category_bucket',
+            $categoryValues
+        );
+
+        // Now add any other buckets from the original array
+        foreach ($buckets as $code => $bucket) {
+            if ($code !== 'price_bucket' && $code !== 'category_bucket') {
+                $newBuckets[$code] = $bucket;
+            }
+        }
+
+        // Replace the original buckets with the properly ordered ones
+        $buckets = $newBuckets;
+
+        $this->logger->debug('Final category buckets created', [
+            'bucket_names' => array_keys($buckets),
+        ]);
+    }
+
+    /**
+     * Process search results in aroundSearch - keeping most code but changing the bucket creation order
+     */
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -714,10 +806,10 @@ class SearchEnginePlugin
                 $documents[] = $document;
             }
 
-            // Create buckets array
+            // Create buckets array - start with an empty array
             $buckets = [];
 
-            // Price bucket
+            // Price bucket must be first
             $buckets[
                 'price_bucket'
             ] = new \Magento\Framework\Search\Response\Bucket('price_bucket', [
@@ -743,10 +835,10 @@ class SearchEnginePlugin
                 ),
             ]);
 
-            // Always create category buckets regardless of filterable attributes
+            // Category bucket must be second
             $this->createCategoryBuckets($products, $buckets);
 
-            // Create buckets for filterable attributes
+            // Create buckets for other filterable attributes
             foreach ($filterableAttributes as $code => $attribute) {
                 if ($code === 'price' || $code === 'category_ids') {
                     continue;
@@ -820,96 +912,6 @@ class SearchEnginePlugin
             $this->logger->error($e->getTraceAsString());
             return $proceed($request);
         }
-    }
-
-    protected function createCategoryBuckets(
-        array $products,
-        array &$buckets
-    ): void {
-        $categoryValues = [];
-        $categoryCounts = $this->getValueCounts(
-            $products,
-            'category_ids',
-            true
-        );
-
-        $this->logger->debug('Category counts before bucket creation', [
-            'category_counts' => $categoryCounts,
-            'products_processed' => count($products),
-        ]);
-
-        // Get the category repository to fetch category names
-        $categoryRepository = $this->objectManager->get(
-            \Magento\Catalog\Api\CategoryRepositoryInterface::class
-        );
-
-        foreach ($categoryCounts as $value => $count) {
-            // Ensure consistency by casting the value to integer
-            $intValue = (int) $value;
-            try {
-                $category = $categoryRepository->get($intValue);
-                $categoryLabel = $category->getName();
-                $this->logger->debug(
-                    "Fetched label for category ID {$intValue}",
-                    ['label' => $categoryLabel]
-                );
-            } catch (\Exception $e) {
-                $categoryLabel = 'Category ' . $intValue;
-                $this->logger->error(
-                    "Error fetching category name for ID {$intValue}: " .
-                        $e->getMessage()
-                );
-            }
-
-            // Build metrics including the label
-            $valueMetrics = [
-                'value' => $intValue,
-                'count' => (int) $count,
-                'label' => $categoryLabel,
-            ];
-
-            $this->logger->debug('Created category value', [
-                'value' => (string) $intValue,
-                'metrics' => $valueMetrics,
-            ]);
-
-            $categoryValues[] = new \Magento\Framework\Search\Response\Aggregation\Value(
-                (string) $intValue,
-                $valueMetrics,
-                'category_bucket'
-            );
-        }
-
-        // Build the main category bucket using our enriched values
-        $buckets[
-            'category_bucket'
-        ] = new \Magento\Framework\Search\Response\Bucket(
-            'category_bucket',
-            $categoryValues
-        );
-
-        // Duplicate the bucket under alternative keys so that Magento layered navigation finds them
-        $categoryBucketNames = [
-            'category_filter',
-            'category_id',
-            'cat_id',
-            'category_ids_bucket',
-            'category',
-            'category_ids',
-        ];
-
-        foreach ($categoryBucketNames as $bucketName) {
-            $buckets[
-                $bucketName
-            ] = new \Magento\Framework\Search\Response\Bucket(
-                $bucketName,
-                $categoryValues
-            );
-        }
-
-        $this->logger->debug('Final category buckets created with labels', [
-            'bucket_names' => array_keys($buckets),
-        ]);
     }
 
     protected function getValueCounts(
