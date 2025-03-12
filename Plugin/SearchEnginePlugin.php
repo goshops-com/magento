@@ -640,12 +640,11 @@ class SearchEnginePlugin
             'valid_categories' => $validCategoryIds,
         ]);
 
-        // --- NEW: Aggregate counts from subcategories into their top-level (level 2) category
+        // --- Aggregate counts from subcategories into their top-level (level 2) category
         $aggregatedCategoryCounts = [];
         foreach ($categoryCounts as $subCatId => $count) {
             // Retrieve the full category path for the subcategory.
-            // The path is typically stored as a string like "1/2/10/25" where:
-            // 1 is the root, 2 is the default category, and 10 (for example) is a level 2 category.
+            // The path is typically stored as a string like "1/2/10/25"
             $selectPath = $connection
                 ->select()
                 ->from($categoryResource->getEntityTable(), ['path'])
@@ -654,8 +653,7 @@ class SearchEnginePlugin
 
             if ($path) {
                 $parts = explode('/', $path);
-                // Check if there is a level 2 category in the path.
-                // Usually, index 0 is root, index 1 is default, so index 2 is our level 2 category.
+                // Index 0 is root, index 1 is default, index 2 is our level 2 category.
                 if (isset($parts[2])) {
                     $topCatId = $parts[2];
                     if (!isset($aggregatedCategoryCounts[$topCatId])) {
@@ -683,26 +681,32 @@ class SearchEnginePlugin
                 'category_bucket'
             );
         } else {
-            // Create bucket values for all valid (level 2) categories using the aggregated counts
+            // Create bucket values for all valid (level 2) categories using the aggregated counts,
+            // but only add those with a count greater than zero.
             foreach ($validCategoryIds as $catId) {
                 $count = isset($aggregatedCategoryCounts[$catId])
                     ? (int) $aggregatedCategoryCounts[$catId]
                     : 0;
-
-                $categoryValues[] = new Value(
-                    $catId,
-                    [
-                        'value' => $catId,
+                if ($count > 0) {
+                    $categoryValues[] = new Value(
+                        $catId,
+                        [
+                            'value' => $catId,
+                            'count' => $count,
+                        ],
+                        'category_bucket'
+                    );
+                    $this->logger->debug('Added category to bucket:', [
+                        'category_id' => $catId,
                         'count' => $count,
-                    ],
-                    'category_bucket'
-                );
-
-                $this->logger->debug('Added category to bucket:', [
-                    'category_id' => $catId,
-                    'count' => $count,
-                    'has_products' => $count > 0 ? 'yes' : 'no',
-                ]);
+                        'has_products' => 'yes',
+                    ]);
+                } else {
+                    $this->logger->debug('Skipping category (no products):', [
+                        'category_id' => $catId,
+                        'count' => $count,
+                    ]);
+                }
             }
         }
 
