@@ -764,6 +764,13 @@ class SearchEnginePlugin
             'category_ids_bucket',
             $categoryValues
         );
+
+        $buckets[
+            'category_filter'
+        ] = new \Magento\Framework\Search\Response\Bucket(
+            'category_filter',
+            $categoryValues
+        );
     }
 
     protected function getValueCounts(
