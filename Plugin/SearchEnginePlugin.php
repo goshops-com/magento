@@ -810,36 +810,54 @@ class SearchEnginePlugin
             true
         );
 
-        $this->logger->debug('Category counts before bucket creation:', [
+        $this->logger->debug('Category counts before bucket creation', [
             'category_counts' => $categoryCounts,
-            'count_for_category_17' => $categoryCounts[17] ?? 'not found',
-            'categories_found' => array_keys($categoryCounts),
+            'products_processed' => count($products),
         ]);
 
-        foreach ($categoryCounts as $value => $count) {
-            // Make sure to cast all values to integers
-            $intValue = (int) $value;
+        // Get the category repository to fetch category names
+        $categoryRepository = $this->objectManager->get(
+            \Magento\Catalog\Api\CategoryRepositoryInterface::class
+        );
 
-            // Format metrics exactly like in original Magento
+        foreach ($categoryCounts as $value => $count) {
+            // Cast the value to integer for consistency
+            $intValue = (int) $value;
+            try {
+                $category = $categoryRepository->get($intValue);
+                $categoryLabel = $category->getName();
+                $this->logger->debug(
+                    "Fetched label for category ID {$intValue}",
+                    ['label' => $categoryLabel]
+                );
+            } catch (\Exception $e) {
+                $categoryLabel = 'Category ' . $intValue;
+                $this->logger->error(
+                    "Error fetching category name for ID {$intValue}: " .
+                        $e->getMessage()
+                );
+            }
+
+            // Build metrics with both value and label
             $valueMetrics = [
-                'value' => $intValue, // Integer value in metrics
-                'count' => (int) $count, // Integer count
+                'value' => $intValue,
+                'count' => (int) $count,
+                'label' => $categoryLabel,
             ];
 
-            // Use integer for value as well - Magento might be expecting this format
-            $categoryValues[] = new Value(
-                (string) $intValue, // String representation of the integer value
-                $valueMetrics, // Metrics with integer values
-                'category_bucket' // Must match Magento's bucket name
-            );
-
-            $this->logger->debug('Created category value:', [
+            $this->logger->debug('Created category value', [
                 'value' => (string) $intValue,
                 'metrics' => $valueMetrics,
             ]);
+
+            $categoryValues[] = new Value(
+                (string) $intValue, // Magento expects a string representation
+                $valueMetrics,
+                'category_bucket'
+            );
         }
 
-        // Make category_bucket the second bucket (right after price_bucket) as in Magento's order
+        // Create the main category_bucket with labels
         $buckets[
             'category_bucket'
         ] = new \Magento\Framework\Search\Response\Bucket(
@@ -847,7 +865,7 @@ class SearchEnginePlugin
             $categoryValues
         );
 
-        // Include other bucket names for compatibility
+        // Duplicate the bucket under additional names for compatibility
         $categoryBucketNames = [
             'category_filter',
             'category_id',
@@ -865,6 +883,10 @@ class SearchEnginePlugin
                 $categoryValues
             );
         }
+
+        $this->logger->debug('Final category buckets created with labels', [
+            'bucket_names' => array_keys($buckets),
+        ]);
     }
 
     protected function getValueCounts(
