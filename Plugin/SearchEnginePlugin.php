@@ -817,21 +817,29 @@ class SearchEnginePlugin
         ]);
 
         foreach ($categoryCounts as $value => $count) {
-            // This is the critical change - format metrics exactly like in original Magento
+            // Make sure to cast all values to integers
+            $intValue = (int) $value;
+
+            // Format metrics exactly like in original Magento
             $valueMetrics = [
-                'value' => (int) $value, // Include value in metrics, ensure it's an integer
-                'count' => (int) $count, // Ensure count is an integer
+                'value' => $intValue, // Integer value in metrics
+                'count' => (int) $count, // Integer count
             ];
 
-            // Create value with exactly the same structure as original Magento
+            // Use integer for value as well - Magento might be expecting this format
             $categoryValues[] = new Value(
-                (string) $value, // Value as string
-                $valueMetrics, // Metrics with both value and count
-                'category_bucket' // Use specifically 'category_bucket' in constructor
+                (string) $intValue, // String representation of the integer value
+                $valueMetrics, // Metrics with integer values
+                'category_bucket' // Must match Magento's bucket name
             );
+
+            $this->logger->debug('Created category value:', [
+                'value' => (string) $intValue,
+                'metrics' => $valueMetrics,
+            ]);
         }
 
-        // Put category_bucket first as in original Magento
+        // Make category_bucket the second bucket (right after price_bucket) as in Magento's order
         $buckets[
             'category_bucket'
         ] = new \Magento\Framework\Search\Response\Bucket(
@@ -839,7 +847,7 @@ class SearchEnginePlugin
             $categoryValues
         );
 
-        // Keep the other bucket names for compatibility
+        // Include other bucket names for compatibility
         $categoryBucketNames = [
             'category_filter',
             'category_id',
