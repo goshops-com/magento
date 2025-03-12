@@ -77,7 +77,7 @@
     <type name="Magento\Framework\Search\Response\QueryResponse">
         <plugin
       name="debug_search_result_buckets"
-      type="Gopersonal\Magento\Plugin\SearchResultPlugin"
+      type="Gopersonal\Magento\Plugin\TmpPlugin"
     />
     </type>
 
