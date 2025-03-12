@@ -496,6 +496,13 @@ class SearchEnginePlugin
         callable $proceed,
         RequestInterface $request
     ) {
+        $this->logger->debug('SearchEnginePlugin aroundSearch() called');
+
+        $pathInfo = $this->httpRequest->getPathInfo();
+        if (strpos($pathInfo, '/catalogsearch/result') === false) {
+            return $proceed($request);
+        }
+
         // Always call the original method and log its response structure
         $originalResponse = $proceed($request);
 
@@ -510,7 +517,7 @@ class SearchEnginePlugin
             }
 
             $this->logger->debug('Original Magento search response:', [
-                'document_count' => count($originalResponse->getDocuments()),
+                'aggregation_bucket_count' => count($originalBuckets),
                 'buckets' => $originalBuckets,
             ]);
 
