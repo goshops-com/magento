@@ -496,11 +496,47 @@ class SearchEnginePlugin
         callable $proceed,
         RequestInterface $request
     ) {
-        $this->logger->debug('SearchEnginePlugin aroundSearch() called');
+        // Always call the original method and log its response structure
+        $originalResponse = $proceed($request);
 
-        $pathInfo = $this->httpRequest->getPathInfo();
-        if (strpos($pathInfo, '/catalogsearch/result') === false) {
-            return $proceed($request);
+        // Debug the original response
+        if ($originalResponse instanceof QueryResponse) {
+            $originalBuckets = [];
+            foreach (
+                $originalResponse->getAggregations()->getBuckets()
+                as $bucket
+            ) {
+                $originalBuckets[] = $bucket->getName();
+            }
+
+            $this->logger->debug('Original Magento search response:', [
+                'document_count' => count($originalResponse->getDocuments()),
+                'buckets' => $originalBuckets,
+            ]);
+
+            // Look specifically for category buckets
+            foreach (
+                $originalResponse->getAggregations()->getBuckets()
+                as $bucket
+            ) {
+                if (strpos($bucket->getName(), 'cat') !== false) {
+                    $values = [];
+                    foreach ($bucket->getValues() as $value) {
+                        $values[] = [
+                            'value' => $value->getValue(),
+                            'metrics' => $value->getMetrics(),
+                        ];
+                    }
+
+                    $this->logger->debug(
+                        'Original category bucket: ' . $bucket->getName(),
+                        [
+                            'value_count' => count($values),
+                            'values' => $values,
+                        ]
+                    );
+                }
+            }
         }
 
         // Check if the override_catalog_search setting is enabled
@@ -514,7 +550,7 @@ class SearchEnginePlugin
             $this->logger->debug(
                 'SearchEnginePlugin: Custom search is disabled in configuration'
             );
-            return $proceed($request);
+            return $originalResponse;
         }
 
         $this->logger->debug('SearchEnginePlugin: USING CUSTOM SEARCH ENGINE');
