@@ -385,15 +385,39 @@ class SearchEnginePlugin
         return array_unique($values);
     }
 
-    /**
-     * Ensures that a category bucket is always included in the aggregations
-     *
-     * @param array $buckets Array of existing buckets
-     * @param array $products Array of product data
-     * @return void
-     */
     protected function ensureCategoryBucket(array &$buckets, array $products)
     {
+        // Get category counts from products
+        $categoryValues = [];
+        $categoryCounts = $this->getValueCounts(
+            $products,
+            'category_ids',
+            true
+        );
+
+        // Create bucket values for each category
+        foreach ($categoryCounts as $catId => $count) {
+            if ($count > 0) {
+                $categoryValues[] = new Value(
+                    (string) $catId,
+                    [
+                        'value' => $catId,
+                        'count' => $count,
+                    ],
+                    'category_bucket'
+                );
+            }
+        }
+
+        // Create new buckets array in correct order
+        $newBuckets = [];
+
+        // Add price bucket first if it exists
+        if (isset($buckets['price_bucket'])) {
+            $newBuckets['price_bucket'] = $buckets['price_bucket'];
+        }
+
+        // Define all possible category bucket names
         $categoryBucketNames = [
             'category_bucket',
             'category_filter',
@@ -405,70 +429,33 @@ class SearchEnginePlugin
             'category_ids_bucket',
         ];
 
-        // Check if any of the standard category bucket names already exist
-        $categoryBucketExists = false;
-        foreach ($categoryBucketNames as $bucketName) {
-            if (isset($buckets[$bucketName])) {
-                $categoryBucketExists = true;
-                $this->logger->debug('Found existing category bucket:', [
-                    'bucket_name' => $bucketName,
-                ]);
-                break;
-            }
-        }
-
-        // If no category bucket exists, create one using category_ids field
-        if (!$categoryBucketExists) {
-            $this->logger->debug(
-                'No existing category bucket found, creating new one'
-            );
-
-            $categoryValues = [];
-            $categoryCounts = $this->getValueCounts(
-                $products,
-                'category_ids',
-                true
-            );
-
-            $this->logger->debug('Category counts for bucket creation:', [
-                'category_counts' => $categoryCounts,
-                'empty' => empty($categoryCounts),
-            ]);
-
-            foreach ($categoryCounts as $value => $count) {
-                // Ensure the value is valid
-                if ($value !== null && $value !== '') {
-                    $valueMetrics = [
-                        'value' => $value,
-                        'count' => $count,
-                    ];
-
-                    $categoryValues[] = new Value(
-                        (string) $value,
-                        $valueMetrics,
-                        'category_bucket'
-                    );
-                }
-            }
-
-            // If no categories were found, add an empty bucket
-            if (empty($categoryValues)) {
-                $this->logger->debug(
-                    'No category values found, adding empty category bucket'
-                );
-            } else {
-                $this->logger->debug('Created category bucket with values:', [
-                    'count' => count($categoryValues),
-                ]);
-            }
-
-            $buckets[
-                'category_bucket'
-            ] = new \Magento\Framework\Search\Response\Bucket(
-                'category_bucket',
+        // Create buckets for all possible category names
+        foreach ($categoryBucketNames as $name) {
+            $newBuckets[$name] = new \Magento\Framework\Search\Response\Bucket(
+                $name,
                 $categoryValues
             );
         }
+
+        // Add all other buckets
+        foreach ($buckets as $key => $bucket) {
+            if (
+                $key !== 'price_bucket' &&
+                !in_array($key, $categoryBucketNames)
+            ) {
+                $newBuckets[$key] = $bucket;
+            }
+        }
+
+        // Replace the original buckets with the new ones
+        $buckets = $newBuckets;
+
+        $this->logger->debug('Category buckets created', [
+            'bucket_count' => count(
+                array_intersect(array_keys($buckets), $categoryBucketNames)
+            ),
+            'category_values_count' => count($categoryValues),
+        ]);
     }
 
     public function aroundSearch(
