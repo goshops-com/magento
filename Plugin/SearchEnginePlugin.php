@@ -395,29 +395,64 @@ class SearchEnginePlugin
             true
         );
 
-        // Create bucket values for each category
+        $this->logger->debug('Raw category counts:', [
+            'counts' => $categoryCounts,
+        ]);
+
+        // Get the filter format Magento expects for categories
+        $categoryResource = $this->objectManager->get(
+            \Magento\Catalog\Model\ResourceModel\Category::class
+        );
+        $connection = $categoryResource->getConnection();
+
+        // For each category found in products, get its name for better debug info
         foreach ($categoryCounts as $catId => $count) {
             if ($count > 0) {
+                // Get category name - for debugging purposes
+                $nameSelect = $connection
+                    ->select()
+                    ->from(
+                        [
+                            'n' => $categoryResource->getTable(
+                                'catalog_category_entity_varchar'
+                            ),
+                        ],
+                        ['value']
+                    )
+                    ->where('n.entity_id = ?', $catId)
+                    ->where(
+                        'n.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                        'name'
+                    );
+                $name = $connection->fetchOne($nameSelect);
+
                 $categoryValues[] = new Value(
                     (string) $catId,
                     [
                         'value' => $catId,
                         'count' => $count,
+                        'label' => $name ?: 'Category ' . $catId, // Use name if available
                     ],
                     'category_bucket'
                 );
+
+                $this->logger->debug('Added category to bucket:', [
+                    'category_id' => $catId,
+                    'name' => $name,
+                    'count' => $count,
+                ]);
             }
         }
 
-        // Create new buckets array in correct order
+        // IMPORTANT: Create a completely new buckets array with price first, then categories, then others
         $newBuckets = [];
 
-        // Add price bucket first if it exists
+        // 1. Add price first - this is crucial for some Magento themes
         if (isset($buckets['price_bucket'])) {
             $newBuckets['price_bucket'] = $buckets['price_bucket'];
         }
 
-        // Define all possible category bucket names
+        // 2. Add ALL category bucket variations
         $categoryBucketNames = [
             'category_bucket',
             'category_filter',
@@ -429,7 +464,6 @@ class SearchEnginePlugin
             'category_ids_bucket',
         ];
 
-        // Create buckets for all possible category names
         foreach ($categoryBucketNames as $name) {
             $newBuckets[$name] = new \Magento\Framework\Search\Response\Bucket(
                 $name,
@@ -437,7 +471,7 @@ class SearchEnginePlugin
             );
         }
 
-        // Add all other buckets
+        // 3. Add all remaining buckets
         foreach ($buckets as $key => $bucket) {
             if (
                 $key !== 'price_bucket' &&
@@ -447,14 +481,11 @@ class SearchEnginePlugin
             }
         }
 
-        // Replace the original buckets with the new ones
+        // Replace the buckets array completely
         $buckets = $newBuckets;
 
-        $this->logger->debug('Category buckets created', [
-            'bucket_count' => count(
-                array_intersect(array_keys($buckets), $categoryBucketNames)
-            ),
-            'category_values_count' => count($categoryValues),
+        $this->logger->debug('Final buckets order:', [
+            'bucket_order' => array_keys($buckets),
         ]);
     }
 
