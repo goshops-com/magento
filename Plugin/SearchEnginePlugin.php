@@ -670,6 +670,14 @@ class SearchEnginePlugin
         $this->cache->save($bucketsJson, $cacheKey, [], 3600);
     }
 
+    /**
+     * Get counts of attribute values across all products
+     *
+     * @param array $products Array of product data
+     * @param string $field The attribute code to count values for
+     * @param bool $isArray Whether the attribute is a multi-value attribute
+     * @return array Associative array of value => count
+     */
     protected function getValueCounts(
         array $products,
         string $field,
@@ -681,12 +689,24 @@ class SearchEnginePlugin
                 $values = is_array($product[$field])
                     ? $product[$field]
                     : [$product[$field]];
+
                 foreach ($values as $value) {
                     if ($value !== null && $value !== '') {
-                        if (!isset($counts[$value])) {
-                            $counts[$value] = 0;
+                        // Split comma-separated values
+                        $individualValues =
+                            is_string($value) && strpos($value, ',') !== false
+                                ? explode(',', $value)
+                                : [$value];
+
+                        foreach ($individualValues as $indValue) {
+                            $indValue = trim($indValue); // Trim whitespace
+                            if ($indValue !== null && $indValue !== '') {
+                                if (!isset($counts[$indValue])) {
+                                    $counts[$indValue] = 0;
+                                }
+                                $counts[$indValue]++;
+                            }
                         }
-                        $counts[$value]++;
                     }
                 }
             }
