@@ -436,15 +436,15 @@ class SearchEnginePlugin
                 $collection->getSelect()->order($orderByField);
             }
 
-            // foreach ($filterableAttributes as $code => $attribute) {
-            //     $collection->joinAttribute(
-            //         $code,
-            //         'catalog_product/' . $code,
-            //         'entity_id',
-            //         null,
-            //         'left'
-            //     );
-            // }
+            foreach ($filterableAttributes as $code => $attribute) {
+                $collection->joinAttribute(
+                    $code,
+                    'catalog_product/' . $code,
+                    'entity_id',
+                    null,
+                    'left'
+                );
+            }
 
             $products = [];
             foreach ($collection as $product) {
