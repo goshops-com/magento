@@ -385,6 +385,92 @@ class SearchEnginePlugin
         return array_unique($values);
     }
 
+    /**
+     * Ensures that a category bucket is always included in the aggregations
+     *
+     * @param array $buckets Array of existing buckets
+     * @param array $products Array of product data
+     * @return void
+     */
+    protected function ensureCategoryBucket(array &$buckets, array $products)
+    {
+        $categoryBucketNames = [
+            'category_bucket',
+            'category_filter',
+            'category_id',
+            'cat',
+            'cat_id',
+            'category',
+            'category_ids',
+            'category_ids_bucket',
+        ];
+
+        // Check if any of the standard category bucket names already exist
+        $categoryBucketExists = false;
+        foreach ($categoryBucketNames as $bucketName) {
+            if (isset($buckets[$bucketName])) {
+                $categoryBucketExists = true;
+                $this->logger->debug('Found existing category bucket:', [
+                    'bucket_name' => $bucketName,
+                ]);
+                break;
+            }
+        }
+
+        // If no category bucket exists, create one using category_ids field
+        if (!$categoryBucketExists) {
+            $this->logger->debug(
+                'No existing category bucket found, creating new one'
+            );
+
+            $categoryValues = [];
+            $categoryCounts = $this->getValueCounts(
+                $products,
+                'category_ids',
+                true
+            );
+
+            $this->logger->debug('Category counts for bucket creation:', [
+                'category_counts' => $categoryCounts,
+                'empty' => empty($categoryCounts),
+            ]);
+
+            foreach ($categoryCounts as $value => $count) {
+                // Ensure the value is valid
+                if ($value !== null && $value !== '') {
+                    $valueMetrics = [
+                        'value' => $value,
+                        'count' => $count,
+                    ];
+
+                    $categoryValues[] = new Value(
+                        (string) $value,
+                        $valueMetrics,
+                        'category_bucket'
+                    );
+                }
+            }
+
+            // If no categories were found, add an empty bucket
+            if (empty($categoryValues)) {
+                $this->logger->debug(
+                    'No category values found, adding empty category bucket'
+                );
+            } else {
+                $this->logger->debug('Created category bucket with values:', [
+                    'count' => count($categoryValues),
+                ]);
+            }
+
+            $buckets[
+                'category_bucket'
+            ] = new \Magento\Framework\Search\Response\Bucket(
+                'category_bucket',
+                $categoryValues
+            );
+        }
+    }
+
     public function aroundSearch(
         SearchEngine $subject,
         callable $proceed,
@@ -618,6 +704,8 @@ class SearchEnginePlugin
                     $values
                 );
             }
+
+            $this->ensureCategoryBucket($buckets, $products);
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse(
