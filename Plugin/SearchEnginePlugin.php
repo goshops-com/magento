@@ -401,97 +401,95 @@ class SearchEnginePlugin
             'total_products' => count($products),
         ]);
 
-        // Get the parent category IDs that should appear in navigation (level 2)
+        // Instead of querying for level 2 categories, we'll use cached data or a single query
+        // to get all the category information we need at once
         $categoryResource = $this->objectManager->get(
             \Magento\Catalog\Model\ResourceModel\Category::class
         );
         $connection = $categoryResource->getConnection();
 
-        // Simplified query that should find all level 2 categories (parent categories)
+        // Get all categories' data in a single query
         $select = $connection
             ->select()
-            ->from(['e' => $categoryResource->getEntityTable()], ['entity_id'])
-            ->where('e.level = ?', 2);
-        $categoryIds = $connection->fetchCol($select);
+            ->from(
+                ['e' => $categoryResource->getEntityTable()],
+                ['entity_id', 'path', 'level']
+            );
+        $categoryData = $connection->fetchAll($select);
+
+        // Organize categories by ID for quick access
+        $categoriesById = [];
+        $level2CategoryIds = [];
+
+        foreach ($categoryData as $category) {
+            $categoriesById[$category['entity_id']] = $category;
+            if ($category['level'] == 2) {
+                $level2CategoryIds[] = $category['entity_id'];
+            }
+        }
 
         $this->logger->debug('All level 2 categories:', [
-            'category_ids' => $categoryIds,
+            'category_ids' => $level2CategoryIds,
         ]);
 
-        // Now for each level 2 category, check if it meets our criteria
+        // Get attribute values for all level 2 categories in a single query for each attribute
+        $attributesToCheck = [
+            'is_anchor',
+            'include_in_menu',
+            'is_active',
+            'name',
+        ];
+        $attributeValues = [];
+
+        foreach ($attributesToCheck as $attributeCode) {
+            $select = $connection
+                ->select()
+                ->from(
+                    ['a' => $categoryResource->getTable('eav_attribute')],
+                    ['attribute_id']
+                )
+                ->where('a.attribute_code = ?', $attributeCode)
+                ->where('a.entity_type_id = 3');
+            $attributeId = $connection->fetchOne($select);
+
+            if ($attributeId) {
+                $select = $connection
+                    ->select()
+                    ->from(
+                        [
+                            'v' => $categoryResource->getTable(
+                                $attributeCode == 'name'
+                                    ? 'catalog_category_entity_varchar'
+                                    : 'catalog_category_entity_int'
+                            ),
+                        ],
+                        ['entity_id', 'value']
+                    )
+                    ->where('v.attribute_id = ?', $attributeId)
+                    ->where('v.entity_id IN (?)', $level2CategoryIds);
+
+                $results = $connection->fetchPairs($select);
+                $attributeValues[$attributeCode] = $results;
+            }
+        }
+
+        // Now check which level 2 categories meet our criteria
         $validCategoryIds = [];
-        foreach ($categoryIds as $categoryId) {
-            // Check is_anchor attribute
-            $isAnchorSelect = $connection
-                ->select()
-                ->from(
-                    [
-                        'a' => $categoryResource->getTable(
-                            'catalog_category_entity_int'
-                        ),
-                    ],
-                    ['value']
-                )
-                ->where('a.entity_id = ?', $categoryId)
-                ->where(
-                    'a.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
-                    'is_anchor'
-                );
-            $isAnchor = $connection->fetchOne($isAnchorSelect);
-
-            // Check include_in_menu attribute
-            $includeInMenuSelect = $connection
-                ->select()
-                ->from(
-                    [
-                        'm' => $categoryResource->getTable(
-                            'catalog_category_entity_int'
-                        ),
-                    ],
-                    ['value']
-                )
-                ->where('m.entity_id = ?', $categoryId)
-                ->where(
-                    'm.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
-                    'include_in_menu'
-                );
-            $includeInMenu = $connection->fetchOne($includeInMenuSelect);
-
-            // Check is_active attribute
-            $isActiveSelect = $connection
-                ->select()
-                ->from(
-                    [
-                        's' => $categoryResource->getTable(
-                            'catalog_category_entity_int'
-                        ),
-                    ],
-                    ['value']
-                )
-                ->where('s.entity_id = ?', $categoryId)
-                ->where(
-                    's.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
-                    'is_active'
-                );
-            $isActive = $connection->fetchOne($isActiveSelect);
-
-            // Get category name for logging
-            $nameSelect = $connection
-                ->select()
-                ->from(
-                    [
-                        'n' => $categoryResource->getTable(
-                            'catalog_category_entity_varchar'
-                        ),
-                    ],
-                    ['value']
-                )
-                ->where('n.entity_id = ?', $categoryId)
-                ->where(
-                    'n.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
-                    'name'
-                );
-            $name = $connection->fetchOne($nameSelect);
+        foreach ($level2CategoryIds as $categoryId) {
+            $isAnchor = isset($attributeValues['is_anchor'][$categoryId])
+                ? $attributeValues['is_anchor'][$categoryId]
+                : 0;
+            $includeInMenu = isset(
+                $attributeValues['include_in_menu'][$categoryId]
+            )
+                ? $attributeValues['include_in_menu'][$categoryId]
+                : 0;
+            $isActive = isset($attributeValues['is_active'][$categoryId])
+                ? $attributeValues['is_active'][$categoryId]
+                : 0;
+            $name = isset($attributeValues['name'][$categoryId])
+                ? $attributeValues['name'][$categoryId]
+                : 'Category ' . $categoryId;
 
             $this->logger->debug("Checking category $categoryId ($name):", [
                 'is_anchor' => $isAnchor,
@@ -514,15 +512,8 @@ class SearchEnginePlugin
         // --- Aggregate counts from subcategories into their top-level (level 2) category
         $aggregatedCategoryCounts = [];
         foreach ($categoryCounts as $subCatId => $count) {
-            // Retrieve the full category path for the subcategory.
-            // The path is typically stored as a string like "1/2/10/25"
-            $selectPath = $connection
-                ->select()
-                ->from($categoryResource->getEntityTable(), ['path'])
-                ->where('entity_id = ?', $subCatId);
-            $path = $connection->fetchOne($selectPath);
-
-            if ($path) {
+            if (isset($categoriesById[$subCatId])) {
+                $path = $categoriesById[$subCatId]['path'];
                 $parts = explode('/', $path);
                 // Index 0 is root, index 1 is default, index 2 is our level 2 category.
                 if (isset($parts[2])) {
@@ -534,6 +525,7 @@ class SearchEnginePlugin
                 }
             }
         }
+
         $this->logger->debug('Aggregated category counts:', [
             'aggregated_counts' => $aggregatedCategoryCounts,
         ]);
