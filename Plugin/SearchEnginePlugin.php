@@ -385,9 +385,10 @@ class SearchEnginePlugin
         return array_unique($values);
     }
 
-    protected function ensureCategoryBucket(array &$buckets, array $products)
-    {
-        // Get category counts from products
+    protected function createCategoryBuckets(
+        array $products,
+        array &$buckets
+    ): void {
         $categoryValues = [];
         $categoryCounts = $this->getValueCounts(
             $products,
@@ -395,64 +396,198 @@ class SearchEnginePlugin
             true
         );
 
-        $this->logger->debug('Raw category counts:', [
-            'counts' => $categoryCounts,
+        $this->logger->debug('Raw category counts from products:', [
+            'category_counts' => $categoryCounts,
+            'total_products' => count($products),
         ]);
 
-        // Get the filter format Magento expects for categories
+        // Get the parent category IDs that should appear in navigation (level 2)
         $categoryResource = $this->objectManager->get(
             \Magento\Catalog\Model\ResourceModel\Category::class
         );
         $connection = $categoryResource->getConnection();
 
-        // For each category found in products, get its name for better debug info
-        foreach ($categoryCounts as $catId => $count) {
-            if ($count > 0) {
-                // Get category name - for debugging purposes
-                $nameSelect = $connection
-                    ->select()
-                    ->from(
-                        [
-                            'n' => $categoryResource->getTable(
-                                'catalog_category_entity_varchar'
-                            ),
-                        ],
-                        ['value']
-                    )
-                    ->where('n.entity_id = ?', $catId)
-                    ->where(
-                        'n.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
-                        'name'
-                    );
-                $name = $connection->fetchOne($nameSelect);
+        // Simplified query that should find all level 2 categories (parent categories)
+        $select = $connection
+            ->select()
+            ->from(['e' => $categoryResource->getEntityTable()], ['entity_id'])
+            ->where('e.level = ?', 2);
+        $categoryIds = $connection->fetchCol($select);
 
-                $categoryValues[] = new Value(
-                    (string) $catId,
+        $this->logger->debug('All level 2 categories:', [
+            'category_ids' => $categoryIds,
+        ]);
+
+        // Now for each level 2 category, check if it meets our criteria
+        $validCategoryIds = [];
+        foreach ($categoryIds as $categoryId) {
+            // Check is_anchor attribute
+            $isAnchorSelect = $connection
+                ->select()
+                ->from(
                     [
-                        'value' => $catId,
-                        'count' => $count,
-                        'label' => $name ?: 'Category ' . $catId, // Use name if available
+                        'a' => $categoryResource->getTable(
+                            'catalog_category_entity_int'
+                        ),
                     ],
-                    'category_bucket'
+                    ['value']
+                )
+                ->where('a.entity_id = ?', $categoryId)
+                ->where(
+                    'a.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'is_anchor'
                 );
+            $isAnchor = $connection->fetchOne($isAnchorSelect);
 
-                $this->logger->debug('Added category to bucket:', [
-                    'category_id' => $catId,
-                    'name' => $name,
-                    'count' => $count,
-                ]);
+            // Check include_in_menu attribute
+            $includeInMenuSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        'm' => $categoryResource->getTable(
+                            'catalog_category_entity_int'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('m.entity_id = ?', $categoryId)
+                ->where(
+                    'm.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'include_in_menu'
+                );
+            $includeInMenu = $connection->fetchOne($includeInMenuSelect);
+
+            // Check is_active attribute
+            $isActiveSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        's' => $categoryResource->getTable(
+                            'catalog_category_entity_int'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('s.entity_id = ?', $categoryId)
+                ->where(
+                    's.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'is_active'
+                );
+            $isActive = $connection->fetchOne($isActiveSelect);
+
+            // Get category name for logging
+            $nameSelect = $connection
+                ->select()
+                ->from(
+                    [
+                        'n' => $categoryResource->getTable(
+                            'catalog_category_entity_varchar'
+                        ),
+                    ],
+                    ['value']
+                )
+                ->where('n.entity_id = ?', $categoryId)
+                ->where(
+                    'n.attribute_id = (SELECT attribute_id FROM eav_attribute WHERE attribute_code = ? AND entity_type_id = 3)',
+                    'name'
+                );
+            $name = $connection->fetchOne($nameSelect);
+
+            $this->logger->debug("Checking category $categoryId ($name):", [
+                'is_anchor' => $isAnchor,
+                'include_in_menu' => $includeInMenu,
+                'is_active' => $isActive,
+            ]);
+
+            if ($isAnchor == 1 && $includeInMenu == 1 && $isActive == 1) {
+                $validCategoryIds[] = $categoryId;
+                $this->logger->debug(
+                    "Category $categoryId ($name) meets all criteria"
+                );
             }
         }
 
-        // IMPORTANT: Create a completely new buckets array with price first, then categories, then others
-        $newBuckets = [];
+        $this->logger->debug('Final valid category IDs matching criteria:', [
+            'valid_categories' => $validCategoryIds,
+        ]);
 
-        // 1. Add price first - this is crucial for some Magento themes
+        // --- Aggregate counts from subcategories into their top-level (level 2) category
+        $aggregatedCategoryCounts = [];
+        foreach ($categoryCounts as $subCatId => $count) {
+            // Retrieve the full category path for the subcategory.
+            // The path is typically stored as a string like "1/2/10/25"
+            $selectPath = $connection
+                ->select()
+                ->from($categoryResource->getEntityTable(), ['path'])
+                ->where('entity_id = ?', $subCatId);
+            $path = $connection->fetchOne($selectPath);
+
+            if ($path) {
+                $parts = explode('/', $path);
+                // Index 0 is root, index 1 is default, index 2 is our level 2 category.
+                if (isset($parts[2])) {
+                    $topCatId = $parts[2];
+                    if (!isset($aggregatedCategoryCounts[$topCatId])) {
+                        $aggregatedCategoryCounts[$topCatId] = 0;
+                    }
+                    $aggregatedCategoryCounts[$topCatId] += (int) $count;
+                }
+            }
+        }
+        $this->logger->debug('Aggregated category counts:', [
+            'aggregated_counts' => $aggregatedCategoryCounts,
+        ]);
+
+        // Check if we have any valid categories
+        if (empty($validCategoryIds)) {
+            $this->logger->warning(
+                'No valid categories found matching layered navigation criteria'
+            );
+            $categoryValues[] = new Value(
+                '0',
+                [
+                    'value' => '0',
+                    'count' => 0,
+                ],
+                'category_bucket'
+            );
+        } else {
+            // Create bucket values for all valid (level 2) categories using the aggregated counts,
+            // but only add those with a count greater than zero.
+            foreach ($validCategoryIds as $catId) {
+                $count = isset($aggregatedCategoryCounts[$catId])
+                    ? (int) $aggregatedCategoryCounts[$catId]
+                    : 0;
+                if ($count > 0) {
+                    $categoryValues[] = new Value(
+                        $catId,
+                        [
+                            'value' => $catId,
+                            'count' => $count,
+                        ],
+                        'category_bucket'
+                    );
+                    $this->logger->debug('Added category to bucket:', [
+                        'category_id' => $catId,
+                        'count' => $count,
+                        'has_products' => 'yes',
+                    ]);
+                } else {
+                    $this->logger->debug('Skipping category (no products):', [
+                        'category_id' => $catId,
+                        'count' => $count,
+                    ]);
+                }
+            }
+        }
+
+        // Create buckets in correct order
+        $newBuckets = [];
         if (isset($buckets['price_bucket'])) {
             $newBuckets['price_bucket'] = $buckets['price_bucket'];
         }
 
-        // 2. Add ALL category bucket variations
+        // Ensure we create all possible bucket names Magento might look for
         $categoryBucketNames = [
             'category_bucket',
             'category_filter',
@@ -464,6 +599,13 @@ class SearchEnginePlugin
             'category_ids_bucket',
         ];
 
+        $this->logger->debug(
+            'Creating buckets for all possible category names',
+            [
+                'bucket_names' => $categoryBucketNames,
+            ]
+        );
+
         foreach ($categoryBucketNames as $name) {
             $newBuckets[$name] = new \Magento\Framework\Search\Response\Bucket(
                 $name,
@@ -471,7 +613,7 @@ class SearchEnginePlugin
             );
         }
 
-        // 3. Add all remaining buckets
+        // Add remaining buckets
         foreach ($buckets as $key => $bucket) {
             if (
                 $key !== 'price_bucket' &&
@@ -481,11 +623,14 @@ class SearchEnginePlugin
             }
         }
 
-        // Replace the buckets array completely
         $buckets = $newBuckets;
 
-        $this->logger->debug('Final buckets order:', [
-            'bucket_order' => array_keys($buckets),
+        $this->logger->debug('Final category buckets created', [
+            'bucket_names' => array_keys($buckets),
+            'category_values_count' => count($categoryValues),
+            'category_ids_included' => array_map(function ($value) {
+                return $value->getValue();
+            }, $categoryValues),
         ]);
     }
 
@@ -723,7 +868,7 @@ class SearchEnginePlugin
                 );
             }
 
-            $this->ensureCategoryBucket($buckets, $products);
+            $this->createCategoryBuckets($products, $buckets);
 
             $aggregations = new Aggregation($buckets);
             $response = new QueryResponse(
