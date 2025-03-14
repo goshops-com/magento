@@ -46,7 +46,30 @@ class SearchEnginePlugin
         SessionManagerInterface $sessionManager,
         Configurable $configurableType
     ) {
-        $this->logger = $logger;
+        $this->logger = new class($logger) {
+            private $logger;
+            private $enabled = false;
+
+            public function __construct($logger)
+            {
+                $this->logger = $logger;
+            }
+
+            public function __call($name, $arguments)
+            {
+                if ($this->enabled && method_exists($this->logger, $name)) {
+                    return call_user_func_array(
+                        [$this->logger, $name],
+                        $arguments
+                    );
+                }
+            }
+
+            public function setEnabled($enabled)
+            {
+                $this->enabled = (bool) $enabled;
+            }
+        };
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
         $this->filterableAttributeList = $filterableAttributeList;
