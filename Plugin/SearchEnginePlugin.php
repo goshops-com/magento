@@ -355,8 +355,8 @@ class SearchEnginePlugin
             json_encode($attributes),
             $cacheKey,
             ['ATTRIBUTE_CACHE'],
-            86400
-        ); // Cache for 24 hours
+            3600
+        );
 
         return $attributes;
     }
