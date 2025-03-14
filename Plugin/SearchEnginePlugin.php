@@ -318,6 +318,13 @@ class SearchEnginePlugin
 
     protected function getFilterableAttributes()
     {
+        $cacheKey = 'filterable_attributes_list';
+        $cachedData = $this->cache->load($cacheKey);
+
+        if ($cachedData) {
+            return json_decode($cachedData, true);
+        }
+
         $attributes = [];
         foreach ($this->filterableAttributeList->getList() as $attribute) {
             $code = $attribute->getAttributeCode();
@@ -325,7 +332,6 @@ class SearchEnginePlugin
 
             if ($attribute->usesSource()) {
                 foreach ($attribute->getSource()->getAllOptions() as $option) {
-                    // Changed from !empty() to isset() to include zero values
                     if (isset($option['value']) && $option['value'] !== '') {
                         $options[$option['value']] = [
                             'value' => $option['value'],
@@ -344,6 +350,13 @@ class SearchEnginePlugin
                 'options' => $options,
             ];
         }
+
+        $this->cache->save(
+            json_encode($attributes),
+            $cacheKey,
+            ['ATTRIBUTE_CACHE'],
+            86400
+        ); // Cache for 24 hours
 
         return $attributes;
     }
