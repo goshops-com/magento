@@ -389,151 +389,197 @@ class SearchEnginePlugin
         array $products,
         array &$buckets
     ): void {
-        $categoryValues = [];
-        $categoryCounts = $this->getValueCounts(
-            $products,
-            'category_ids',
-            true
+        $this->logger->debug(
+            'Starting simplified category bucket creation with products:',
+            [
+                'total_products' => count($products),
+            ]
         );
+
+        // Step 1: Direct count of all category IDs from products
+        $categoryCounts = [];
+        foreach ($products as $product) {
+            if (
+                isset($product['category_ids']) &&
+                !empty($product['category_ids'])
+            ) {
+                $categoryIds = is_array($product['category_ids'])
+                    ? $product['category_ids']
+                    : explode(',', $product['category_ids']);
+
+                foreach ($categoryIds as $categoryId) {
+                    $categoryId = (int) $categoryId;
+                    if (!isset($categoryCounts[$categoryId])) {
+                        $categoryCounts[$categoryId] = 0;
+                    }
+                    $categoryCounts[$categoryId]++;
+                }
+            }
+        }
 
         $this->logger->debug('Raw category counts from products:', [
             'category_counts' => $categoryCounts,
-            'total_products' => count($products),
         ]);
 
-        // Instead of querying for level 2 categories, we'll use cached data or a single query
-        // to get all the category information we need at once
+        // Step 2: We still need category hierarchy information but can get it in one query
         $categoryResource = $this->objectManager->get(
             \Magento\Catalog\Model\ResourceModel\Category::class
         );
         $connection = $categoryResource->getConnection();
 
-        // Get all categories' data in a single query
         $select = $connection
             ->select()
             ->from(
                 ['e' => $categoryResource->getEntityTable()],
                 ['entity_id', 'path', 'level']
-            );
+            )
+            ->join(
+                ['ea' => $categoryResource->getTable('eav_attribute')],
+                'ea.entity_type_id = 3 AND ea.attribute_code = "name"',
+                ['attribute_id']
+            )
+            ->join(
+                [
+                    'ev' => $categoryResource->getTable(
+                        'catalog_category_entity_varchar'
+                    ),
+                ],
+                'e.entity_id = ev.entity_id AND ev.attribute_id = ea.attribute_id',
+                ['name' => 'value']
+            )
+            ->join(
+                ['anchor_attr' => $categoryResource->getTable('eav_attribute')],
+                'anchor_attr.entity_type_id = 3 AND anchor_attr.attribute_code = "is_anchor"',
+                ['anchor_attribute_id' => 'attribute_id']
+            )
+            ->join(
+                ['menu_attr' => $categoryResource->getTable('eav_attribute')],
+                'menu_attr.entity_type_id = 3 AND menu_attr.attribute_code = "include_in_menu"',
+                ['menu_attribute_id' => 'attribute_id']
+            )
+            ->join(
+                ['active_attr' => $categoryResource->getTable('eav_attribute')],
+                'active_attr.entity_type_id = 3 AND active_attr.attribute_code = "is_active"',
+                ['active_attribute_id' => 'attribute_id']
+            )
+            ->joinLeft(
+                [
+                    'anchor' => $categoryResource->getTable(
+                        'catalog_category_entity_int'
+                    ),
+                ],
+                'e.entity_id = anchor.entity_id AND anchor.attribute_id = anchor_attr.attribute_id',
+                ['is_anchor' => 'value']
+            )
+            ->joinLeft(
+                [
+                    'menu' => $categoryResource->getTable(
+                        'catalog_category_entity_int'
+                    ),
+                ],
+                'e.entity_id = menu.entity_id AND menu.attribute_id = menu_attr.attribute_id',
+                ['include_in_menu' => 'value']
+            )
+            ->joinLeft(
+                [
+                    'active' => $categoryResource->getTable(
+                        'catalog_category_entity_int'
+                    ),
+                ],
+                'e.entity_id = active.entity_id AND active.attribute_id = active_attr.attribute_id',
+                ['is_active' => 'value']
+            )
+            ->where('e.level >= ?', 2);
+
         $categoryData = $connection->fetchAll($select);
 
-        // Organize categories by ID for quick access
+        // Step 3: Process category data for faster lookups
         $categoriesById = [];
-        $level2CategoryIds = [];
+        $validLevel2Categories = [];
+        $pathToLevel2Map = [];
 
         foreach ($categoryData as $category) {
-            $categoriesById[$category['entity_id']] = $category;
-            if ($category['level'] == 2) {
-                $level2CategoryIds[] = $category['entity_id'];
+            $categoryId = (int) $category['entity_id'];
+            $categoriesById[$categoryId] = $category;
+
+            // Check if this is a valid level 2 category for layered navigation
+            if ((int) $category['level'] === 2) {
+                $isAnchor = (int) ($category['is_anchor'] ?? 0);
+                $includeInMenu = (int) ($category['include_in_menu'] ?? 0);
+                $isActive = (int) ($category['is_active'] ?? 0);
+
+                if (
+                    $isAnchor === 1 &&
+                    $includeInMenu === 1 &&
+                    $isActive === 1
+                ) {
+                    $validLevel2Categories[$categoryId] = $category;
+                    $this->logger->debug(
+                        "Category {$categoryId} ({$category['name']}) is valid for layered navigation"
+                    );
+                }
+            }
+
+            // Create a mapping from any category path to its level 2 parent
+            $pathParts = explode('/', $category['path']);
+            if (isset($pathParts[2])) {
+                // index 0 is root, 1 is default category, 2 is level 2
+                $level2Id = (int) $pathParts[2];
+                $pathToLevel2Map[$categoryId] = $level2Id;
             }
         }
 
-        $this->logger->debug('All level 2 categories:', [
-            'category_ids' => $level2CategoryIds,
+        $this->logger->debug('Category data processed:', [
+            'total_categories' => count($categoriesById),
+            'valid_level2_categories' => count($validLevel2Categories),
         ]);
 
-        // Get attribute values for all level 2 categories in a single query for each attribute
-        $attributesToCheck = [
-            'is_anchor',
-            'include_in_menu',
-            'is_active',
-            'name',
-        ];
-        $attributeValues = [];
+        // Step 4: Aggregate counts to level 2 categories
+        $level2Counts = [];
 
-        foreach ($attributesToCheck as $attributeCode) {
-            $select = $connection
-                ->select()
-                ->from(
-                    ['a' => $categoryResource->getTable('eav_attribute')],
-                    ['attribute_id']
-                )
-                ->where('a.attribute_code = ?', $attributeCode)
-                ->where('a.entity_type_id = 3');
-            $attributeId = $connection->fetchOne($select);
+        foreach ($categoryCounts as $categoryId => $count) {
+            // Map this category to its level 2 parent
+            $level2Id = $pathToLevel2Map[$categoryId] ?? null;
 
-            if ($attributeId) {
-                $select = $connection
-                    ->select()
-                    ->from(
-                        [
-                            'v' => $categoryResource->getTable(
-                                $attributeCode == 'name'
-                                    ? 'catalog_category_entity_varchar'
-                                    : 'catalog_category_entity_int'
-                            ),
-                        ],
-                        ['entity_id', 'value']
-                    )
-                    ->where('v.attribute_id = ?', $attributeId)
-                    ->where('v.entity_id IN (?)', $level2CategoryIds);
-
-                $results = $connection->fetchPairs($select);
-                $attributeValues[$attributeCode] = $results;
+            if ($level2Id) {
+                if (!isset($level2Counts[$level2Id])) {
+                    $level2Counts[$level2Id] = 0;
+                }
+                $level2Counts[$level2Id] += $count;
             }
         }
 
-        // Now check which level 2 categories meet our criteria
-        $validCategoryIds = [];
-        foreach ($level2CategoryIds as $categoryId) {
-            $isAnchor = isset($attributeValues['is_anchor'][$categoryId])
-                ? $attributeValues['is_anchor'][$categoryId]
-                : 0;
-            $includeInMenu = isset(
-                $attributeValues['include_in_menu'][$categoryId]
-            )
-                ? $attributeValues['include_in_menu'][$categoryId]
-                : 0;
-            $isActive = isset($attributeValues['is_active'][$categoryId])
-                ? $attributeValues['is_active'][$categoryId]
-                : 0;
-            $name = isset($attributeValues['name'][$categoryId])
-                ? $attributeValues['name'][$categoryId]
-                : 'Category ' . $categoryId;
+        $this->logger->debug('Aggregated counts to level 2 categories:', [
+            'level2_counts' => $level2Counts,
+        ]);
 
-            $this->logger->debug("Checking category $categoryId ($name):", [
-                'is_anchor' => $isAnchor,
-                'include_in_menu' => $includeInMenu,
-                'is_active' => $isActive,
-            ]);
+        // Step 5: Create bucket values
+        $categoryValues = [];
 
-            if ($isAnchor == 1 && $includeInMenu == 1 && $isActive == 1) {
-                $validCategoryIds[] = $categoryId;
+        // Only include valid level 2 categories with products
+        foreach ($validLevel2Categories as $catId => $category) {
+            $count = $level2Counts[$catId] ?? 0;
+            if ($count > 0) {
+                $categoryValues[] = new Value(
+                    (string) $catId,
+                    [
+                        'value' => (string) $catId,
+                        'count' => $count,
+                        'label' => $category['name'] ?? 'Category ' . $catId,
+                    ],
+                    'category_bucket'
+                );
+
                 $this->logger->debug(
-                    "Category $categoryId ($name) meets all criteria"
+                    "Added category to bucket: {$catId} with count {$count}"
                 );
             }
         }
 
-        $this->logger->debug('Final valid category IDs matching criteria:', [
-            'valid_categories' => $validCategoryIds,
-        ]);
-
-        // --- Aggregate counts from subcategories into their top-level (level 2) category
-        $aggregatedCategoryCounts = [];
-        foreach ($categoryCounts as $subCatId => $count) {
-            if (isset($categoriesById[$subCatId])) {
-                $path = $categoriesById[$subCatId]['path'];
-                $parts = explode('/', $path);
-                // Index 0 is root, index 1 is default, index 2 is our level 2 category.
-                if (isset($parts[2])) {
-                    $topCatId = $parts[2];
-                    if (!isset($aggregatedCategoryCounts[$topCatId])) {
-                        $aggregatedCategoryCounts[$topCatId] = 0;
-                    }
-                    $aggregatedCategoryCounts[$topCatId] += (int) $count;
-                }
-            }
-        }
-
-        $this->logger->debug('Aggregated category counts:', [
-            'aggregated_counts' => $aggregatedCategoryCounts,
-        ]);
-
-        // Check if we have any valid categories
-        if (empty($validCategoryIds)) {
+        // Step 6: No valid categories? Add a placeholder
+        if (empty($categoryValues)) {
             $this->logger->warning(
-                'No valid categories found matching layered navigation criteria'
+                'No valid categories found for layered navigation'
             );
             $categoryValues[] = new Value(
                 '0',
@@ -543,43 +589,17 @@ class SearchEnginePlugin
                 ],
                 'category_bucket'
             );
-        } else {
-            // Create bucket values for all valid (level 2) categories using the aggregated counts,
-            // but only add those with a count greater than zero.
-            foreach ($validCategoryIds as $catId) {
-                $count = isset($aggregatedCategoryCounts[$catId])
-                    ? (int) $aggregatedCategoryCounts[$catId]
-                    : 0;
-                if ($count > 0) {
-                    $categoryValues[] = new Value(
-                        $catId,
-                        [
-                            'value' => $catId,
-                            'count' => $count,
-                        ],
-                        'category_bucket'
-                    );
-                    $this->logger->debug('Added category to bucket:', [
-                        'category_id' => $catId,
-                        'count' => $count,
-                        'has_products' => 'yes',
-                    ]);
-                } else {
-                    $this->logger->debug('Skipping category (no products):', [
-                        'category_id' => $catId,
-                        'count' => $count,
-                    ]);
-                }
-            }
         }
 
-        // Create buckets in correct order
+        // Step 7: Create final buckets in proper order
         $newBuckets = [];
+
+        // Preserve price bucket if it exists
         if (isset($buckets['price_bucket'])) {
             $newBuckets['price_bucket'] = $buckets['price_bucket'];
         }
 
-        // Ensure we create all possible bucket names Magento might look for
+        // Create all possible category bucket names Magento might look for
         $categoryBucketNames = [
             'category_bucket',
             'category_filter',
@@ -590,13 +610,6 @@ class SearchEnginePlugin
             'category_ids',
             'category_ids_bucket',
         ];
-
-        $this->logger->debug(
-            'Creating buckets for all possible category names',
-            [
-                'bucket_names' => $categoryBucketNames,
-            ]
-        );
 
         foreach ($categoryBucketNames as $name) {
             $newBuckets[$name] = new \Magento\Framework\Search\Response\Bucket(
@@ -615,14 +628,12 @@ class SearchEnginePlugin
             }
         }
 
+        // Replace the buckets array with our new one
         $buckets = $newBuckets;
 
         $this->logger->debug('Final category buckets created', [
             'bucket_names' => array_keys($buckets),
             'category_values_count' => count($categoryValues),
-            'category_ids_included' => array_map(function ($value) {
-                return $value->getValue();
-            }, $categoryValues),
         ]);
     }
 
