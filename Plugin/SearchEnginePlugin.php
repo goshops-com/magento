@@ -64,11 +64,6 @@ class SearchEnginePlugin
                     );
                 }
             }
-
-            public function setEnabled($enabled)
-            {
-                $this->enabled = (bool) $enabled;
-            }
         };
         $this->httpRequest = $httpRequest;
         $this->objectManager = $objectManager;
