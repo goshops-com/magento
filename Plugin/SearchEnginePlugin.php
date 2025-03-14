@@ -421,7 +421,19 @@ class SearchEnginePlugin
             'category_counts' => $categoryCounts,
         ]);
 
-        // Step 2: We still need category hierarchy information but can get it in one query
+        // Step 2: Get necessary category configuration data
+        $layeredNavigationLevel =
+            (int) $this->scopeConfig->getValue(
+                'catalog/layered_navigation/category_level',
+                ScopeInterface::SCOPE_STORE
+            ) ?:
+            2; // Default to level 2 if not configured
+
+        $this->logger->debug(
+            "Using layered navigation level: {$layeredNavigationLevel}"
+        );
+
+        // We still need category hierarchy information but can get it in one query
         $categoryResource = $this->objectManager->get(
             \Magento\Catalog\Model\ResourceModel\Category::class
         );
@@ -488,22 +500,21 @@ class SearchEnginePlugin
                 ],
                 'e.entity_id = active.entity_id AND active.attribute_id = active_attr.attribute_id',
                 ['is_active' => 'value']
-            )
-            ->where('e.level >= ?', 2);
+            );
 
         $categoryData = $connection->fetchAll($select);
 
         // Step 3: Process category data for faster lookups
         $categoriesById = [];
-        $validLevel2Categories = [];
-        $pathToLevel2Map = [];
+        $validLayerCategories = [];
+        $pathToLayerCategoryMap = [];
 
         foreach ($categoryData as $category) {
             $categoryId = (int) $category['entity_id'];
             $categoriesById[$categoryId] = $category;
 
-            // Check if this is a valid level 2 category for layered navigation
-            if ((int) $category['level'] === 2) {
+            // Check if this is a valid category for layered navigation
+            if ((int) $category['level'] === $layeredNavigationLevel) {
                 $isAnchor = (int) ($category['is_anchor'] ?? 0);
                 $includeInMenu = (int) ($category['include_in_menu'] ?? 0);
                 $isActive = (int) ($category['is_active'] ?? 0);
@@ -513,19 +524,18 @@ class SearchEnginePlugin
                     $includeInMenu === 1 &&
                     $isActive === 1
                 ) {
-                    $validLevel2Categories[$categoryId] = $category;
+                    $validLayerCategories[$categoryId] = $category;
                     $this->logger->debug(
                         "Category {$categoryId} ({$category['name']}) is valid for layered navigation"
                     );
                 }
             }
 
-            // Create a mapping from any category path to its level 2 parent
+            // Create a mapping from any category path to its appropriate level parent
             $pathParts = explode('/', $category['path']);
-            if (isset($pathParts[2])) {
-                // index 0 is root, 1 is default category, 2 is level 2
-                $level2Id = (int) $pathParts[2];
-                $pathToLevel2Map[$categoryId] = $level2Id;
+            if (isset($pathParts[$layeredNavigationLevel])) {
+                $layerCategoryId = (int) $pathParts[$layeredNavigationLevel];
+                $pathToLayerCategoryMap[$categoryId] = $layerCategoryId;
             }
         }
 
@@ -534,31 +544,34 @@ class SearchEnginePlugin
             'valid_level2_categories' => count($validLevel2Categories),
         ]);
 
-        // Step 4: Aggregate counts to level 2 categories
-        $level2Counts = [];
+        // Step 4: Aggregate counts to appropriate navigation level categories
+        $layerCategoryCounts = [];
 
         foreach ($categoryCounts as $categoryId => $count) {
-            // Map this category to its level 2 parent
-            $level2Id = $pathToLevel2Map[$categoryId] ?? null;
+            // Map this category to its parent at the navigation level
+            $layerCategoryId = $pathToLayerCategoryMap[$categoryId] ?? null;
 
-            if ($level2Id) {
-                if (!isset($level2Counts[$level2Id])) {
-                    $level2Counts[$level2Id] = 0;
+            if ($layerCategoryId) {
+                if (!isset($layerCategoryCounts[$layerCategoryId])) {
+                    $layerCategoryCounts[$layerCategoryId] = 0;
                 }
-                $level2Counts[$level2Id] += $count;
+                $layerCategoryCounts[$layerCategoryId] += $count;
             }
         }
 
-        $this->logger->debug('Aggregated counts to level 2 categories:', [
-            'level2_counts' => $level2Counts,
-        ]);
+        $this->logger->debug(
+            "Aggregated counts to navigation level {$layeredNavigationLevel} categories:",
+            [
+                'layer_category_counts' => $layerCategoryCounts,
+            ]
+        );
 
         // Step 5: Create bucket values
         $categoryValues = [];
 
-        // Only include valid level 2 categories with products
-        foreach ($validLevel2Categories as $catId => $category) {
-            $count = $level2Counts[$catId] ?? 0;
+        // Only include valid categories with products
+        foreach ($validLayerCategories as $catId => $category) {
+            $count = $layerCategoryCounts[$catId] ?? 0;
             if ($count > 0) {
                 $categoryValues[] = new Value(
                     (string) $catId,
