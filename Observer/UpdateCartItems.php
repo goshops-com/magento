@@ -69,7 +69,7 @@ class UpdateCartItems implements ObserverInterface
             $productId = $product->getId();
         }
 
-        $actionId = $quoteId . '-' . $productId . '-' . $currentWindow . '-';
+        $actionId = $quoteId . '-' . $productId . '-' . $currentWindow;
 
         $token = $this->cookieManager->getCookie('gopersonal_jwt');
         if (!$token) {

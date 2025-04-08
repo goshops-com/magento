@@ -57,8 +57,7 @@ class AddToCart implements ObserverInterface
             $parentId = !empty($parentIds) ? $parentIds[0] : null;
 
             $currentWindow = floor(time() / 5) * 5;
-            $actionId =
-                $quoteId . '-' . $productId . '-' . $currentWindow . '-';
+            $actionId = $quoteId . '-' . $productId . '-' . $currentWindow;
 
             $token = $this->cookieManager->getCookie('gopersonal_jwt');
             if (!$token) {
