@@ -45,13 +45,22 @@ class AddToCart implements ObserverInterface
     {
         try {
             $item = $observer->getEvent()->getData('quote_item');
+            $quoteId = $item->getQuote()->getId();
             $product = $item ? $item->getProduct() : null;
             $productId = $product ? $product->getId() : 'Product ID not found';
             $quantity = $item ? $item->getQty() : 'Quantity not found';
 
             // Attempt to find the parent ID if this is a simple product of a configurable product
-            $parentIds = $this->configurableProductResource->getParentIdsByChild($productId);
+            $parentIds = $this->configurableProductResource->getParentIdsByChild(
+                $productId
+            );
             $parentId = !empty($parentIds) ? $parentIds[0] : null;
+
+            $currentWindow = floor(time() / 5) * 5;
+            $actionId = uniqid(
+                $quoteId . '-' . $productId . '-' . $currentWindow . '-',
+                true
+            );
 
             $token = $this->cookieManager->getCookie('gopersonal_jwt');
             if (!$token) {
@@ -59,30 +68,43 @@ class AddToCart implements ObserverInterface
                 return;
             }
 
-            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-            $url = 'https://discover.gopersonal.ai/interaction';  // Default URL with /interaction
+            $clientId = $this->scopeConfig->getValue(
+                'gopersonal/general/client_id',
+                ScopeInterface::SCOPE_STORE
+            );
+            $url = 'https://discover.gopersonal.ai/interaction'; // Default URL with /interaction
 
             if (strpos($clientId, 'D-') === 0) {
-                $url = 'https://go-discover-dev.goshops.ai/interaction';  // Development URL if clientId starts with 'D-'
+                $url = 'https://go-discover-dev.goshops.ai/interaction'; // Development URL if clientId starts with 'D-'
             }
 
-            $this->curl->addHeader("Authorization", "Bearer " . $token);
-            $this->curl->addHeader("Content-Type", "application/json");
+            $this->curl->addHeader('Authorization', 'Bearer ' . $token);
+            $this->curl->addHeader('Content-Type', 'application/json');
 
             $postData = json_encode([
                 'event' => 'cart',
                 'item' => $parentId ? $parentId : $productId, // Use the parent ID if available, otherwise use the product ID
-                'quantity' => $quantity
+                'quantity' => $quantity,
+                'transactionId' => $actionId,
             ]);
 
             $this->curl->post($url, $postData);
             if ($this->curl->getStatus() != 200) {
-                $this->logger->error('AddToCart event: API call failed.', ['status' => $this->curl->getStatus(), 'response' => $this->curl->getBody()]);
-                throw new LocalizedException(__('Failed to handle AddToCart event.'));
+                $this->logger->error('AddToCart event: API call failed.', [
+                    'status' => $this->curl->getStatus(),
+                    'response' => $this->curl->getBody(),
+                ]);
+                throw new LocalizedException(
+                    __('Failed to handle AddToCart event.')
+                );
             }
         } catch (\Exception $e) {
-            $this->logger->critical('AddToCart event: Exception occurred.', ['exception' => $e->getMessage()]);
-            throw new LocalizedException(__('Error adding product to cart. Please contact support.'));
+            $this->logger->critical('AddToCart event: Exception occurred.', [
+                'exception' => $e->getMessage(),
+            ]);
+            throw new LocalizedException(
+                __('Error adding product to cart. Please contact support.')
+            );
         }
     }
 }
