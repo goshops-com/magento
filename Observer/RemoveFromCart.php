@@ -51,9 +51,11 @@ class RemoveFromCart implements ObserverInterface
 
             // Check if product is a simple product and part of a configurable product
             if ($product && $product->getTypeId() == 'simple') {
-                $parentIds = $this->configurableProductResource->getParentIdsByChild($productId);
+                $parentIds = $this->configurableProductResource->getParentIdsByChild(
+                    $productId
+                );
                 if (!empty($parentIds)) {
-                    $productId = $parentIds[0];  // Use the parent configurable product ID
+                    $productId = $parentIds[0]; // Use the parent configurable product ID
                 }
             }
 
@@ -63,30 +65,40 @@ class RemoveFromCart implements ObserverInterface
                 return;
             }
 
-            $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-            $url = 'https://discover.gopersonal.ai/interaction';  // Default URL
+            $clientId = $this->scopeConfig->getValue(
+                'gopersonal/general/client_id',
+                ScopeInterface::SCOPE_STORE
+            );
+            $url = 'https://discover.gopersonal.ai/interaction'; // Default URL
 
             if (strpos($clientId, 'D-') === 0) {
-                $url = 'https://go-discover-dev.goshops.ai/interaction';  // Development URL if client ID starts with 'D-'
+                $url = 'https://go-discover-dev.goshops.ai/interaction'; // Development URL if client ID starts with 'D-'
             }
 
-            $this->curl->addHeader("Authorization", "Bearer " . $token);
-            $this->curl->addHeader("Content-Type", "application/json");
+            $this->curl->addHeader('Authorization', 'Bearer ' . $token);
+            $this->curl->addHeader('Content-Type', 'application/json');
 
             $postData = json_encode([
                 'event' => 'remove-cart',
-                'item' => $productId,  // Configurable product ID if applicable
-                'quantity' => $quantity
+                'item' => $productId, // Configurable product ID if applicable
+                'quantity' => $quantity,
             ]);
 
             $this->curl->post($url, $postData);
             if ($this->curl->getStatus() != 200) {
-                $this->logger->error('RemoveFromCart event: API call failed.', ['status' => $this->curl->getStatus(), 'response' => $this->curl->getBody()]);
-                throw new LocalizedException(__('Failed to handle RemoveFromCart event.'));
+                $this->logger->error('RemoveFromCart event: API call failed.', [
+                    'status' => $this->curl->getStatus(),
+                    'response' => $this->curl->getBody(),
+                ]);
+                throw new LocalizedException(
+                    __('Failed to handle RemoveFromCart event.')
+                );
             }
         } catch (\Exception $e) {
-            $this->logger->critical('RemoveFromCart event: Exception occurred.', ['exception' => $e->getMessage()]);
-            throw new LocalizedException(__('Error removing product from cart. Please contact support.'));
+            $this->logger->critical(
+                'RemoveFromCart event: Exception occurred.',
+                ['exception' => $e->getMessage()]
+            );
         }
     }
 }

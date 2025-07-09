@@ -49,7 +49,7 @@ class SearchEnginePlugin
     ) {
         $this->logger = new class($logger) {
             private $logger;
-            private $enabled = false;
+            private $enabled = true;
 
             public function __construct($logger)
             {

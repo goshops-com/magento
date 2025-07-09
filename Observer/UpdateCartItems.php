@@ -43,67 +43,76 @@ class UpdateCartItems implements ObserverInterface
 
     public function execute(Observer $observer)
     {
-        $item = $observer->getEvent()->getItem();
-        $quoteId = $item->getQuote()->getId();
+        try {
+            $item = $observer->getEvent()->getItem();
+            $quoteId = $item->getQuote()->getId();
 
-        $oldQty = $item->getOrigData('qty');
-        $newQty = $item->getQty();
-        $qtyDiff = $newQty - $oldQty;
+            $oldQty = $item->getOrigData('qty');
+            $newQty = $item->getQty();
+            $qtyDiff = $newQty - $oldQty;
 
-        if ($qtyDiff == 0) {
-            return; // No change in quantity
-        }
+            if ($qtyDiff == 0) {
+                return;
+            }
 
-        $changeType = $qtyDiff > 0 ? 'increase' : 'decrease';
-        $product = $item->getProduct();
+            $changeType = $qtyDiff > 0 ? 'increase' : 'decrease';
+            $product = $item->getProduct();
 
-        $currentWindow = floor(time() / 5) * 5;
+            $currentWindow = floor(time() / 5) * 5;
 
-        // Obtain the parent product ID if this is a simple product part of a configurable product
-        if ($product->getTypeId() == 'simple') {
-            $parentIds = $this->configurableProductResource->getParentIdsByChild(
-                $product->getId()
+            if ($product->getTypeId() == 'simple') {
+                $parentIds = $this->configurableProductResource->getParentIdsByChild(
+                    $product->getId()
+                );
+                $productId = !empty($parentIds)
+                    ? $parentIds[0]
+                    : $product->getId();
+            } else {
+                $productId = $product->getId();
+            }
+
+            $actionId = $quoteId . '-' . $productId . '-' . $currentWindow;
+
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
+            if (!$token) {
+                $this->logger->info('No API token found in session.');
+                return;
+            }
+
+            $clientId = $this->scopeConfig->getValue(
+                'gopersonal/general/client_id',
+                ScopeInterface::SCOPE_STORE
             );
-            $productId = !empty($parentIds) ? $parentIds[0] : $product->getId();
-        } else {
-            $productId = $product->getId();
-        }
+            $url = 'https://discover.gopersonal.ai/interaction';
 
-        $actionId = $quoteId . '-' . $productId . '-' . $currentWindow;
+            if (strpos($clientId, 'D-') === 0) {
+                $url = 'https://go-discover-dev.goshops.ai/interaction';
+            }
 
-        $token = $this->cookieManager->getCookie('gopersonal_jwt');
-        if (!$token) {
-            $this->logger->info('No API token found in session.');
-            return;
-        }
+            $this->curl->addHeader('Authorization', 'Bearer ' . $token);
+            $this->curl->addHeader('Content-Type', 'application/json');
 
-        $clientId = $this->scopeConfig->getValue(
-            'gopersonal/general/client_id',
-            ScopeInterface::SCOPE_STORE
-        );
-        $url = 'https://discover.gopersonal.ai/interaction'; // Default URL
-
-        if (strpos($clientId, 'D-') === 0) {
-            $url = 'https://go-discover-dev.goshops.ai/interaction'; // Development URL if client ID starts with 'D-'
-        }
-
-        // Setup headers and payload for the API request
-        $this->curl->addHeader('Authorization', 'Bearer ' . $token);
-        $this->curl->addHeader('Content-Type', 'application/json');
-
-        $postData = json_encode([
-            'event' => $changeType == 'increase' ? 'cart' : 'remove-cart',
-            'item' => $productId,
-            'quantity' => abs($qtyDiff),
-            'transactionId' => $actionId,
-        ]);
-
-        $this->curl->post($url, $postData);
-        if ($this->curl->getStatus() != 200) {
-            $this->logger->error('API call failed.', [
-                'status' => $this->curl->getStatus(),
-                'response' => $this->curl->getBody(),
+            $postData = json_encode([
+                'event' => $changeType == 'increase' ? 'cart' : 'remove-cart',
+                'item' => $productId,
+                'quantity' => abs($qtyDiff),
+                'transactionId' => $actionId,
             ]);
+
+            $this->curl->post($url, $postData);
+            if ($this->curl->getStatus() != 200) {
+                $this->logger->error('API call failed.', [
+                    'status' => $this->curl->getStatus(),
+                    'response' => $this->curl->getBody(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(
+                'Error in UpdateCartItems observer: ' . $e->getMessage(),
+                [
+                    'exception' => $e->getTraceAsString(),
+                ]
+            );
         }
     }
 }

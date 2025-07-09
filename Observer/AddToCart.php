@@ -99,9 +99,6 @@ class AddToCart implements ObserverInterface
             $this->logger->critical('AddToCart event: Exception occurred.', [
                 'exception' => $e->getMessage(),
             ]);
-            throw new LocalizedException(
-                __('Error adding product to cart. Please contact support.')
-            );
         }
     }
 }

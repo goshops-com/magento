@@ -38,47 +38,58 @@ class AfterOrderPlace implements ObserverInterface
 
     public function execute(Observer $observer)
     {
-        $orderIds = $observer->getEvent()->getOrderIds();
-        if (empty($orderIds) || !is_array($orderIds)) {
-            $this->logger->error('AfterOrderPlace: No order IDs found on thank you page.');
-            return;
-        }
+        try {
+            $orderIds = $observer->getEvent()->getOrderIds();
+            if (empty($orderIds) || !is_array($orderIds)) {
+                return;
+            }
 
-        $orderId = reset($orderIds);
-        $this->logger->info('AfterOrderPlace: Order ID on Thank You Page - ' . $orderId);
+            $orderId = reset($orderIds);
+            $this->logger->info(
+                'AfterOrderPlace: Order ID on Thank You Page - ' . $orderId
+            );
 
-        $token = $this->cookieManager->getCookie('gopersonal_jwt');
-        if (!$token) {
-            $this->logger->error('AfterOrderPlace: No API token found in session.');
-            return;
-        }
+            $token = $this->cookieManager->getCookie('gopersonal_jwt');
+            if (!$token) {
+                return;
+            }
 
-        $clientId = $this->scopeConfig->getValue('gopersonal/general/client_id', ScopeInterface::SCOPE_STORE);
-        $baseUrl = 'https://discover.gopersonal.ai/interaction/state/cart';
-        $url = (strpos($clientId, 'D-') === 0) ? 'https://go-discover-dev.goshops.ai/interaction/state/cart' : $baseUrl;
+            $clientId = $this->scopeConfig->getValue(
+                'gopersonal/general/client_id',
+                ScopeInterface::SCOPE_STORE
+            );
+            $baseUrl = 'https://discover.gopersonal.ai/interaction/state/cart';
+            $url =
+                strpos($clientId, 'D-') === 0
+                    ? 'https://go-discover-dev.goshops.ai/interaction/state/cart'
+                    : $baseUrl;
 
-        $this->curl->addHeader("Authorization", "Bearer " . $token);
-        $this->curl->addHeader("Content-Type", "application/json");
+            $this->curl->addHeader('Authorization', 'Bearer ' . $token);
+            $this->curl->addHeader('Content-Type', 'application/json');
 
-        $postData = json_encode([
-            'transactionId' => $orderId
-        ]);
-
-        $this->curl->post($url, $postData);
-        if ($this->curl->getStatus() != 200) {
-            $this->logger->error('AfterOrderPlace: Purchase event API call failed.', [
-                'url' => $url,
-                'status' => $this->curl->getStatus(),
-                'response' => $this->curl->getBody(),
-                'postData' => $postData
+            $postData = json_encode([
+                'transactionId' => $orderId,
             ]);
-        } else {
-            $this->logger->info('AfterOrderPlace: Purchase event API call succeeded.', [
-                'url' => $url,
-                'status' => $this->curl->getStatus(),
-                'response' => $this->curl->getBody(),
-                'postData' => $postData
-            ]);
+
+            $this->curl->post($url, $postData);
+            if ($this->curl->getStatus() == 200) {
+                $this->logger->info(
+                    'AfterOrderPlace: Purchase event API call succeeded.',
+                    [
+                        'url' => $url,
+                        'status' => $this->curl->getStatus(),
+                        'response' => $this->curl->getBody(),
+                        'postData' => $postData,
+                    ]
+                );
+            }
+        } catch (\Exception $e) {
+            $this->logger->critical(
+                'AfterOrderPlace event: Exception occurred.',
+                [
+                    'exception' => $e->getMessage(),
+                ]
+            );
         }
     }
 }
