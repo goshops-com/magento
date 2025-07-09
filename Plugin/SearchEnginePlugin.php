@@ -22,6 +22,7 @@ use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 class SearchEnginePlugin
 {
     const BUCKET_SUFFIX = '_bucket';
+    const REQUEST_TIMEOUT = 6;
 
     protected $logger;
     protected $httpRequest;
@@ -160,7 +161,12 @@ class SearchEnginePlugin
                     continue;
                 }
 
-                return [];
+                $this->logger->error(
+                    'Failed to get product IDs after maximum attempts, falling back to default search'
+                );
+                throw new \Exception(
+                    'Failed to get product IDs after maximum attempts'
+                );
             } catch (\Exception $e) {
                 $this->logger->error(
                     'Error getting product IDs: ' . $e->getMessage()
@@ -169,12 +175,18 @@ class SearchEnginePlugin
 
                 $attempts++;
                 if ($attempts >= $maxAttempts) {
-                    return [];
+                    $this->logger->error(
+                        'Failed to get product IDs after maximum attempts due to exception, falling back to default search'
+                    );
+                    throw $e;
                 }
             }
         }
 
-        return [];
+        $this->logger->error(
+            'Unexpected end of getProductIds method, falling back to default search'
+        );
+        throw new \Exception('Unexpected end of getProductIds method');
     }
 
     protected function buildUrlParameters(array $queryParams): array
@@ -292,6 +304,8 @@ class SearchEnginePlugin
 
     protected function makeRequest(string $url, ?string $token = null): array
     {
+        $this->httpClient->setTimeout(self::REQUEST_TIMEOUT);
+
         if ($token) {
             $this->httpClient->addHeader('Authorization', 'Bearer ' . $token);
         }
