@@ -310,6 +310,16 @@ class SearchEnginePlugin
             $this->httpClient->addHeader('Authorization', 'Bearer ' . $token);
         }
         $this->httpClient->addHeader('Content-Type', 'application/json');
+
+        // Forward client headers for bot detection and personalization
+        $forwardHeaders = ['User-Agent', 'Accept-Language', 'Referer', 'X-Forwarded-For'];
+        foreach ($forwardHeaders as $headerName) {
+            $value = $this->httpRequest->getHeader($headerName);
+            if ($value) {
+                $this->httpClient->addHeader($headerName, $value);
+            }
+        }
+
         $this->httpClient->get($url);
 
         return [
@@ -439,6 +449,18 @@ class SearchEnginePlugin
         if (!$isOverrideEnabled) {
             $this->logger->debug(
                 'SearchEnginePlugin: Custom search is disabled in configuration'
+            );
+            return $proceed($request);
+        }
+
+        // If configured to require token and no token present, fall back to default search
+        $requireToken = $this->scopeConfig->getValue(
+            'gopersonal/general/disable_search_without_token',
+            ScopeInterface::SCOPE_STORE
+        );
+        if ($requireToken && !$this->cookieManager->getCookie('gopersonal_jwt')) {
+            $this->logger->debug(
+                'SearchEnginePlugin: No valid token found, falling back to default search (A/B testing mode)'
             );
             return $proceed($request);
         }

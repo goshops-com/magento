@@ -19,6 +19,12 @@
                     <label>Override Catalog Search</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+
+                <field id="disable_search_without_token" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Disable Search Without Valid Token</label>
+                    <comment>When enabled, GoPersonal search will only run if the user has a valid JWT token. Useful for A/B testing scenarios.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
         </section>
     </system>
