@@ -4,25 +4,34 @@ namespace Gopersonal\Magento\Controller\Index;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
+use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Component\ComponentRegistrar;
+use Magento\Framework\Component\ComponentRegistrarInterface;
 use Magento\Framework\View\Result\PageFactory;
 use Psr\Log\LoggerInterface; // Add the LoggerInterface
 
 class Index extends Action
 {
     protected $resultRawFactory;
+    protected $directoryList;
     protected $pageFactory;
     protected $logger; // Add the logger property
+    protected $componentRegistrar;
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
+        DirectoryList $directoryList,
         PageFactory $pageFactory,
-        LoggerInterface $logger // Inject the logger
+        LoggerInterface $logger, // Inject the logger
+        ComponentRegistrarInterface $componentRegistrar
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
+        $this->directoryList = $directoryList;
         $this->pageFactory = $pageFactory;
         $this->logger = $logger; // Assign the logger
+        $this->componentRegistrar = $componentRegistrar;
     }
 
     public function execute()
@@ -34,7 +43,8 @@ class Index extends Action
         if ($frontName === 'gp-firebase') {
             $resultRaw = $this->resultRawFactory->create();
 
-            $filePath = dirname(__DIR__, 2) . '/web/gp-firebase.js';
+            $moduleDir = $this->componentRegistrar->getPath(ComponentRegistrar::MODULE, 'Gopersonal_Magento');
+            $filePath = $moduleDir . '/web/gp-firebase.js';
             
             $jsContent = file_get_contents($filePath);
             
