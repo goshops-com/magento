@@ -25,6 +25,12 @@
                     <comment>When enabled, GoPersonal search will only run if the user has a valid JWT token. Useful for A/B testing scenarios.</comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+
+                <field id="use_email_as_customer_identifier" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Use Email as Customer Login Identifier</label>
+                    <comment>When enabled, GoPersonal will use the customer's email instead of Magento customer ID for SDK login.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
         </section>
     </system>

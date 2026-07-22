@@ -79,6 +79,7 @@ require(['jquery'], function($) {
         async function fetchTokenAndCompare() {
             try {
                 const currentToken = window.gsSDK.getCurrentSession().token;
+                const useEmailAsCustomerIdentifier = <?= json_encode($block->useEmailAsCustomerIdentifier()) ?>;
                 // Fetch the token, customer ID, and email from the Magento API
                 const response = await fetch(window.location.origin + '/gopersonal/api/gettoken');
                 const data = await response.json();
@@ -93,7 +94,11 @@ require(['jquery'], function($) {
 
                 // Check if user is logged in and has valid data, then perform login on gsSDK
                 if (data.customer_id && data.customer_email) {
-                    window.gsSDK.login(data.customer_id, {
+                    const customerIdentifier = useEmailAsCustomerIdentifier
+                        ? data.customer_email
+                        : data.customer_id;
+
+                    window.gsSDK.login(customerIdentifier, {
                         email: data.customer_email,
                         param_updateCartFromCustomer: true
                     }).then(() => {
