@@ -5,6 +5,8 @@ use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\Component\ComponentRegistrar;
+use Magento\Framework\Component\ComponentRegistrarInterface;
 use Magento\Framework\View\Result\PageFactory;
 use Psr\Log\LoggerInterface; // Add the LoggerInterface
 
@@ -14,19 +16,22 @@ class Index extends Action
     protected $directoryList;
     protected $pageFactory;
     protected $logger; // Add the logger property
+    protected $componentRegistrar;
 
     public function __construct(
         Context $context,
         RawFactory $resultRawFactory,
         DirectoryList $directoryList,
         PageFactory $pageFactory,
-        LoggerInterface $logger // Inject the logger
+        LoggerInterface $logger, // Inject the logger
+        ComponentRegistrarInterface $componentRegistrar
     ) {
         parent::__construct($context);
         $this->resultRawFactory = $resultRawFactory;
         $this->directoryList = $directoryList;
         $this->pageFactory = $pageFactory;
         $this->logger = $logger; // Assign the logger
+        $this->componentRegistrar = $componentRegistrar;
     }
 
     public function execute()
@@ -38,11 +43,24 @@ class Index extends Action
         if ($frontName === 'gp-firebase') {
             $resultRaw = $this->resultRawFactory->create();
 
-            $moduleDir = $this->directoryList->getPath('app');
-            $filePath = $moduleDir . '/code/Gopersonal/Magento/web/gp-firebase.js';
-            
+            // No asumir app/code: el modulo es "type": "magento2-module", asi que instalado por
+            // Composer vive en vendor/gopersonal/magento-plugin/. ComponentRegistrar devuelve la
+            // ruta real con la que registration.php se registro (__DIR__), sirve para ambos casos.
+            $moduleDir = $this->componentRegistrar->getPath(ComponentRegistrar::MODULE, 'Gopersonal_Magento');
+            $filePath = $moduleDir . '/web/gp-firebase.js';
+
+            if (!$moduleDir || !is_readable($filePath)) {
+                // Sin esto, file_get_contents devuelve false y la excepcion sube hasta el handler
+                // de Magento, que responde 503 con la pagina de mantenimiento de la tienda: el
+                // service worker no registra y no queda rastro de por que.
+                $this->logger->error('[gopersonal] gp-firebase.js no encontrado en: ' . $filePath);
+                $resultRaw->setHttpResponseCode(404);
+                $resultRaw->setContents('');
+                return $resultRaw;
+            }
+
             $jsContent = file_get_contents($filePath);
-            
+
             $resultRaw->setContents($jsContent);
             $resultRaw->setHeader('Content-Type', 'text/javascript');
             return $resultRaw;
