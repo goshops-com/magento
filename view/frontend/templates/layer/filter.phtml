@@ -1,5 +1,8 @@
 <?php
 $filterDataCombined = $block->getRequest()->getParam('filter_data_combined');
+if (!is_array($filterDataCombined)) {
+    $filterDataCombined = [];
+}
 $logger = $block->getLogger();
 $logger->info('Filter Data Combined in Template: ' . json_encode($filterDataCombined));
 
@@ -33,10 +36,10 @@ $logger->info('Filters' . $showPriceFilter);
                         <ol class="items">
                             <?php foreach ($attributeData['options'] as $optionId => $optionData): ?>
                                 <li class="item">
-                                    <a href="javascript:void(0);" class="filter-option" data-attribute="<?= $attributeCode ?>" data-value="<?= $optionId ?>">
+                                    <a href="javascript:void(0);" class="filter-option" data-attribute="<?= $escaper->escapeHtmlAttr($attributeCode) ?>" data-value="<?= $escaper->escapeHtmlAttr($optionId) ?>">
                                         <span class="item-label"><?= $escaper->escapeHtml($optionData['label']) ?></span>
                                         <span class="count">
-                                            <?= $optionData['count'] ?>
+                                            <?= (int) $optionData['count'] ?>
                                             <span class="filter-count-label">artículos</span>
                                         </span>
                                     </a>

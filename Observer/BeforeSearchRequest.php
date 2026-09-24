@@ -47,9 +47,17 @@ class BeforeSearchRequest implements ObserverInterface
 
     protected function generateGsSearchId(): string 
     {
-        $sessionId = $this->sessionManager->getSessionId();
         $timestamp = time();
-        return $sessionId . '_' . $timestamp;
+        return $this->getExternalSessionId() . '_' . $timestamp;
+    }
+
+    /**
+     * Identificador externo de sesion para GoPersonal (hash estable por sesion).
+     */
+    protected function getExternalSessionId(): string
+    {
+        $sessionId = $this->sessionManager->getSessionId();
+        return $sessionId ? substr(hash('sha256', $sessionId), 0, 32) : '';
     }
 
     public function execute(Observer $observer)
@@ -146,8 +154,7 @@ class BeforeSearchRequest implements ObserverInterface
 
                 if ($statusCode == 401) {
                     // Get the session ID
-                    $sessionId = $this->sessionManager->getSessionId();
-                    $sessionParam = '&externalSessionId=' . urlencode($sessionId);
+                    $sessionParam = '&externalSessionId=' . urlencode($this->getExternalSessionId());
 
                     // Append the client ID parameter
                     $clientIdParam = '&clientId=' . urlencode($clientId);

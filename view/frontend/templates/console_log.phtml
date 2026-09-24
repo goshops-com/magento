@@ -88,7 +88,8 @@ require(['jquery'], function($) {
                 if (currentToken != data.token) {
                     // If the token is different, update it on the server
                     await fetch(`${window.location.origin}/gopersonal/api/storetoken?token=${encodeURIComponent(currentToken)}`, {
-                        method: 'GET'
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                 }
 

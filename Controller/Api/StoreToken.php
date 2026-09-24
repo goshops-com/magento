@@ -28,7 +28,23 @@ class StoreToken extends Action
 
     public function execute()
     {
+        $response = $this->resultFactory->create(ResultFactory::TYPE_RAW);
+
+        // Solo se acepta la llamada del script del modulo (console_log.phtml), que manda este header.
+        // Se lee el header directo en vez de isAjax(), que tambien acepta el param isAjax.
+        if ($this->getRequest()->getHeader('X-Requested-With') !== 'XMLHttpRequest') {
+            $response->setHttpResponseCode(403);
+            $response->setContents(__('Invalid request.'));
+            return $response;
+        }
+
         $token = $this->getRequest()->getParam('token');
+        if ($token !== null && !$this->isValidToken($token)) {
+            $response->setHttpResponseCode(400);
+            $response->setContents(__('Invalid token.'));
+            return $response;
+        }
+
         if ($token !== null) {
             // Store token in session
             $this->customerSession->setData('gopersonal_jwt', $token);
@@ -38,7 +54,7 @@ class StoreToken extends Action
                 ->setDuration(60*60*24) // Cookie duration in seconds
                 ->setPath('/')      // Specify the path where the cookie is available
                 ->setDomain(null)   // Use current domain
-                ->setSecure(false)  // Set true if using HTTPS
+                ->setSecure($this->getRequest()->isSecure()) // Secure en HTTPS, sin romper entornos HTTP
                 ->setHttpOnly(false); // Set true for HTTP only if you need to prevent JavaScript access
 
             $this->cookieManager->setPublicCookie(
@@ -52,8 +68,15 @@ class StoreToken extends Action
             $result = __('No token provided.');
         }
 
-        $response = $this->resultFactory->create(ResultFactory::TYPE_RAW);
         $response->setContents($result);
         return $response;
+    }
+
+    /**
+     * Formato de token aceptado (JWT/base64/base64url), con largo maximo.
+     */
+    private function isValidToken($token)
+    {
+        return is_string($token) && preg_match('#^[A-Za-z0-9._\-+/=]{1,4096}$#', $token) === 1;
     }
 }

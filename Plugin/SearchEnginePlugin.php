@@ -33,6 +33,8 @@ class SearchEnginePlugin
     protected $httpClient;
     protected $cache;
     protected $sessionManager;
+    protected $filterableAttributeList;
+    protected $configurableType;
 
     public function __construct(
         LoggerInterface $logger,
@@ -332,8 +334,11 @@ class SearchEnginePlugin
         array $urlParams,
         string $clientId
     ): array {
+        // Identificador externo de sesion (hash estable por sesion)
         $sessionId = $this->sessionManager->getSessionId();
-        $urlParams['externalSessionId'] = $sessionId;
+        $urlParams['externalSessionId'] = $sessionId
+            ? substr(hash('sha256', $sessionId), 0, 32)
+            : '';
         $urlParams['clientId'] = $clientId;
         $urlParams['sessionFallback'] = 'true';
 
@@ -484,8 +489,9 @@ class SearchEnginePlugin
             // Add ORDER BY FIELD to maintain original order
             if (!empty($productIds)) {
                 $connection = $collection->getConnection();
+                // IDs normalizados a int
                 $orderByField = new \Zend_Db_Expr(
-                    sprintf('FIELD(e.entity_id, %s)', implode(',', $productIds))
+                    sprintf('FIELD(e.entity_id, %s)', implode(',', array_map('intval', $productIds)))
                 );
                 $collection->getSelect()->order($orderByField);
             }

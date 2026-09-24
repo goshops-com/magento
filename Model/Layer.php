@@ -23,6 +23,7 @@ class Layer extends \Magento\Catalog\Model\Layer
     protected $cacheKey = 'gopersonal_layer_filter_counts';
     protected $request;
     protected $scopeConfig;
+    protected $filterDataCombinedSet = false;
 
     public function __construct(
         ContextInterface $context,
@@ -67,9 +68,10 @@ class Layer extends \Magento\Catalog\Model\Layer
             $this->logger->info('Filtering collection by product IDs: ' . implode(',', $idArray));
             $collection->addAttributeToFilter('entity_id', ['in' => $idArray]);
 
-            // Custom sorting based on array order 
+            // Custom sorting based on array order (IDs normalizados a int)
+            $orderIds = array_map('intval', (array) $idArray);
             $collection->getSelect()->order(
-                new \Zend_Db_Expr('FIELD(e.entity_id, ' . implode(',', $idArray) . ')')
+                new \Zend_Db_Expr('FIELD(e.entity_id, ' . implode(',', $orderIds) . ')')
             );
         }
 
@@ -86,11 +88,12 @@ class Layer extends \Magento\Catalog\Model\Layer
         // Apply URL filters to the collection
         $this->applyUrlFilters($collection);
 
-        // Calculate and set filter data if not already in the request
-        if ($this->request->getParam('filter_data_combined') === null) {
+        // Calculate and set filter data once per request
+        if (!$this->filterDataCombinedSet) {
             $filterDataCombined = $this->getCombinedFilterData($collection);
             $this->logger->info('Calculated combined filter data: ' . json_encode($filterDataCombined));
             $this->request->setParam('filter_data_combined', $filterDataCombined);
+            $this->filterDataCombinedSet = true;
             $this->logger->info('Stored combined filter data in the request');
         }
 
