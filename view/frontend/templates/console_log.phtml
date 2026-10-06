@@ -1,6 +1,6 @@
 <script>
 require(['jquery'], function($) {
-    $(document).ready(function() {
+    function startGopersonal() {
         var clientId = "<?= $block->escapeJs($block->getClientId()) ?>"; // Fetch the client ID safely
 
         async function initializeGSSDK() {
@@ -112,6 +112,14 @@ require(['jquery'], function($) {
                 console.error('Error fetching or updating token:', error);
             }
         }
-    });
+    }
+
+    // jQuery stays required: variant templates may use $. Skipping DOM ready is opt-in because
+    // contents targeting JS-rendered zones (sliders, minicart) can be overwritten by Magento.
+    if (<?= /* @noEscape */ json_encode($block->skipDomReadyWait()) ?>) {
+        startGopersonal();
+    } else {
+        $(document).ready(startGopersonal);
+    }
 });
 </script>

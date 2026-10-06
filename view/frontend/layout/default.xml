@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
+        <referenceBlock name="head.additional">
+            <block class="Magento\Framework\View\Element\Template" name="gopersonal_sdk_preload" template="Gopersonal_Magento::sdk_preload.phtml"/>
+        </referenceBlock>
         <referenceContainer name="before.body.end">
             <block class="Gopersonal\Magento\Block\ConsoleLog" name="console_log" template="Gopersonal_Magento::console_log.phtml"/>
         </referenceContainer>
