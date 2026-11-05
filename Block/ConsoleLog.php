@@ -107,6 +107,10 @@ class ConsoleLog extends Template
         return $this->_scopeConfig->isSetFlag('gopersonal/general/use_email_as_customer_identifier', ScopeInterface::SCOPE_STORE);
     }
 
+    public function skipDomReadyWait() {
+        return $this->_scopeConfig->isSetFlag('gopersonal/general/skip_dom_ready_wait', ScopeInterface::SCOPE_STORE);
+    }
+
     public function getCartItems() {
         $items = [];
         foreach ($this->_checkoutSession->getQuote()->getAllVisibleItems() as $item) {

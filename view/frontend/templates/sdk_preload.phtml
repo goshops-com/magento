@@ -1,0 +1,5 @@
+<?php
+// console_log.phtml only requests the SDK once RequireJS has jQuery (and DOM ready by default); preloading starts the download with the <head>.
+// No crossorigin: it must match the plain <script> that console_log.phtml creates, or the browser downloads it twice.
+?>
+<link rel="preload" href="https://sdk.gopersonal.ai/gs-sdk.js" as="script">

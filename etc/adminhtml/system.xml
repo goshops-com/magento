@@ -31,6 +31,12 @@
                     <comment>When enabled, GoPersonal will use the customer's email instead of Magento customer ID for SDK login.</comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+
+                <field id="skip_dom_ready_wait" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Start SDK Without Waiting for DOM Ready</label>
+                    <comment>Loads personalizations earlier. Only enable if no personalization targets elements rendered by Magento JS (sliders, minicart), since Magento may overwrite them.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
         </section>
     </system>
